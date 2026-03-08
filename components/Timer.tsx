@@ -1,51 +1,52 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
+import { audioEngine } from '@/lib/audioEngine';
 
-interface TimerProps {
-  duration: number; // in seconds
-  onComplete?: () => void;
-  phase: string;
-}
-
-export function Timer({ duration, onComplete, phase }: TimerProps) {
+export default function Timer({ duration, onExpire, isActive }: { duration: number, onExpire: () => void, isActive: boolean }) {
   const [timeLeft, setTimeLeft] = useState(duration);
+  const [prevDuration, setPrevDuration] = useState(duration);
+  const [prevIsActive, setPrevIsActive] = useState(isActive);
+
+  if (duration !== prevDuration || isActive !== prevIsActive) {
+    setTimeLeft(duration);
+    setPrevDuration(duration);
+    setPrevIsActive(isActive);
+  }
 
   useEffect(() => {
-    if (timeLeft <= 0) {
-      if (onComplete) onComplete();
+    if (!isActive || timeLeft <= 0) {
+      if (timeLeft === 0 && isActive) {
+        onExpire();
+      }
       return;
     }
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
+    const interval = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 10 && prev > 0) {
+          audioEngine.playVoteTick();
+        }
+        return prev - 1;
+      });
     }, 1000);
 
-    return () => clearInterval(timer);
-  }, [timeLeft, onComplete]);
+    return () => clearInterval(interval);
+  }, [isActive, timeLeft, onExpire]);
 
-  // Format time as MM:SS
-  const minutes = Math.floor(timeLeft / 60);
-  const seconds = timeLeft % 60;
-  const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-  // Determine color based on time left
-  const isUrgent = timeLeft <= 10;
-  const colorClass = isUrgent ? 'text-red-500 drop-shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]';
+  if (!isActive) return null;
 
   return (
-    <div className="flex flex-col items-center justify-center">
-      <p className="text-xs text-slate-500 uppercase tracking-widest mb-1 font-medium">Time Remaining</p>
-      <motion.div
-        key={timeLeft}
-        initial={{ scale: isUrgent ? 1.2 : 1 }}
-        animate={{ scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className={`text-3xl font-mono font-bold ${colorClass}`}
+    <div className="flex items-center justify-center space-x-2 text-xl font-mono">
+      <motion.span
+        animate={{ opacity: timeLeft <= 10 ? [1, 0.5, 1] : 1 }}
+        transition={{ duration: 1, repeat: timeLeft <= 10 ? Infinity : 0 }}
+        className={timeLeft <= 10 ? 'text-red-400' : 'text-blue-300'}
       >
-        {formattedTime}
-      </motion.div>
+        {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:
+        {(timeLeft % 60).toString().padStart(2, '0')}
+      </motion.span>
     </div>
   );
 }

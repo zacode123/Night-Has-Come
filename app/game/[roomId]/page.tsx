@@ -1,345 +1,185 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState, use } from 'react';
+import { useRouter } from 'next/navigation';
+import { useGameState } from '@/hooks/useGameState';
+import { useChat } from '@/hooks/useChat';
 import { supabase } from '@/lib/supabaseClient';
-import { motion, AnimatePresence } from 'framer-motion';
-import { NarratorSphere } from '@/components/NarratorSphere';
-import { ChatTab } from '@/components/ChatTab';
-import { PlayerList } from '@/components/PlayerList';
-import { VotingPanel } from '@/components/VotingPanel';
-import { GameBoard } from '@/components/GameBoard';
-import { Timer } from '@/components/Timer';
-import { gameConfig } from '@/config/gameConfig';
-import { themeConfig, ThemeState } from '@/config/themeConfig';
+import { audioEngine } from '@/lib/audioEngine';
+import PlayerList from '@/components/PlayerList';
+import ChatTab from '@/components/ChatTab';
+import GameBoard from '@/components/GameBoard';
+import NarrationPanel from '@/components/NarrationPanel';
+import VotingPanel from '@/components/VotingPanel';
+import Timer from '@/components/Timer';
+import { motion, AnimatePresence } from 'motion/react';
 
-interface Player {
-  id: string;
-  username: string;
-  role: string | null;
-  alive: boolean;
-  connected: boolean;
-}
-
-interface Room {
-  id: string;
-  host_id: string;
-  status: string;
-  phase: string;
-  day_number: number;
-}
-
-export default function GameScreen() {
-  const { roomId } = useParams() as { roomId: string };
+export default function GameRoom({ params }: { params: Promise<{ roomId: string }> }) {
+  const resolvedParams = use(params);
+  const roomId = resolvedParams.roomId;
   const router = useRouter();
   
-  const [player, setPlayer] = useState<Player | null>(null);
-  const [room, setRoom] = useState<Room | null>(null);
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [narratorText, setNarratorText] = useState('Loading...');
+  const [userId, setUserId] = useState<string | null>(null);
+  const [narrationText, setNarrationText] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
   
-  const bgAudioRef = useRef<HTMLAudioElement | null>(null);
-  const synthRef = useRef<SpeechSynthesis | null>(null);
-
-  const speak = (text: string) => {
-    if (!synthRef.current || !gameConfig.voiceEnabled) return;
-
-    // Cancel any ongoing speech
-    synthRef.current.cancel();
-
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Try to find a good dramatic voice (e.g., Google UK English Male or similar)
-    const voices = synthRef.current.getVoices();
-    const preferredVoice = voices.find(v => v.name.includes('Google UK English Male') || v.name.includes('Daniel') || v.lang === 'en-GB');
-    if (preferredVoice) {
-      utterance.voice = preferredVoice;
-    }
-
-    utterance.pitch = 0.8; // Slightly lower pitch for drama
-    utterance.rate = 0.9;  // Slightly slower
-
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
-
-    synthRef.current.speak(utterance);
-  };
+  const { gameState, players, castVote } = useGameState(roomId);
+  const { messages, sendMessage } = useChat(roomId, userId || '');
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      synthRef.current = window.speechSynthesis;
-    }
-
-    const initGame = async () => {
-      const playerId = localStorage.getItem('playerId');
-      if (!playerId) {
-        router.push('/');
-        return;
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // For testing, we might just use a local storage ID if not auth'd
+        const localId = localStorage.getItem('playerId');
+        if (localId) {
+          setUserId(localId);
+        } else {
+          router.push('/');
+        }
+      } else {
+        setUserId(session.user.id);
       }
-
-      // Fetch player
-      const { data: playerData } = await supabase
-        .from('players')
-        .select('*')
-        .eq('id', playerId)
-        .single();
-
-      if (!playerData || playerData.room_id !== roomId) {
-        router.push('/');
-        return;
-      }
-      setPlayer(playerData);
-
-      // Fetch room
-      const { data: roomData } = await supabase
-        .from('rooms')
-        .select('*')
-        .eq('id', roomId)
-        .single();
-      
-      if (roomData) setRoom(roomData);
-
-      // Fetch players
-      const { data: playersData } = await supabase
-        .from('players')
-        .select('*')
-        .eq('room_id', roomId);
-      
-      if (playersData) setPlayers(playersData);
-
-      // Subscribe to room changes
-      const roomChannel = supabase
-        .channel(`game_room_${roomId}`)
-        .on(
-          'postgres_changes',
-          { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `id=eq.${roomId}` },
-          (payload) => {
-            setRoom(payload.new as Room);
-          }
-        )
-        .subscribe();
-
-      // Subscribe to players changes
-      const playersChannel = supabase
-        .channel(`game_players_${roomId}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'players', filter: `room_id=eq.${roomId}` },
-          async () => {
-            const { data } = await supabase
-              .from('players')
-              .select('*')
-              .eq('room_id', roomId);
-            if (data) setPlayers(data);
-          }
-        )
-        .subscribe();
-
-      // Subscribe to episodes (narration)
-      const episodesChannel = supabase
-        .channel(`game_episodes_${roomId}`)
-        .on(
-          'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'episodes', filter: `room_id=eq.${roomId}` },
-          (payload) => {
-            const content = payload.new.content;
-            setNarratorText(content);
-            speak(content);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(roomChannel);
-        supabase.removeChannel(playersChannel);
-        supabase.removeChannel(episodesChannel);
-      };
     };
+    checkUser();
+  }, [router]);
 
-    initGame();
-  }, [roomId, router]);
-
-  // Handle phase changes (Theme and Audio)
-  const phase = room?.phase;
+  // Handle phase changes and narration
   useEffect(() => {
-    if (!phase) return;
+    if (!gameState) return;
 
-    let bgSound = '/sounds/suspense_ambience.mp3';
-
-    switch (phase) {
-      case 'night':
-        bgSound = '/sounds/night_horror_drone.mp3';
-        break;
-      case 'morning':
-        bgSound = '/sounds/suspense_ambience.mp3';
-        break;
-      case 'discussion':
-        bgSound = '/sounds/discussion_music.mp3';
-        break;
-      case 'voting':
-        bgSound = '/sounds/suspense_ambience.mp3';
-        break;
-      case 'execution':
-        bgSound = '/sounds/death_sound.mp3';
-        break;
-      case 'game_end':
-        // Check win condition (we'll assume a field in room or just set to normal for now)
-        bgSound = '/sounds/victory.mp3';
-        break;
-    }
-
-    // Play background audio
-    if (bgAudioRef.current) {
-      bgAudioRef.current.pause();
-    }
-    bgAudioRef.current = new Audio(bgSound);
-    bgAudioRef.current.loop = phase !== 'execution' && phase !== 'game_end';
-    bgAudioRef.current.volume = 0.3;
-    bgAudioRef.current.play().catch(() => {});
-
-    return () => {
-      if (bgAudioRef.current) {
-        bgAudioRef.current.pause();
-      }
-    };
-  }, [phase]);
-
-  const handlePhaseEnd = async () => {
-    if (!room || !player) return;
+    setIsSpeaking(true);
     
-    // Only the host advances the phase to prevent race conditions
-    if (room.host_id === player.id) {
-      try {
-        await fetch('/api/advance-phase', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            roomId: room.id,
-            currentPhase: room.phase,
-            dayNumber: room.day_number,
-          }),
-        });
-      } catch (error) {
-        console.error('Failed to advance phase:', error);
-      }
+    switch (gameState.phase) {
+      case 'Night':
+        setNarrationText('Night has fallen. Somewhere in the darkness, a killer chooses their target.');
+        audioEngine.startNightAmbient();
+        audioEngine.stopAmbient(); // Stop discussion music
+        break;
+      case 'Morning':
+        setNarrationText('Morning arrives. But someone will never wake up again.');
+        audioEngine.stopAmbient();
+        audioEngine.playRoleReveal();
+        break;
+      case 'Discussion':
+        setNarrationText('Discuss among yourselves. Who do you suspect?');
+        audioEngine.startDiscussionMusic();
+        break;
+      case 'Voting':
+        setNarrationText('It is time to vote. Choose wisely.');
+        audioEngine.stopAmbient();
+        break;
+      case 'Execution':
+        setNarrationText('The votes are counted. The execution will now proceed.');
+        audioEngine.playDeathSound();
+        break;
+      case 'GameEnd':
+        setNarrationText('The game has ended.');
+        audioEngine.stopAmbient();
+        // Check win condition
+        break;
     }
-  };
 
-  if (!player || !room) {
+    const timer = setTimeout(() => {
+      setIsSpeaking(false);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState?.phase]);
+
+  if (!gameState || !userId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-16 h-16 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
       </div>
     );
   }
 
-  let theme: ThemeState = 'normal';
-  switch (room.phase) {
-    case 'night':
-    case 'morning':
-    case 'discussion':
-      theme = 'normal';
-      break;
-    case 'voting':
-      theme = 'voting';
-      break;
-    case 'execution':
-      theme = 'danger';
-      break;
-    case 'game_end':
-      theme = 'win'; // Or loss
-      break;
-  }
+  const currentPlayer = players.find(p => p.id === userId);
+  const isAlive = currentPlayer?.alive ?? false;
+  const canChat = isAlive && (gameState.phase === 'Discussion' || gameState.phase === 'Lobby');
 
-  const currentTheme = themeConfig[theme];
-  const isHost = room.host_id === player.id;
+  // Theme colors based on phase
+  const getThemeClass = () => {
+    switch (gameState.phase) {
+      case 'Night': return 'bg-slate-950';
+      case 'Voting': return 'bg-purple-950/50';
+      case 'Execution': return 'bg-red-950/50';
+      case 'GameEnd': return 'bg-amber-950/50';
+      default: return 'bg-slate-900';
+    }
+  };
 
   return (
-    <main className={`min-h-screen flex flex-col overflow-hidden font-sans transition-colors duration-1000 ${currentTheme.background}`}>
-      {/* Background Effects */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
-        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
+    <div className={`min-h-screen transition-colors duration-1000 ${getThemeClass()} text-white overflow-hidden flex flex-col`}>
+      {/* Cinematic background effects */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.8)_100%)] z-10" />
+        <div 
+          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center opacity-40 mix-blend-overlay z-0"
+        />
+        {gameState.phase === 'Night' && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: [0.1, 0.3, 0.1] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="absolute inset-0 bg-blue-900/10 mix-blend-overlay z-20"
+          />
+        )}
       </div>
 
       {/* Header */}
-      <header className="relative z-20 h-20 border-b border-slate-800/50 bg-black/40 backdrop-blur-md flex items-center justify-between px-6">
-        <div className="flex items-center gap-4">
-          <h1 className={`text-2xl font-bold tracking-widest uppercase ${currentTheme.color} drop-shadow-[0_0_10px_currentColor]`}>
-            Night Has Come
-          </h1>
-          <span className="text-sm text-slate-500 font-mono bg-slate-900/50 px-2 py-1 rounded border border-slate-800">
-            Day {room.day_number} • {room.phase.toUpperCase()}
-          </span>
-        </div>
-        
-        {/* Timer */}
-        {room.phase !== 'game_end' && room.phase !== 'lobby' && (
+      <header className="relative z-10 p-4 flex justify-between items-center border-b border-white/10 bg-black/50 backdrop-blur-md">
+        <h1 className="text-xl font-serif tracking-widest text-blue-400">NIGHT HAS COME</h1>
+        <div className="flex items-center space-x-4">
           <Timer 
-            key={room.phase}
-            duration={
-              room.phase === 'night' ? gameConfig.nightDuration : 
-              room.phase === 'discussion' ? gameConfig.discussionDuration : 
-              room.phase === 'voting' ? gameConfig.voteDuration : 
-              room.phase === 'morning' ? gameConfig.dayDuration : 
-              gameConfig.executionDuration
-            } 
-            phase={room.phase}
-            onComplete={isHost ? handlePhaseEnd : undefined}
+            duration={60} // This should come from gameState
+            isActive={gameState.phase === 'Discussion' || gameState.phase === 'Voting'}
+            onExpire={() => console.log('Timer expired')}
           />
-        )}
+          <div className="text-sm text-gray-400">Room: {gameState.room_code}</div>
+        </div>
       </header>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex overflow-hidden relative z-10">
+      {/* Main Content */}
+      <main className="relative z-10 flex-1 flex flex-col md:flex-row p-4 gap-4 overflow-hidden">
         
-        {/* Left Panel: Chat */}
-        <div className="w-80 hidden md:block flex-shrink-0">
+        {/* Left: Chat */}
+        <div className="w-full md:w-1/4 h-64 md:h-auto flex-shrink-0">
           <ChatTab 
-            roomId={roomId} 
-            playerId={player.id} 
-            playerName={player.username} 
-            isAlive={player.alive} 
-            phase={room.phase} 
+            messages={messages}
+            currentUserId={userId}
+            onSendMessage={sendMessage}
+            disabled={!canChat}
           />
         </div>
 
-        {/* Center Panel: Game Board & Narrator */}
-        <div className="flex-1 flex flex-col relative">
+        {/* Center: Game Area */}
+        <div className="flex-1 flex flex-col items-center justify-start overflow-y-auto">
+          <NarrationPanel text={narrationText} isSpeaking={isSpeaking} />
           
-          {/* Narrator Sphere */}
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 z-30">
-            <NarratorSphere isSpeaking={isSpeaking} themeGlow={currentTheme.glow} />
-          </div>
-
-          {/* Game Board */}
-          <div className="flex-1 pt-40 pb-8 px-8 overflow-y-auto scrollbar-none">
+          <div className="w-full max-w-2xl mt-8">
             <GameBoard 
-              roomId={roomId}
-              playerId={player.id}
-              myRole={player.role}
-              phase={room.phase}
-              dayNumber={room.day_number}
+              phase={gameState.phase}
+              dayNumber={gameState.day_number}
               players={players}
-              narratorText={narratorText}
+              currentUserId={userId}
             />
 
-            {/* Voting Panel Overlay */}
             <AnimatePresence>
-              {room.phase === 'voting' && (
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+              {gameState.phase === 'Voting' && isAlive && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="mt-8"
                 >
                   <VotingPanel 
-                    roomId={roomId}
-                    playerId={player.id}
                     players={players}
-                    dayNumber={room.day_number}
-                    phase={room.phase}
+                    currentUserId={userId}
+                    onVote={(targetId) => castVote(targetId)}
+                    hasVoted={false} // Should track if user has voted
                   />
                 </motion.div>
               )}
@@ -347,16 +187,12 @@ export default function GameScreen() {
           </div>
         </div>
 
-        {/* Right Panel: Player List */}
-        <div className="w-72 hidden lg:block flex-shrink-0">
-          <PlayerList 
-            players={players} 
-            currentPlayerId={player.id} 
-            phase={room.phase} 
-            myRole={player.role} 
-          />
+        {/* Right: Players */}
+        <div className="w-full md:w-1/4 h-64 md:h-auto flex-shrink-0">
+          <PlayerList players={players} currentUserId={userId} />
         </div>
-      </div>
-    </main>
+
+      </main>
+    </div>
   );
 }
