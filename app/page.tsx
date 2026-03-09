@@ -225,7 +225,7 @@ export default function Home() {
             opacity: { duration: 1, delay: 0.5 },
             y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
           }}
-          className="text-2xl md:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
+          className="text-xl md:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
         >
           Trust no one. Survive the night.
         </motion.p>
@@ -254,7 +254,7 @@ export default function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1.5 }}
-          className="mt-14 text-red-400 text-sm tracking-widest uppercase font-bold drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"
+          className="mt-24 text-red-400 text-sm tracking-widest uppercase font-bold drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"
           style={{ textShadow: '0 0 10px rgba(220,38,38,0.8), 0 0 20px rgba(220,38,38,0.6)' }}
         >
           Created by Zahid Arman
