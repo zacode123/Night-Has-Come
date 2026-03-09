@@ -14,8 +14,8 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    // Non-null assertion fixes the TypeScript build error
+    const ctx = canvas.getContext("2d")!;
 
     const width = canvas.offsetWidth;
     const height = 200;
@@ -35,6 +35,7 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
 
     const emitters: { x: number; y: number }[] = [];
 
+    // detect bottom pixels of letters
     for (let x = 0; x < width; x += 4) {
       for (let y = height - 1; y > 0; y--) {
         const alpha = image[(y * width + x) * 4 + 3];
@@ -115,7 +116,6 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
     }
 
     animate();
-
   }, [text]);
 
   return (
