@@ -120,7 +120,6 @@ export default function AdminPage() {
   };
 
   const handleStartGame = async () => {
-    const waitingRoom = rooms.find(r => r.status === 'waiting');
     if (!waitingRoom) return;
     setIsProcessing(true);
     try {
