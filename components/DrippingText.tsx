@@ -18,12 +18,12 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
     const ctx = canvas.getContext("2d")!;
 
     const width = 900;
-    const height = 100;
+    const height = 130;
 
     canvas.width = width;
     canvas.height = height;
 
-    const fontSize = 55;
+    const fontSize = 70;
 
     ctx.font = `bold ${fontSize}px Nosifer, sans-serif`;
     ctx.textAlign = "center";
