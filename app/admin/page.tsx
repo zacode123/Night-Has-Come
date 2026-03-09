@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { loginAdmin, logoutAdmin, checkAdminStatus, approvePlayer, rejectPlayer, deletePlayer, useLongPress, startGame } from './actions';
+import { loginAdmin, logoutAdmin, checkAdminStatus, approvePlayer, rejectPlayer, deletePlayer, startGame } from './actions';
 import { gameConfig } from '@/config/gameConfig';
 import { Trash2, Check, X, AlertTriangle } from 'lucide-react';
 
