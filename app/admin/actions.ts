@@ -1,5 +1,6 @@
 'use server';  
-  
+
+import { useRef } from 'react';
 import { cookies } from 'next/headers';  
 import { getServiceSupabase } from '@/lib/supabaseClient';  
   
@@ -142,7 +143,24 @@ export async function deletePlayer(playerId: string) {
   
   return { success: true };  
 }  
-  
+
+export function useLongPress(callback: () => void, ms = 500) {
+  const timer = useRef<NodeJS.Timeout>();
+  const start = () => {
+    timer.current = setTimeout(callback, ms);
+  };
+  const clear = () => {
+    if (timer.current) clearTimeout(timer.current);
+  };
+  return {
+    onMouseDown: start,
+    onMouseUp: clear,
+    onMouseLeave: clear,
+    onTouchStart: start,
+    onTouchEnd: clear,
+  };
+}
+
 /* ---------------- GAME ---------------- */  
   
 export async function startGame(roomId: string) {  
