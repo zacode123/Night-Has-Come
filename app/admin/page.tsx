@@ -139,9 +139,7 @@ export default function AdminPage() {
 
   const hasPendingRequests = pendingPlayers.length > 0;
   const waitingRoom = rooms.find(r => r.status === 'waiting');
-  const approvedPlayersCount = approvedPlayers.length;
 
-  const canGoToGame = !hasPendingRequests && approvedPlayersCount > 2;
   const canStartGame =
     !hasPendingRequests &&
     waitingRoom &&
