@@ -93,7 +93,7 @@ export default function Home() {
     e.preventDefault();
     setError('');
     if (name.length < 2 || name.length > 20) return;
-    
+    setIsSubmitting(true);
     const ageNum = parseInt(age);
     if (isNaN(ageNum) || ageNum < 10 || ageNum > 20) {
       setError('Age must be between 10 and 20.');
