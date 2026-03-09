@@ -17,7 +17,7 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
     // Non-null assertion fixes the TypeScript build error
     const ctx = canvas.getContext("2d")!;
 
-    const width = canvas.offsetWidth;
+    const width = canvas.parentElement?.clientWidth || 900;
     const height = 200;
 
     canvas.width = width;
