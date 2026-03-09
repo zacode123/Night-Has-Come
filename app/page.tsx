@@ -216,49 +216,50 @@ export default function Home() {
         </motion.div>
         
         <motion.p 
-                initial={{ opacity: 0 }}
-                animate={{ 
-                    opacity: 1,
-                    y: [0, -5, 0]
-                }}
-                transition={{ 
-                    opacity: { duration: 1, delay: 0.5 },
-                    y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
-                }}
-                className="text-xl md:text-xl sm:text-lg font-bold text-zinc-300 tracking-widest mb-8 sm:mb-4 px-6 py-3 sm:px-4 sm:py-2 rounded-xl sm:rounded-lg bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)] hover:bg-white/10 transition-colors"
+          initial={{ opacity: 0 }}
+          animate={{ 
+            opacity: 1,
+            y: [0, -5, 0]
+          }}
+          transition={{ 
+            opacity: { duration: 1, delay: 0.5 },
+            y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
+          }}
+          className="text-xl md:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
         >
-                Trust no one. Survive the night.
+          Trust no one. Survive the night.
         </motion.p>
 
         <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 1 }}
-                whileHover={{
-                    scale: 1.05,
-                    boxShadow: '0 0 40px rgba(220, 38, 38, 0.8)',
-                    borderColor: 'rgba(239, 68, 68, 1)',
-                }}
-                whileTap={{ scale: 0.95 }}
-                onHoverStart={() => audioEngine.playHover()}
-                onClick={() => {
-                        audioEngine.playClick();
-                        setShowModal(true);
-                }}
-                className="px-12 py-6 rounded-[25px] border-2 border-red-600 bg-red-900/30 backdrop-blur-sm flex items-center justify-center text-xl tracking-widest hover:bg-red-800/50 transition-all text-red-100 shadow-[0_0_20px_rgba(220,38,38,0.4)] sm:px-6 sm:py-3 sm:text-lg sm:tracking-normal"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5, delay: 1 }}
+          whileHover={{ 
+            scale: 1.05, 
+            boxShadow: '0 0 40px rgba(220, 38, 38, 0.8)',
+            borderColor: 'rgba(239, 68, 68, 1)'
+          }}
+          whileTap={{ scale: 0.95 }}
+          onHoverStart={() => audioEngine.playHover()}
+          onClick={() => {
+            audioEngine.playClick();
+            setShowModal(true);
+          }}
+          className="px-12 py-6 rounded-[25px] border-2 border-red-600 bg-red-900/30 backdrop-blur-sm flex items-center justify-center text-xl tracking-widest hover:bg-red-800/50 transition-all text-red-100 shadow-[0_0_20px_rgba(220,38,38,0.4)]"
         >
-                ▶ PLAY
+          ▶ PLAY
         </motion.button>
 
-        <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 1, delay: 1.5 }}
-                className="mt-12 text-red-400 text-sm tracking-widest uppercase font-bold drop-shadow-[0_0_10px_rgba(220,38,38,0.8)] sm:text-xs sm:mt-6 sm:tracking-normal"
-                style={{ textShadow: '0 0 10px rgba(220,38,38,0.8), 0 0 20px rgba(220,38,38,0.6)' }}
+        <motion.p 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1, delay: 1.5 }}
+          className="mt-12 text-red-400 text-sm tracking-widest uppercase font-bold drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"
+          style={{ textShadow: '0 0 10px rgba(220,38,38,0.8), 0 0 20px rgba(220,38,38,0.6)' }}
         >
-                Created by Zahid Arman
+          Created by Zahid Arman
         </motion.p>
+      </div>
 
       {/* Registration Modal */}
       <AnimatePresence>
