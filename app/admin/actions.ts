@@ -1,7 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { getServiceSupabase } from '@supabase/supabase-js';
+import { getServiceSupabase } from '@/lib/supabaseClient';
 
 const supabaseAdmin = getServiceSupabase();
 
