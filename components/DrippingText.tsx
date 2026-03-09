@@ -14,8 +14,10 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    const context = canvas.getContext("2d");
+    if (!context) return;
+
+    const ctx = context; // <- non-null reference
 
     const width = 1000;
     const height = 250;
@@ -23,7 +25,6 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
     canvas.width = width;
     canvas.height = height;
 
-    // Draw text once to detect pixels
     ctx.clearRect(0, 0, width, height);
     ctx.font = "120px Nosifer, sans-serif";
     ctx.textAlign = "center";
@@ -34,7 +35,6 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
 
     const emitters: { x: number; y: number }[] = [];
 
-    // Detect bottom pixels of letters
     for (let x = 0; x < width; x += 5) {
       for (let y = height - 1; y > 0; y--) {
         const alpha = data[(y * width + x) * 4 + 3];
@@ -69,7 +69,7 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
       }
     }
 
-    function drawDrop(d: typeof drops[0]) {
+    function drawDrop(d: typeof drops[number]) {
       ctx.beginPath();
       ctx.ellipse(
         d.x,
@@ -88,7 +88,6 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
     function animate() {
       ctx.clearRect(0, 0, width, height);
 
-      // Draw text
       ctx.fillStyle = "#dc2626";
       ctx.font = "120px Nosifer, sans-serif";
       ctx.textAlign = "center";
@@ -99,7 +98,7 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
       for (let i = drops.length - 1; i >= 0; i--) {
         const d = drops[i];
 
-        d.vy += 0.15; // gravity
+        d.vy += 0.15;
         d.y += d.vy;
 
         d.stretch = Math.min(2, 1 + d.vy * 0.2);
