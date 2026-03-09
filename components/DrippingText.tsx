@@ -23,7 +23,7 @@ export default function DrippingText({ text, className = "" }: DrippingTextProps
     canvas.width = width;
     canvas.height = height;
 
-   // const fontSize = 40;
+    const fontSize = 55;
 
     ctx.font = `bold ${fontSize}px Nosifer, sans-serif`;
     ctx.textAlign = "center";
