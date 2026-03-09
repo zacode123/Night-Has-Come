@@ -211,7 +211,7 @@ export default function Home() {
         >
           <DrippingText 
             text="NIGHT HAS COME" 
-            className="text-15xl md:text-9xl lg:text-8xl font-['var(--font-nosifer)'] font-black tracking-[0.05em] text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.9)] drop-shadow-[0_0_30px_rgba(220,38,38,0.7)]"
+            className="text-9xl md:text-9xl lg:text-8xl font-['var(--font-nosifer)'] font-black tracking-[0.05em] text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.9)] drop-shadow-[0_0_30px_rgba(220,38,38,0.7)]"
           />
         </motion.div>
         
@@ -225,7 +225,7 @@ export default function Home() {
             opacity: { duration: 1, delay: 0.5 },
             y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
           }}
-          className="text-2xl md:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
+          className="text-xl md:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
         >
           Trust no one. Survive the night.
         </motion.p>
