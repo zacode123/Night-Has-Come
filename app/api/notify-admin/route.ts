@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({
-        from: 'Night Has Come <onboarding@resend.dev>',
+        from: 'Night Has Come [night-has-come.vercel.app]',
         to: 'mofazzolwasimahmed@gmail.com',
         subject: 'New Player Joined: Night Has Come',
         html: `
