@@ -1,123 +1,99 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
-interface DrippingTextProps {
-  text: string;
-  className?: string;
-}
-
-export default function DrippingText({ text, className = '' }: DrippingTextProps) {
+export default function DrippingText({ text }: { text: string }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [fontLoaded, setFontLoaded] = useState(false);
 
   useEffect(() => {
-    document.fonts.ready.then(() => {
-      // Small delay to ensure CSS variables are applied
-      setTimeout(() => setFontLoaded(true), 100);
-    });
-  }, []);
+    const canvas = canvasRef.current!;
+    const ctx = canvas.getContext('2d')!;
 
-  useEffect(() => {
-    if (!fontLoaded) return;
-    
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-    if (!canvas || !container) return;
-    
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    if (!ctx) return;
+    const width = 1000;
+    const height = 250;
 
-    const computedStyle = window.getComputedStyle(container);
-    const fontFamily = computedStyle.fontFamily;
-
-    const width = 1200;
-    const height = 160;
     canvas.width = width;
     canvas.height = height;
 
-    // Draw initial text to get pixel data
-    ctx.clearRect(0, 0, width, height);
-    // Fallback font if fontFamily is empty or not loaded yet
-    const font = fontFamily ? fontFamily : 'sans-serif';
-    ctx.font = `100px ${font}`;
-    ctx.fillStyle = '#dc2626';
+    ctx.font = '120px Nosifer, sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(text, width / 2, 10);
+    ctx.fillStyle = '#dc2626';
+    ctx.fillText(text, width / 2, 120);
 
-    const imageData = ctx.getImageData(0, 0, width, height);
-    const pixels = imageData.data;
+    const data = ctx.getImageData(0, 0, width, height).data;
 
-    // Find bottom corners
-    const corners: {x: number, y: number}[] = [];
-    for (let x = 0; x < width; x += 4) {
-      let bottomY = -1;
-      for (let y = height - 1; y >= 0; y--) {
-        if (pixels[(y * width + x) * 4 + 3] > 150) {
-          bottomY = y;
+    const emitters: { x: number; y: number }[] = [];
+
+    // detect bottom pixels
+    for (let x = 0; x < width; x += 5) {
+      for (let y = height - 1; y > 0; y--) {
+        const alpha = data[(y * width + x) * 4 + 3];
+        if (alpha > 150) {
+          emitters.push({ x, y });
           break;
         }
       }
-      if (bottomY > 0) {
-        // Check if it's a corner (left or right edge)
-        const leftAlpha = x > 4 ? pixels[(bottomY * width + (x - 4)) * 4 + 3] : 0;
-        const rightAlpha = x < width - 4 ? pixels[(bottomY * width + (x + 4)) * 4 + 3] : 0;
-        if (leftAlpha < 150 || rightAlpha < 150) {
-          corners.push({x, y: bottomY});
-        }
+    }
+
+    const drops: any[] = [];
+
+    function spawnDrops() {
+      if (Math.random() < 0.08) {
+        const p = emitters[Math.floor(Math.random() * emitters.length)];
+
+        drops.push({
+          x: p.x,
+          y: p.y,
+          radius: 4 + Math.random() * 4,
+          vy: 0,
+          stretch: 1
+        });
       }
     }
 
-    // If no corners found (e.g. font loading issue), add some random points along the bottom
-    if (corners.length === 0) {
-        for(let i=0; i<20; i++) {
-            corners.push({x: width/2 - 300 + Math.random()*600, y: 110});
-        }
+    function drawDrop(d: any) {
+      ctx.beginPath();
+      ctx.ellipse(
+        d.x,
+        d.y,
+        d.radius * d.stretch,
+        d.radius,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
     }
 
-    let animationFrameId: number;
-    let frameCount = 0;
-
-    const render = () => {
-      frameCount++;
+    function animate() {
       ctx.clearRect(0, 0, width, height);
-      
-      // Draw text
-      ctx.shadowColor = 'rgba(220, 38, 38, 0.8)';
-      ctx.shadowBlur = 15;
-      ctx.font = `100px ${font}`;
+
       ctx.fillStyle = '#dc2626';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'top';
-      ctx.fillText(text, width / 2, 10);
-      ctx.shadowBlur = 0;
+      ctx.font = '120px Nosifer, sans-serif';
+      ctx.fillText(text, width / 2, 120);
 
-      animationFrameId = requestAnimationFrame(render);
-    };
+      spawnDrops();
 
-    render();
+      for (let i = drops.length - 1; i >= 0; i--) {
+        const d = drops[i];
 
-    return () => cancelAnimationFrame(animationFrameId);
-  }, [text, fontLoaded]);
+        d.vy += 0.15; // gravity
+        d.y += d.vy;
 
-  return (
-    <div 
-      ref={containerRef}
-      className={`relative flex justify-center items-start w-full font-['var(--font-nosifer)'] ${className}`}
-    >
-      <canvas 
-        ref={canvasRef} 
-        className={`max-w-full h-auto transition-opacity duration-1000 ${fontLoaded ? 'opacity-100' : 'opacity-0'}`}
-        style={{ width: '100%', maxWidth: '1200px', filter: 'drop-shadow(0 0 10px rgba(220,38,38,0.5))' }}
-      />
-      {/* Fallback text while font loads or canvas initializes */}
-      {!fontLoaded && (
-        <div className="absolute inset-0 flex items-center justify-center text-red-600 tracking-widest drop-shadow-[0_0_10px_rgba(220,38,38,0.8)] whitespace-nowrap">
-          {text}
-        </div>
-      )}
-    </div>
-  );
+        d.stretch = Math.min(2, 1 + d.vy * 0.2);
+
+        drawDrop(d);
+
+        if (d.y > height) {
+          drops.splice(i, 1);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  }, [text]);
+
+  return <canvas ref={canvasRef} style={{ width: '100%' }} />;
 }
