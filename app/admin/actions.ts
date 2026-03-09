@@ -45,8 +45,6 @@ async function ensureAdmin() {
   
 export async function approvePlayer(playerId: string) {
   await ensureAdmin();
-
-  // 1️⃣ Check for a waiting room
   const { data: rooms, error: roomsError } = await supabaseAdmin
     .from('rooms')
     .select('*')
@@ -58,8 +56,6 @@ export async function approvePlayer(playerId: string) {
   }
 
   let roomId = rooms?.[0]?.id;
-
-  // 2️⃣ Create a room if none exists
   if (!roomId) {
     const { data: newRoom, error: roomError } = await supabaseAdmin
       .from('rooms')
@@ -84,8 +80,6 @@ export async function approvePlayer(playerId: string) {
     console.error('Room ID not available after creation');
     return { success: false, error: 'Room creation failed' };
   }
-
-  // 3️⃣ Check if this is the first player in the room
   const { data: players, error: playersError } = await supabaseAdmin
     .from('players')
     .select('*')
@@ -109,8 +103,6 @@ export async function approvePlayer(playerId: string) {
       return { success: false, error: hostError.message };
     }
   }
-
-  // 4️⃣ Approve the player
   const { error: playerError } = await supabaseAdmin
     .from('players')
     .update({ status: 'approved', room_id: roomId })
@@ -122,6 +114,7 @@ export async function approvePlayer(playerId: string) {
   }
 
   return { success: true, roomId };
+}
 
   
 export async function rejectPlayer(playerId: string) {  
