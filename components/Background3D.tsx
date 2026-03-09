@@ -2,7 +2,7 @@
 
 import { Canvas } from '@react-three/fiber';
 import { Sphere, Box, Tetrahedron, Float } from '@react-three/drei';
-import { useState} from 'react';
+import { useState } from 'react';
 
 export default function Background3D() {
   const [elements] = useState(() =>
