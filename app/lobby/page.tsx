@@ -121,7 +121,7 @@ export default function WaitingLobby() {
       <p className="text-gray-400 text-center max-w-md px-6">
         {status === 'approved' 
           ? 'Connecting to the game room...' 
-          : 'Waiting for approval from Zahid Arman...'}
+          : 'Waiting for approval from the admin...'}
       </p>
     </div>
   );
