@@ -177,8 +177,187 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
-      {/* Your existing dashboard UI untouched */}
-      {/* Just replace approvePlayer/rejectPlayer/deletePlayer/startGame calls with the client handlers */}
+      <div className="flex justify-between items-center mb-8">    
+<h1 className="text-3xl font-bold">Admin Dashboard</h1>    
+<div className="space-x-4">    
+{waitingRoom && (    
+<button    
+onClick={() => window.location.href = /game/${waitingRoom.id}}    
+disabled={!canGoToGame}    
+className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:hover:bg-emerald-600 rounded font-medium transition-colors"    
+>    
+Go to Game    
+</button>    
+)}    
+<button       
+onClick={startGame}      
+disabled={!canStartGame}      
+className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 rounded font-medium transition-colors"      
+>    
+Start Game    
+</button>    
+<button       
+onClick={handleLogout}      
+className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded font-medium transition-colors"      
+>    
+Logout    
+</button>    
+</div>    
+</div>    
+    
+<div className="bg-gray-800 rounded-xl p-6 mb-8">      
+    <h2 className="text-xl font-semibold mb-4">Pending Approvals</h2>      
+    <div className="space-y-4">      
+      {players.filter(p => p.status === 'pending').map(player => (      
+        <div key={player.id} className="flex items-center justify-between bg-gray-700 p-4 rounded-lg">      
+          <div>      
+            <p className="font-medium text-lg">{player.username} <span className="text-sm text-gray-400">({player.age || 'N/A'} yrs)</span></p>      
+            <p className="text-sm text-gray-400">Personality: {player.personality}</p>      
+          </div>      
+          <div className="flex space-x-2">      
+            <button       
+              onClick={() => openConfirm(      
+                'Approve Player',      
+                `Are you sure you want to approve ${player.username}?`,      
+                () => approvePlayer(player.id),      
+                'success'      
+              )}       
+              className="p-2 bg-green-600 hover:bg-green-500 rounded-lg transition-colors"      
+              title="Approve"      
+            >      
+              <Check size={20} />      
+            </button>      
+            <button       
+              onClick={() => openConfirm(      
+                'Reject Player',      
+                `Are you sure you want to reject ${player.username}?`,      
+                () => rejectPlayer(player.id),      
+                'danger'      
+              )}       
+              className="p-2 bg-red-600 hover:bg-red-500 rounded-lg transition-colors"      
+              title="Reject"      
+            >      
+              <X size={20} />      
+            </button>      
+          </div>      
+        </div>      
+      ))}      
+      {players.filter(p => p.status === 'pending').length === 0 && (      
+        <p className="text-gray-400">No pending players.</p>      
+      )}      
+    </div>      
+  </div>      
+    
+  <div className="bg-gray-800 rounded-xl p-6 mb-8">      
+    <h2 className="text-xl font-semibold mb-4">Approved Players</h2>      
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">      
+      {players.filter(p => p.status === 'approved').map(player => (      
+        <div key={player.id} className="bg-gray-700 p-4 rounded-lg flex justify-between items-center">      
+          <div>      
+            <p className="font-medium">{player.username}</p>      
+            <p className="text-sm text-gray-400">Room: {player.room_id?.substring(0, 8)}...</p>      
+          </div>      
+          <button       
+            onClick={() => openConfirm(      
+              'Reject Approved Player',      
+              `Are you sure you want to reject ${player.username}? They will be removed from their current room.`,      
+              () => rejectPlayer(player.id),      
+              'danger'      
+            )}      
+            className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded-lg transition-colors"      
+            title="Reject Player"      
+          >      
+            <X size={20} />      
+          </button>      
+        </div>      
+      ))}      
+      {players.filter(p => p.status === 'approved').length === 0 && (      
+        <p className="text-gray-400 col-span-full">No approved players.</p>      
+      )}      
+    </div>      
+  </div>      
+    
+  <div className="bg-gray-800 rounded-xl p-6 mb-8">      
+    <h2 className="text-xl font-semibold mb-4">Rejected Players</h2>      
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">      
+      {players.filter(p => p.status === 'rejected').map(player => (      
+        <div key={player.id} className="bg-gray-700 p-4 rounded-lg flex justify-between items-center">      
+          <div>      
+            <p className="font-medium">{player.username}</p>      
+            <p className="text-sm text-gray-400">Status: Rejected</p>      
+          </div>      
+          <div className="flex items-center space-x-2">      
+            <button       
+              onClick={() => openConfirm(      
+                'Approve Rejected Player',      
+                `Do you want to approve ${player.username} and add them to a room?`,      
+                () => approvePlayer(player.id),      
+                'success'      
+              )}      
+              className="p-2 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"      
+              title="Approve Now"      
+            >      
+              <Check size={18} />      
+            </button>      
+            <button       
+              onClick={() => openConfirm(      
+                'Delete Player Permanently',      
+                `Are you sure you want to delete ${player.username}? This action cannot be undone.`,      
+                () => deletePlayer(player.id),      
+                'danger'      
+              )}      
+              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded-lg transition-colors"      
+              title="Delete Player"      
+            >      
+              <Trash2 size={18} />      
+            </button>      
+          </div>      
+        </div>      
+      ))}      
+      {players.filter(p => p.status === 'rejected').length === 0 && (      
+        <p className="text-gray-400 col-span-full">No rejected players.</p>      
+      )}      
+    </div>      
+  </div>      
+    
+  {/* Confirmation Modal */}      
+  {confirmModal.show && (      
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">      
+      <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200">      
+        <div className="flex items-center gap-3 mb-4">      
+          <div className={`p-2 rounded-full ${      
+            confirmModal.type === 'danger' ? 'bg-red-900/50 text-red-400' :       
+            confirmModal.type === 'success' ? 'bg-green-900/50 text-green-400' :       
+            'bg-yellow-900/50 text-yellow-400'      
+          }`}>      
+            <AlertTriangle size={24} />      
+          </div>      
+          <h3 className="text-xl font-bold">{confirmModal.title}</h3>      
+        </div>      
+        <p className="text-gray-300 mb-6">{confirmModal.message}</p>      
+        <div className="flex justify-end gap-3">      
+          <button       
+            onClick={() => setConfirmModal(prev => ({ ...prev, show: false }))}      
+            disabled={isProcessing}      
+            className="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"      
+          >      
+            Cancel      
+          </button>      
+          <button       
+            onClick={confirmModal.action}      
+            disabled={isProcessing}      
+            className={`px-4 py-2 rounded-lg font-bold transition-colors ${      
+              confirmModal.type === 'danger' ? 'bg-red-600 hover:bg-red-500' :       
+              confirmModal.type === 'success' ? 'bg-green-600 hover:bg-green-500' :       
+              'bg-blue-600 hover:bg-blue-500'      
+            }`}      
+          >      
+            {isProcessing ? 'Processing...' : 'Confirm'}      
+          </button>      
+        </div>      
+      </div>      
+    </div>      
+  )}      
     </div>
   );
 }
