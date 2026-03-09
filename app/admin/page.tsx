@@ -201,7 +201,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <div className="space-x-4">
+        <div className="flex flex-col sm:flex-row sm:space-x-4 space-y-4 sm:space-y-0">
           <button
             onClick={handleStartGame}
             disabled={!canStartGame || isProcessing}
