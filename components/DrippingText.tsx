@@ -1,13 +1,21 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from "react";
 
-export default function DrippingText({ text }: { text: string }) {
+interface DrippingTextProps {
+  text: string;
+  className?: string;
+}
+
+export default function DrippingText({ text, className = "" }: DrippingTextProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext('2d')!;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
     const width = 1000;
     const height = 250;
@@ -15,16 +23,18 @@ export default function DrippingText({ text }: { text: string }) {
     canvas.width = width;
     canvas.height = height;
 
-    ctx.font = '120px Nosifer, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#dc2626';
+    // Draw text once to detect pixels
+    ctx.clearRect(0, 0, width, height);
+    ctx.font = "120px Nosifer, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#dc2626";
     ctx.fillText(text, width / 2, 120);
 
     const data = ctx.getImageData(0, 0, width, height).data;
 
     const emitters: { x: number; y: number }[] = [];
 
-    // detect bottom pixels
+    // Detect bottom pixels of letters
     for (let x = 0; x < width; x += 5) {
       for (let y = height - 1; y > 0; y--) {
         const alpha = data[(y * width + x) * 4 + 3];
@@ -35,9 +45,17 @@ export default function DrippingText({ text }: { text: string }) {
       }
     }
 
-    const drops: any[] = [];
+    const drops: {
+      x: number;
+      y: number;
+      radius: number;
+      vy: number;
+      stretch: number;
+    }[] = [];
 
     function spawnDrops() {
+      if (emitters.length === 0) return;
+
       if (Math.random() < 0.08) {
         const p = emitters[Math.floor(Math.random() * emitters.length)];
 
@@ -51,7 +69,7 @@ export default function DrippingText({ text }: { text: string }) {
       }
     }
 
-    function drawDrop(d: any) {
+    function drawDrop(d: typeof drops[0]) {
       ctx.beginPath();
       ctx.ellipse(
         d.x,
@@ -65,11 +83,15 @@ export default function DrippingText({ text }: { text: string }) {
       ctx.fill();
     }
 
+    let animationId: number;
+
     function animate() {
       ctx.clearRect(0, 0, width, height);
 
-      ctx.fillStyle = '#dc2626';
-      ctx.font = '120px Nosifer, sans-serif';
+      // Draw text
+      ctx.fillStyle = "#dc2626";
+      ctx.font = "120px Nosifer, sans-serif";
+      ctx.textAlign = "center";
       ctx.fillText(text, width / 2, 120);
 
       spawnDrops();
@@ -89,11 +111,24 @@ export default function DrippingText({ text }: { text: string }) {
         }
       }
 
-      requestAnimationFrame(animate);
+      animationId = requestAnimationFrame(animate);
     }
 
     animate();
+
+    return () => cancelAnimationFrame(animationId);
   }, [text]);
 
-  return <canvas ref={canvasRef} style={{ width: '100%' }} />;
+  return (
+    <div className={`w-full flex justify-center ${className}`}>
+      <canvas
+        ref={canvasRef}
+        style={{
+          width: "100%",
+          maxWidth: "1000px",
+          filter: "drop-shadow(0 0 12px rgba(220,38,38,0.7))"
+        }}
+      />
+    </div>
+  );
 }
