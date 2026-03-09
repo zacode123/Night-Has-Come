@@ -225,7 +225,7 @@ export default function Home() {
             opacity: { duration: 1, delay: 0.5 },
             y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
           }}
-          className="md:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
+          className="sm:text-sm md:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
         >
           Trust no one. Survive the night.
         </motion.p>
