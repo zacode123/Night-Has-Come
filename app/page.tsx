@@ -211,7 +211,7 @@ export default function Home() {
         >
           <DrippingText 
             text="NIGHT HAS COME" 
-            className="text-5xl md:text-9xl lg:text-8xl font-['var(--font-nosifer)'] font-black tracking-[0.05em] text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.9)] drop-shadow-[0_0_30px_rgba(220,38,38,0.7)]"
+            className="text-5xl sm:text-9xl lg:text-8xl font-['var(--font-nosifer)'] font-black tracking-[0.05em] text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.9)] drop-shadow-[0_0_30px_rgba(220,38,38,0.7)]"
           />
         </motion.div>
         
@@ -225,7 +225,7 @@ export default function Home() {
             opacity: { duration: 1, delay: 0.5 },
             y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
           }}
-          className="sm:text-xs md:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
+          className="text-sm sm:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
         >
           Trust no one. Survive the night.
         </motion.p>
@@ -245,7 +245,7 @@ export default function Home() {
             audioEngine.playClick();
             setShowModal(true);
           }}
-          className="px-12 py-6 sm:px-6 dm:py-3 rounded-[25px] border-2 border-red-600 bg-red-900/30 backdrop-blur-sm flex items-center justify-center text-xl tracking-widest hover:bg-red-800/50 transition-all text-red-100 shadow-[0_0_20px_rgba(220,38,38,0.4)]"
+          className="sm:px-12 sm:py-6 px-6 py-3 rounded-[25px] border-2 border-red-600 bg-red-900/30 backdrop-blur-sm flex items-center justify-center text-xl tracking-widest hover:bg-red-800/50 transition-all text-red-100 shadow-[0_0_20px_rgba(220,38,38,0.4)]"
         >
           ▶ PLAY
         </motion.button>
@@ -254,7 +254,7 @@ export default function Home() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1.5 }}
-          className="mt-12 sm:text-sm text-red-400 text-sm tracking-widest uppercase font-bold drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"
+          className="mt-12 sm:text-sm text-red-400 text-xs tracking-widest uppercase font-bold drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"
           style={{ textShadow: '0 0 10px rgba(220,38,38,0.8), 0 0 20px rgba(220,38,38,0.6)' }}
         >
           Created by Zahid Arman
