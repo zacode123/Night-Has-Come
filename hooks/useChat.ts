@@ -52,15 +52,20 @@ export function useChat(roomId: string, currentUserId: string) {
 
     if (!player) return;
 
-    await supabase
-      .from('messages')
-      .insert({
-        room_id: roomId,
-        sender_id: currentUserId,
-        sender_name: player.username,
-        message: text.trim(),
-        message_type: 'text'
+    try {
+      await fetch('/api/send-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          senderId: currentUserId,
+          senderName: player.username,
+          message: text.trim()
+        })
       });
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
   };
 
   return { messages, sendMessage };

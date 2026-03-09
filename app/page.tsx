@@ -2,16 +2,24 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
+import { Shield } from 'lucide-react';
+import Cookies from 'js-cookie';
 import { supabase } from '@/lib/supabaseClient';
 import { audioEngine } from '@/lib/audioEngine';
+import DrippingText from '@/components/DrippingText';
+import GlobalTouchGlow from '@/components/GlobalTouchGlow';
+import Background3D from '@/components/Background3D';
 
 export default function Home() {
   const [hasEntered, setHasEntered] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
+  const [age, setAge] = useState('15');
   const [personality, setPersonality] = useState('Leader');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
   const router = useRouter();
 
   const personalities = [
@@ -24,23 +32,95 @@ export default function Home() {
     { id: 'Friendly', desc: 'Trusts easily, builds alliances.' }
   ];
 
+  useEffect(() => {
+    const checkStatus = async () => {
+      // First check if game has started
+      const { data: room } = await supabase
+        .from('rooms')
+        .select('status')
+        .eq('room_code', 'MAFIA')
+        .single();
+
+      const gameStarted = room?.status === 'started';
+      const storedId = Cookies.get('playerId') || localStorage.getItem('playerId');
+
+      if (gameStarted) {
+        if (storedId) {
+          // If player exists, redirect to game
+          router.push('/game/MAFIA');
+        } else {
+          // If no player, redirect to "Game Started" page
+          router.push('/started');
+        }
+        return;
+      }
+
+      if (storedId) {
+        const { data, error } = await supabase
+          .from('players')
+          .select('status, username')
+          .eq('id', storedId)
+          .single();
+        
+        if (data) {
+          Cookies.set('playerStatus', data.status, { expires: 7 });
+          
+          if (data.status === 'approved') {
+            router.push('/approved');
+          } else if (data.status === 'rejected') {
+            router.push('/rejected');
+          } else if (data.status === 'pending') {
+            router.push('/lobby');
+          }
+        } else {
+          localStorage.removeItem('playerId');
+          Cookies.remove('playerId');
+          Cookies.remove('playerStatus');
+        }
+      }
+    };
+    
+    checkStatus();
+  }, [router]);
+
   const handleEnter = () => {
     setHasEntered(true);
+    audioEngine.init();
     audioEngine.startMainMenuAmbient();
   };
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     if (name.length < 2 || name.length > 20) return;
     
-    setIsSubmitting(true);
+    const ageNum = parseInt(age);
+    if (isNaN(ageNum) || ageNum < 10 || ageNum > 20) {
+      setError('Age must be between 10 and 20.');
+      setIsSubmitting(false);
+      return;
+    }
     
     try {
+      // Check for duplicate name
+      const { data: existingUser } = await supabase
+        .from('players')
+        .select('id')
+        .eq('username', name)
+        .maybeSingle();
+
+      if (existingUser) {
+        setError('This name is already taken. Please choose another.');
+        setIsSubmitting(false);
+        return;
+      }
+
       // Create player
       const { data, error } = await supabase
         .from('players')
         .insert({
           username: name,
+          age: parseInt(age),
           personality: personality,
           status: 'pending',
           alive: true,
@@ -53,18 +133,13 @@ export default function Home() {
 
       if (data) {
         localStorage.setItem('playerId', data.id);
-        
-        // Send email notification to admin
-        await fetch('/api/notify-admin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, personality })
-        });
-
+        Cookies.set('playerId', data.id, { expires: 7 });
+        Cookies.set('playerStatus', 'pending', { expires: 7 });
         router.push('/lobby');
       }
     } catch (error) {
       console.error('Error joining:', error);
+      setError('Failed to join. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -87,7 +162,21 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white relative overflow-hidden flex flex-col items-center justify-center perspective-[1000px]">
+    <div className="min-h-screen bg-black text-zinc-200 relative overflow-hidden flex flex-col items-center justify-center perspective-[1000px]">
+      {/* Admin Icon */}
+      <div className="absolute top-6 left-6 z-50">
+        <Link href="/admin">
+          <motion.div
+            whileHover={{ scale: 1.1, textShadow: '0 0 8px rgb(220, 38, 38)' }}
+            whileTap={{ scale: 0.9 }}
+            className="text-red-500/50 hover:text-red-500 transition-colors cursor-pointer flex items-center gap-2"
+          >
+            <Shield size={24} />
+            <span className="text-sm tracking-widest uppercase font-bold hidden sm:inline-block">Admin</span>
+          </motion.div>
+        </Link>
+      </div>
+
       {/* Cinematic Thriller Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(40,0,0,0.8)_0%,rgba(0,0,0,1)_100%)]" />
@@ -102,150 +191,41 @@ export default function Home() {
       </div>
 
       {/* 3D Floating Elements */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        {/* Floating Boxes */}
-        {[...Array(5)].map((_, i) => (
-          <motion.div
-            key={`box-${i}`}
-            animate={{ 
-              y: [0, -30, 0],
-              rotateX: [0, 15, 0],
-              rotateY: [0, 30, 0]
-            }}
-            transition={{ 
-              duration: 5 + i, 
-              repeat: Infinity, 
-              ease: "easeInOut",
-              delay: i * 0.5
-            }}
-            className="absolute w-32 h-32 border border-red-500/20 rounded-lg backdrop-blur-sm"
-            style={{
-              left: `${10 + i * 20}%`,
-              top: `${15 + (i % 3) * 25}%`,
-              transformStyle: 'preserve-3d',
-              boxShadow: '0 0 20px rgba(220, 38, 38, 0.1)'
-            }}
-          />
-        ))}
-        
-        {/* Floating Spheres */}
-        {[...Array(6)].map((_, i) => (
-          <motion.div
-            key={`sphere-${i}`}
-            animate={{ 
-              y: [0, 40, 0],
-              scale: [1, 1.2, 1],
-              rotateZ: [0, 180, 360]
-            }}
-            transition={{ 
-              duration: 6 + i, 
-              repeat: Infinity, 
-              ease: "easeInOut",
-              delay: i * 0.7
-            }}
-            className="absolute w-16 h-16 rounded-full border border-red-700/30 bg-red-900/10 backdrop-blur-md"
-            style={{
-              right: `${10 + i * 15}%`,
-              bottom: `${20 + (i % 2) * 30}%`,
-              transformStyle: 'preserve-3d',
-              boxShadow: 'inset 0 0 15px rgba(220, 38, 38, 0.2)'
-            }}
-          />
-        ))}
-
-        {/* Floating Triangles (using borders) */}
-        {[...Array(4)].map((_, i) => (
-          <motion.div
-            key={`tri-${i}`}
-            animate={{ 
-              y: [0, -50, 0],
-              rotateX: [0, 360, 0],
-              rotateZ: [0, -180, -360]
-            }}
-            transition={{ 
-              duration: 7 + i, 
-              repeat: Infinity, 
-              ease: "linear",
-              delay: i * 0.3
-            }}
-            className="absolute w-0 h-0 opacity-40"
-            style={{
-              left: `${25 + i * 20}%`,
-              top: `${40 + (i % 2) * 20}%`,
-              borderLeft: '20px solid transparent',
-              borderRight: '20px solid transparent',
-              borderBottom: '35px solid rgba(220, 38, 38, 0.3)',
-              transformStyle: 'preserve-3d',
-              filter: 'drop-shadow(0 0 10px rgba(220, 38, 38, 0.5))'
-            }}
-          />
-        ))}
-
-        {/* Floating Rings */}
-        {[...Array(3)].map((_, i) => (
-          <motion.div
-            key={`ring-${i}`}
-            animate={{ 
-              rotateX: [0, 360],
-              rotateY: [0, 360],
-              scale: [1, 1.1, 1]
-            }}
-            transition={{ 
-              duration: 10 + i * 2, 
-              repeat: Infinity, 
-              ease: "linear"
-            }}
-            className="absolute w-48 h-48 rounded-full border-2 border-red-800/40"
-            style={{
-              left: `${30 + i * 20}%`,
-              top: `${20 + i * 20}%`,
-              transformStyle: 'preserve-3d',
-              boxShadow: '0 0 30px rgba(220, 38, 38, 0.1)'
-            }}
-          />
-        ))}
-
-        {/* Floating Particles */}
-        {[...Array(15)].map((_, i) => (
-          <motion.div
-            key={`particle-${i}`}
-            animate={{ 
-              y: [0, -100, 0],
-              x: [0, (i % 2 === 0 ? 50 : -50), 0],
-              opacity: [0, 0.8, 0]
-            }}
-            transition={{ 
-              duration: 3 + Math.random() * 5, 
-              repeat: Infinity, 
-              ease: "easeInOut",
-              delay: Math.random() * 2
-            }}
-            className="absolute w-1 h-1 bg-red-500 rounded-full"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              boxShadow: '0 0 5px rgba(220, 38, 38, 0.8)'
-            }}
-          />
-        ))}
-      </div>
+      <Background3D />
 
       {/* Main Content */}
       <div className="relative z-10 text-center flex flex-col items-center" style={{ transformStyle: 'preserve-3d' }}>
-        <motion.h1 
+        <motion.div 
           initial={{ opacity: 0, z: -100 }}
-          animate={{ opacity: 1, z: 0 }}
-          transition={{ duration: 1.5, type: "spring" }}
-          className="text-5xl md:text-7xl lg:text-8xl font-['var(--font-nosifer)'] tracking-widest text-transparent bg-clip-text bg-gradient-to-b from-red-500 to-red-900 mb-6 drop-shadow-[0_0_20px_rgba(220,38,38,1)] py-4"
+          animate={{ 
+            opacity: 1, 
+            z: 0,
+            y: [0, -15, 0] 
+          }}
+          transition={{ 
+            opacity: { duration: 1.5 },
+            z: { duration: 1.5 },
+            y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
+          }}
+          className="mb-0 py-0"
         >
-          NIGHT HAS COME
-        </motion.h1>
+          <DrippingText 
+            text="NIGHT HAS COME" 
+            className="text-5xl md:text-7xl lg:text-8xl font-['var(--font-nosifer)'] font-black tracking-[0.2em] text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.9)] drop-shadow-[0_0_30px_rgba(220,38,38,0.7)]"
+          />
+        </motion.div>
         
         <motion.p 
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.5 }}
-          className="text-xl md:text-2xl text-red-200 tracking-widest font-light mb-12 drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
+          animate={{ 
+            opacity: 1,
+            y: [0, -5, 0]
+          }}
+          transition={{ 
+            opacity: { duration: 1, delay: 0.5 },
+            y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
+          }}
+          className="text-2xl md:text-3xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
         >
           Trust no one. Survive the night.
         </motion.p>
@@ -254,14 +234,18 @@ export default function Home() {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 1 }}
-          whileHover={{ scale: 1.05, boxShadow: '0 0 40px rgba(220, 38, 38, 0.8)' }}
+          whileHover={{ 
+            scale: 1.05, 
+            boxShadow: '0 0 40px rgba(220, 38, 38, 0.8)',
+            borderColor: 'rgba(239, 68, 68, 1)'
+          }}
           whileTap={{ scale: 0.95 }}
           onHoverStart={() => audioEngine.playHover()}
           onClick={() => {
             audioEngine.playClick();
             setShowModal(true);
           }}
-          className="w-32 h-32 rounded-full border-2 border-red-600 bg-red-900/30 backdrop-blur-sm flex items-center justify-center text-xl tracking-widest hover:bg-red-800/50 transition-all text-red-100 shadow-[0_0_20px_rgba(220,38,38,0.4)]"
+          className="px-12 py-6 rounded-[25px] border-2 border-red-600 bg-red-900/30 backdrop-blur-sm flex items-center justify-center text-xl tracking-widest hover:bg-red-800/50 transition-all text-red-100 shadow-[0_0_20px_rgba(220,38,38,0.4)]"
         >
           ▶ PLAY
         </motion.button>
@@ -293,21 +277,46 @@ export default function Home() {
               className="bg-black/80 border border-red-600/50 p-8 rounded-2xl w-full max-w-2xl shadow-[0_0_50px_rgba(220,38,38,0.2)]"
               style={{ transformStyle: 'preserve-3d' }}
             >
-              <h2 className="text-3xl font-serif text-red-500 mb-6 text-center drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]">Enter the Game</h2>
+              <motion.h2 
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="text-3xl font-serif text-red-500 mb-6 text-center drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+              >
+                Enter the Game
+              </motion.h2>
               
               <form onSubmit={handleJoin} className="space-y-6">
-                <div>
-                  <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Player Name</label>
-                  <input 
-                    type="text" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Enter your name"
-                    className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors placeholder-gray-400"
-                    required
-                    minLength={2}
-                    maxLength={20}
-                  />
+                {error && (
+                  <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-2 rounded text-sm text-center">
+                    {error}
+                  </div>
+                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Player Name</label>
+                    <input 
+                      type="text" 
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter your name"
+                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors placeholder-gray-400"
+                      required
+                      minLength={2}
+                      maxLength={20}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Age (10-20)</label>
+                    <input 
+                      type="number" 
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      min={10}
+                      max={20}
+                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors"
+                      required
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -317,7 +326,7 @@ export default function Home() {
                       <div 
                         key={p.id}
                         onClick={() => {
-                          audioEngine.playHover();
+                          audioEngine.playSelect();
                           setPersonality(p.id);
                         }}
                         className={`cursor-pointer p-3 rounded-lg border transition-all ${

@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 
 export async function POST(req: Request) {
   try {
-    const { name, personality } = await req.json();
+    const { name, personality, age } = await req.json();
     
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
@@ -12,15 +12,18 @@ export async function POST(req: Request) {
         to: 'mofazzolwasimahmed@gmail.com',
         subject: 'New Player Joined: Night Has Come',
         html: `
-          <h2>New Player Registration</h2>
-          <p><strong>Name:</strong> ${name}</p>
-          <p><strong>Personality:</strong> ${personality}</p>
-          <p>Please approve them in the admin panel.</p>
+          <div style="font-family: sans-serif; color: #333;">
+            <h2 style="color: #d32f2f;">New Player Registration</h2>
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Age:</strong> ${age}</p>
+            <p><strong>Personality:</strong> ${personality}</p>
+            <p>Please approve them in the admin panel.</p>
+          </div>
         `
       });
-      console.log(`[EMAIL SENT] To: Zahid Arman. New player joined: ${name} (${personality})`);
+      console.log(`[EMAIL SENT] To: Zahid Arman. New player joined: ${name} (${personality}, ${age})`);
     } else {
-      console.log(`[EMAIL MOCK] To: Zahid Arman. New player joined: ${name} (${personality})`);
+      console.log(`[EMAIL MOCK] To: Zahid Arman. New player joined: ${name} (${personality}, ${age})`);
     }
     
     return NextResponse.json({ success: true });

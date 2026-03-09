@@ -1,45 +1,19 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { getServiceSupabase } from '@/lib/supabaseClient';
+import { GameEngine } from '@/lib/gameEngine';
 
-export async function POST(req: Request) {
+export async function POST(request: Request) {
+  const supabase = getServiceSupabase();
+  const { roomId } = await request.json();
+
+  if (!roomId) {
+    return NextResponse.json({ error: 'Room ID is required' }, { status: 400 });
+  }
+
   try {
-    const { roomId } = await req.json();
-
-    // 1. Get players
-    const { data: players } = await supabase
-      .from('players')
-      .select('id')
-      .eq('room_id', roomId);
-
-    if (!players || players.length < 3) {
-      return NextResponse.json({ error: 'Not enough players' }, { status: 400 });
-    }
-
-    // 2. Assign roles (simple logic: 1 mafia, rest citizens)
-    const shuffled = [...players].sort(() => Math.random() - 0.5);
-    const mafiaId = shuffled[0].id;
-    
-    for (const player of shuffled) {
-      const role = player.id === mafiaId ? 'Mafia' : 'Citizen';
-      await supabase
-        .from('players')
-        .update({ role, alive: true })
-        .eq('id', player.id);
-    }
-
-    // 3. Update room status
-    await supabase
-      .from('rooms')
-      .update({ 
-        status: 'playing', 
-        phase: 'Night', 
-        day_number: 1 
-      })
-      .eq('id', roomId);
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    const result = await GameEngine.startGame(roomId);
+    return NextResponse.json(result);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -12,6 +12,7 @@ import GameBoard from '@/components/GameBoard';
 import NarrationPanel from '@/components/NarrationPanel';
 import VotingPanel from '@/components/VotingPanel';
 import Timer from '@/components/Timer';
+import DrippingText from '@/components/DrippingText';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function GameRoom({ params }: { params: Promise<{ roomId: string }> }) {
@@ -22,9 +23,16 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const [userId, setUserId] = useState<string | null>(null);
   const [narrationText, setNarrationText] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [roomNotFound, setRoomNotFound] = useState(false);
   
-  const { gameState, players, castVote } = useGameState(roomId);
+  const { gameState, players, castVote, loading } = useGameState(roomId);
   const { messages, sendMessage } = useChat(roomId, userId || '');
+
+  useEffect(() => {
+    if (!loading && !gameState) {
+      setRoomNotFound(true);
+    }
+  }, [loading, gameState]);
 
   useEffect(() => {
     const checkUser = async () => {
@@ -54,7 +62,6 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
       case 'Night':
         setNarrationText('Night has fallen. Somewhere in the darkness, a killer chooses their target.');
         audioEngine.startNightAmbient();
-        audioEngine.stopAmbient(); // Stop discussion music
         break;
       case 'Morning':
         setNarrationText('Morning arrives. But someone will never wake up again.');
@@ -87,6 +94,21 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
     return () => clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState?.phase]);
+
+  if (roomNotFound) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 text-center">
+        <h1 className="text-4xl font-bold text-red-600 mb-4">ROOM NOT FOUND</h1>
+        <p className="text-gray-400 mb-8 text-lg">The game room you are looking for does not exist or has been closed.</p>
+        <button 
+          onClick={() => router.push('/')}
+          className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-full font-bold transition-all shadow-lg shadow-blue-900/40"
+        >
+          RETURN TO HOME
+        </button>
+      </div>
+    );
+  }
 
   if (!gameState || !userId) {
     return (
@@ -130,8 +152,11 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
       </div>
 
       {/* Header */}
-      <header className="relative z-10 p-4 flex justify-between items-center border-b border-white/10 bg-black/50 backdrop-blur-md">
-        <h1 className="text-xl font-serif tracking-widest text-blue-400">NIGHT HAS COME</h1>
+      <header className="relative z-10 py-2 px-4 flex justify-between items-center border-b border-white/10 bg-black/50 backdrop-blur-md">
+        <DrippingText 
+          text="NIGHT HAS COME" 
+          className="text-xl md:text-2xl font-['var(--font-nosifer)'] tracking-widest text-red-600 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"
+        />
         <div className="flex items-center space-x-4">
           <Timer 
             duration={60} // This should come from gameState

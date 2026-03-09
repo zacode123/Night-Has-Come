@@ -4,37 +4,97 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { motion } from 'motion/react';
+import { audioEngine } from '@/lib/audioEngine';
 
 export default function WaitingLobby() {
   const router = useRouter();
   const [status, setStatus] = useState('pending');
 
   useEffect(() => {
-    const checkStatus = async () => {
-      const localId = localStorage.getItem('playerId');
-      if (!localId) {
-        router.push('/');
-        return;
-      }
+    audioEngine.startMainMenuAmbient();
+  }, []);
 
+  useEffect(() => {
+    const localId = localStorage.getItem('playerId');
+    if (!localId) {
+      router.push('/');
+      return;
+    }
+
+    // Initial check
+    const checkStatus = async () => {
       const { data, error } = await supabase
         .from('players')
         .select('status, room_id')
         .eq('id', localId)
-        .single();
+        .maybeSingle();
 
-      if (data) {
+      if (!data) {
+        setStatus('rejected');
+        localStorage.removeItem('playerId');
+      } else {
         setStatus(data.status);
         if (data.status === 'approved' && data.room_id) {
           router.push(`/room/${data.room_id}`);
+        } else if (data.status === 'rejected') {
+          setStatus('rejected');
+          localStorage.removeItem('playerId');
         }
       }
     };
 
     checkStatus();
-    const interval = setInterval(checkStatus, 3000);
-    return () => clearInterval(interval);
+
+    // Realtime subscription
+    const channel = supabase.channel(`player_status:${localId}`)
+      .on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'players', 
+        filter: `id=eq.${localId}` 
+      }, (payload) => {
+        const newStatus = payload.new.status;
+        const newRoomId = payload.new.room_id;
+        
+        if (newStatus === 'approved' && newRoomId) {
+          setStatus('approved');
+          router.push(`/room/${newRoomId}`);
+        } else if (newStatus === 'rejected') {
+          setStatus('rejected');
+          localStorage.removeItem('playerId');
+        }
+      })
+      .on('postgres_changes', { 
+        event: 'DELETE', 
+        schema: 'public', 
+        table: 'players', 
+        filter: `id=eq.${localId}` 
+      }, () => {
+        setStatus('rejected');
+        localStorage.removeItem('playerId');
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [router]);
+
+  if (status === 'rejected') {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-red-900/20 z-10" />
+        <h2 className="text-3xl font-serif tracking-widest mb-4 text-red-500 z-20">Access Denied</h2>
+        <p className="text-gray-400 z-20">Your request to join has been rejected.</p>
+        <button 
+          onClick={() => router.push('/')}
+          className="mt-8 px-6 py-2 bg-red-600 hover:bg-red-500 rounded text-white z-20"
+        >
+          Back to Home
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white relative overflow-hidden">

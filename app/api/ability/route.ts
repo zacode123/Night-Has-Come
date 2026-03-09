@@ -3,32 +3,23 @@ import { getServiceSupabase } from '@/lib/supabaseClient';
 
 export async function POST(request: Request) {
   const supabase = getServiceSupabase();
-  const { roomId, voterId, targetId, day } = await request.json();
+  const { roomId, playerId, abilityType, targetId, night } = await request.json();
 
-  if (!roomId || !voterId || !targetId || day === undefined) {
+  if (!roomId || !playerId || !abilityType || !targetId || night === undefined) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Check if player has already voted for this day
-  const { data: existingVote } = await supabase
-    .from('votes')
-    .select('id')
-    .eq('room_id', roomId)
-    .eq('voter_id', voterId)
-    .eq('day', day)
-    .maybeSingle();
-
-  if (existingVote) {
-    return NextResponse.json({ error: 'Already voted today' }, { status: 400 });
-  }
+  // Check cooldowns or restrictions based on abilityType
+  // For now, we'll assume basic validation
 
   const { data, error } = await supabase
-    .from('votes')
+    .from('abilities')
     .insert({
       room_id: roomId,
-      voter_id: voterId,
+      player_id: playerId,
+      ability_type: abilityType,
       target_id: targetId,
-      day: day
+      night: night
     })
     .select()
     .single();

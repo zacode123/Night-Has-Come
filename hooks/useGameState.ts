@@ -23,16 +23,19 @@ export interface GameState {
 export function useGameState(roomId: string) {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!roomId) return;
 
     const fetchState = async () => {
+      setLoading(true);
       const { data: room } = await supabase
         .from('rooms')
         .select('*')
         .eq('id', roomId)
-        .single();
+        .maybeSingle();
+      
       if (room) setGameState(room);
 
       const { data: p } = await supabase
@@ -40,6 +43,7 @@ export function useGameState(roomId: string) {
         .select('*')
         .eq('room_id', roomId);
       if (p) setPlayers(p);
+      setLoading(false);
     };
 
     fetchState();
@@ -77,5 +81,5 @@ export function useGameState(roomId: string) {
     });
   };
 
-  return { gameState, players, castVote };
+  return { gameState, players, castVote, loading };
 }

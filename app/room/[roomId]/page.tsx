@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { motion } from 'motion/react';
 import { Player } from '@/hooks/useGameState';
+import { audioEngine } from '@/lib/audioEngine';
 
 export default function RoomLobby({ params }: { params: Promise<{ roomId: string }> }) {
   const resolvedParams = use(params);
@@ -13,6 +14,10 @@ export default function RoomLobby({ params }: { params: Promise<{ roomId: string
   const [players, setPlayers] = useState<Player[]>([]);
   const [isHost, setIsHost] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
+
+  useEffect(() => {
+    audioEngine.startMainMenuAmbient();
+  }, []);
 
   useEffect(() => {
     const localId = localStorage.getItem('playerId');
