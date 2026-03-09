@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { loginAdmin, logoutAdmin, checkAdminStatus, approvePlayer, rejectPlayer, deletePlayer, startGame } from './actions';
 import { gameConfig } from '@/config/gameConfig';
-import { useLongPress } from '@/hooks/LongPress';
+import { useLongPress } from '@/hooks/longPress';
 import { Trash2, Check, X, AlertTriangle } from 'lucide-react';
 
 export default function AdminPage() {
