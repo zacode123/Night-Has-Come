@@ -2,26 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { loginAdmin, logoutAdmin, checkAdminStatus, approvePlayer, rejectPlayer, deletePlayer, startGame } from './actions';
+import { loginAdmin, logoutAdmin, checkAdminStatus, approvePlayer, rejectPlayer, deletePlayer, useLongPress, startGame } from './actions';
 import { gameConfig } from '@/config/gameConfig';
 import { Trash2, Check, X, AlertTriangle } from 'lucide-react';
-
-export function useLongPress(callback: () => void, ms = 500) {
-  const timer = useRef<NodeJS.Timeout>();
-  const start = () => {
-    timer.current = setTimeout(callback, ms);
-  };
-  const clear = () => {
-    if (timer.current) clearTimeout(timer.current);
-  };
-  return {
-    onMouseDown: start,
-    onMouseUp: clear,
-    onMouseLeave: clear,
-    onTouchStart: start,
-    onTouchEnd: clear,
-  };
-}
 
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
