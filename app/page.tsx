@@ -8,7 +8,7 @@ import { Shield } from 'lucide-react';
 import Cookies from 'js-cookie';
 import { supabase } from '@/lib/supabaseClient';
 import { audioEngine } from '@/lib/audioEngine';
-import DrippingText from '@/components/DrippingText';
+import DrippingText from "@/components/DrippingText";
 import GlobalTouchGlow from '@/components/GlobalTouchGlow';
 import Background3D from '@/components/Background3D';
 
