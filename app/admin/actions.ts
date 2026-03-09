@@ -64,6 +64,7 @@ export async function approvePlayer(playerId: string) {
         status: 'waiting',
         phase: 'Lobby',
         day_number: 0,
+        host_id: playerId
       })
       .select()
       .single();
