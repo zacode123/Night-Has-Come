@@ -122,10 +122,16 @@ export default function AdminPage() {
   const handleStartGame = async () => {
     const waitingRoom = rooms.find(r => r.status === 'waiting');
     if (!waitingRoom) return;
-    await startGame(waitingRoom.id);
-    fetchData();
+    setIsProcessing(true);
+    try {
+      await startGame(waitingRoom.id);
+      fetchData();
+      window.location.href = `/game/${waitingRoom.id}`;
+    } finally {
+      setIsProcessing(false);
+    }
   };
-
+  
   // ------------------- Player Groups -------------------
   const pendingPlayers = players.filter(p => p.status === 'pending');
   const approvedPlayers = players.filter(p => p.status === 'approved');
@@ -199,21 +205,12 @@ export default function AdminPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
         <div className="space-x-4">
-          {waitingRoom && (
-            <button
-              onClick={() => window.location.href = `/game/${waitingRoom.id}`}
-              disabled={!canGoToGame}
-              className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:hover:bg-emerald-600 rounded font-medium transition-colors"
-            >
-              Go to Game
-            </button>
-          )}
           <button
             onClick={handleStartGame}
-            disabled={!canStartGame}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 disabled:hover:bg-blue-600 rounded font-medium transition-colors"
+            disabled={!canStartGame || isProcessing}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 rounded font-medium transition-colors"
           >
-            Start Game
+            {isProcessing ? 'Starting...' : 'Start Game'}
           </button>
           <button
             onClick={handleLogout}
