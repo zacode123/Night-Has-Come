@@ -15,7 +15,8 @@ export default function AdminPage() {
 
   const [players, setPlayers] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
-
+  const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  
   // Confirmation Modal State
   const [confirmModal, setConfirmModal] = useState<{
     show: boolean;
@@ -81,7 +82,10 @@ export default function AdminPage() {
   const handleApprovePlayer = async (playerId: string) => {
     setIsProcessing(true);
     try {
-      await approvePlayer(playerId);
+      const res = await approvePlayer(playerId);
+      if (res.roomId) {
+        setCurrentRoomId(res.roomId);
+      }
       fetchData();
     } finally {
       setIsProcessing(false);
@@ -271,7 +275,7 @@ export default function AdminPage() {
 
       {/* ------------------- Approved Players ------------------- */}
       <div className="bg-gray-800 rounded-xl p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4">Approved Players</h2>
+        <h2 className="text-xl font-semibold mb-4">Approved Players {currentRoomId ? `- [${currentRoomId}]` : ''}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {approvedPlayers.length > 0 ? (
             approvedPlayers.map(player => (
