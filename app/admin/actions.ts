@@ -43,57 +43,86 @@ async function ensureAdmin() {
   }  
 }  
   
-export async function approvePlayer(playerId: string) {  
-  await ensureAdmin();  
-  
-  const { data: rooms } = await supabaseAdmin  
-    .from('rooms')  
-    .select('*')  
-    .eq('status', 'waiting');  
-  
-  let roomId = rooms?.[0]?.id;  
-  
-  if (!roomId) {  
-    const { data: newRoom } = await supabaseAdmin  
-      .from('rooms')  
-      .insert({  
-        room_code: crypto.randomUUID().substring(0, 6).toUpperCase(),  
-        status: 'waiting',  
-        phase: 'Lobby',  
-        day_number: 0  
-      })  
-      .select()  
-      .single();  
-  
-    roomId = newRoom?.id;  
-  }  
-  
-  if (!roomId) return { success: false };  
-  
-  const { data: players } = await supabaseAdmin  
-    .from('players')  
-    .select('*')  
-    .eq('room_id', roomId);  
-  
-  const isFirst = !players || players.length === 0;  
-  
-  if (isFirst) {  
-    await supabaseAdmin  
-      .from('rooms')  
-      .update({ host_id: playerId })  
-      .eq('id', roomId);  
-  }  
-  
-  await supabaseAdmin  
-    .from('players')  
-    .update({  
-      status: 'approved',  
-      room_id: roomId  
-    })  
-    .eq('id', playerId);  
-  
-  return { success: true };  
-}  
+export async function approvePlayer(playerId: string) {
+  await ensureAdmin();
+
+  // 1️⃣ Check for a waiting room
+  const { data: rooms, error: roomsError } = await supabaseAdmin
+    .from('rooms')
+    .select('*')
+    .eq('status', 'waiting');
+
+  if (roomsError) {
+    console.error('Error fetching rooms:', roomsError);
+    return { success: false, error: roomsError.message };
+  }
+
+  let roomId = rooms?.[0]?.id;
+
+  // 2️⃣ Create a room if none exists
+  if (!roomId) {
+    const { data: newRoom, error: roomError } = await supabaseAdmin
+      .from('rooms')
+      .insert({
+        room_code: crypto.randomUUID().substring(0, 6).toUpperCase(),
+        status: 'waiting',
+        phase: 'Lobby',
+        day_number: 0,
+      })
+      .select()
+      .single();
+
+    if (roomError) {
+      console.error('Error creating room:', roomError);
+      return { success: false, error: roomError.message };
+    }
+
+    roomId = newRoom?.id;
+  }
+
+  if (!roomId) {
+    console.error('Room ID not available after creation');
+    return { success: false, error: 'Room creation failed' };
+  }
+
+  // 3️⃣ Check if this is the first player in the room
+  const { data: players, error: playersError } = await supabaseAdmin
+    .from('players')
+    .select('*')
+    .eq('room_id', roomId);
+
+  if (playersError) {
+    console.error('Error fetching players in room:', playersError);
+    return { success: false, error: playersError.message };
+  }
+
+  const isFirst = !players || players.length === 0;
+
+  if (isFirst) {
+    const { error: hostError } = await supabaseAdmin
+      .from('rooms')
+      .update({ host_id: playerId })
+      .eq('id', roomId);
+
+    if (hostError) {
+      console.error('Error setting host:', hostError);
+      return { success: false, error: hostError.message };
+    }
+  }
+
+  // 4️⃣ Approve the player
+  const { error: playerError } = await supabaseAdmin
+    .from('players')
+    .update({ status: 'approved', room_id: roomId })
+    .eq('id', playerId);
+
+  if (playerError) {
+    console.error('Error approving player:', playerError);
+    return { success: false, error: playerError.message };
+  }
+
+  return { success: true, roomId };
+
   
 export async function rejectPlayer(playerId: string) {  
   await ensureAdmin();  
