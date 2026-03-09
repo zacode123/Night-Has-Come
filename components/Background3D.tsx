@@ -14,8 +14,7 @@ export default function Background3D() {
         (Math.random() - 0.5) * 20
       ] as [number, number, number];
       const rotation = [Math.random() * Math.PI, Math.random() * Math.PI, 0] as [number, number, number];
-      const color = '#f5caca';
-
+      const color = '#b91c1c';
       return { type, position, rotation, color };
     })
   );
