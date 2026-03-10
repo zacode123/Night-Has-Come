@@ -29,8 +29,27 @@ export default function PlayerCard({
 
   return (
     <div {...longPressProps} className="flex items-center justify-between bg-gray-700 p-4 rounded-lg">
+
+    {/* Left side: Avatar + Info */}
+    <div className="flex items-center gap-4">
+
+      <img
+        src={player.profile_url ||
+        `data:image/svg+xml;utf8,
+        <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+          <circle cx='50' cy='50' r='50' fill='%236b7280'/>
+          <circle cx='50' cy='40' r='18' fill='white'/>
+          <path d='M20 85c0-20 60-20 60 0' fill='white'/>
+        </svg>`
+        }
+        alt={player.username}
+        className="w-12 h-12 rounded-full object-cover border-2 border-gray-600"
+      />
+
       {children}
 
+    </div>
+      
       {showActions && (
         <div className="flex space-x-2">
           {actionType === 'pending' && (
