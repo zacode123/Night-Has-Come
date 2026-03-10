@@ -43,7 +43,7 @@ export default function PlayerCard({
         </svg>`
         }
         alt={player.username}
-        className="w-12 h-12 rounded-full object-cover border-2 border-gray-600"
+        className="w-14 h-14 rounded-full object-cover border-2 border-gray-600"
       />
 
       {children}
