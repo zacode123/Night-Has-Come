@@ -16,6 +16,11 @@ export default function Home() {
   const [hasEntered, setHasEntered] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [avatar, setAvatar] = useState<string | null>(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [loginName, setLoginName] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [age, setAge] = useState('15');
   const [personality, setPersonality] = useState('Leader');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -89,6 +94,53 @@ export default function Home() {
     audioEngine.startMainMenuAmbient();
   };
 
+  const handleLogin = async () => {
+    const hash = await hashPassword(loginPassword);
+    const {data} = await supabase.from('players').select('*').eq('username', loginName).eq('password_hash', hash).single();
+    if(!data){
+      setError('Invalid username or password!');
+      return;
+    }
+    localStorage.setItem('playerId', data.id);
+    Cookies.set('playerId', data.id, {expires:7});
+    router.push('/lobby');
+  };
+  
+  async function hashPassword(password: string) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+  }
+  
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Image must be smaller than 2MB!");
+      return;
+    }
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      img.src = event.target?.result as string;
+    };
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const size = 96;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0, size, size);
+      const compressed = canvas.toDataURL("image/jpeg", 0.6);
+      setAvatar(compressed);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -110,7 +162,7 @@ export default function Home() {
         .maybeSingle();
 
       if (existingUser) {
-        setError('This name is already taken. Please choose another.');
+        setError('User already registered! Please login.');
         setIsSubmitting(false);
         return;
       }
@@ -122,20 +174,20 @@ export default function Home() {
         setIsSubmitting(false);
         return;
       }
+
+      const passwordHash = await hashPassword(password);
       
       // Create player
-      const { data, error } = await supabase
-        .from('players')
-        .insert({
-          username: name,
-          age: parseInt(age),
-          personality: personality,
-          status: 'pending',
-          alive: true,
-          connected: true
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.from('players').insert({
+        username: name,
+        age: parseInt(age),
+        personality: personality,
+        password_hash: passwordHash,
+        avatar_base64: avatar,
+        status: 'pending',
+        alive: true,
+        connected: true
+      }).select().single();
 
       if (error) throw error;
 
@@ -290,7 +342,7 @@ export default function Home() {
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 className="text-3xl font-serif text-red-500 mb-6 text-center drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]"
               >
-                Enter the Game
+                Sign up
               </motion.h2>
               
               <form onSubmit={handleJoin} className="space-y-6">
@@ -299,6 +351,21 @@ export default function Home() {
                     {error}
                   </div>
                 )}
+                <div>
+                  <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Profile Picture</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="w-full text-sm text-red-200"
+                    />
+                  {avatar && (
+                    <img
+                      src={avatar}
+                      className="mt-3 w-16 h-16 rounded-full border border-white"
+                   />
+                  )}
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Player Name</label>
@@ -312,6 +379,17 @@ export default function Home() {
                       minLength={2}
                       maxLength={20}
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Password</label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(e)=>setPassword(e.target.value)}
+                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100"
+                      required
+                      min={6}
+                      />
                   </div>
                   <div>
                     <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Age (10-20)</label>
@@ -369,10 +447,54 @@ export default function Home() {
                     disabled={isSubmitting || name.length < 2}
                     className="flex-1 py-3 bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg font-medium transition-colors shadow-[0_0_20px_rgba(220,38,38,0.4)]"
                   >
-                    {isSubmitting ? 'Joining...' : 'Join Game'}
+                    {isSubmitting ? 'Signing up...' : 'Sign up'}
                   </button>
                 </div>
+                <p
+                  onClick={()=>{
+                    setShowModal(false)
+                    setShowLoginModal(true)
+                  }}
+                  className="text-center text-sm text-white/70 mt-4 cursor-pointer hover:text-white/90"
+                >Already have an account? Sign in</p>
               </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showLoginModal && (
+          <motion.div
+            initial={{opacity:0}}
+            animate={{opacity:1}}
+            exit={{opacity:0}}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+          >
+            <motion.div
+              initial={{scale:0.9}}
+              animate={{scale:1}}
+              exit={{scale:0.9}}
+              className="bg-black border border-red-600 p-8 rounded-xl w-full max-w-md"
+            >
+              <h2 className="text-2xl text-red-500 mb-6 text-center">Sign In</h2>
+              <input
+                type="text"
+                placeholder="Username"
+                value={loginName}
+                onChange={(e)=>setLoginName(e.target.value)}
+                className="w-full mb-4 px-4 py-3 bg-red-950/20 border border-red-900 rounded"
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={loginPassword}
+                onChange={(e)=>setLoginPassword(e.target.value)}
+                className="w-full mb-6 px-4 py-3 bg-red-950/20 border border-red-900 rounded"
+              />
+              <button
+                onClick={handleLogin}
+                className="w-full py-3 bg-red-700 rounded"
+              >Login</button>
             </motion.div>
           </motion.div>
         )}
