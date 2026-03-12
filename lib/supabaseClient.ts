@@ -20,6 +20,26 @@ export function getServiceSupabase() {
   return createClient(supabaseUrl, serviceKey);
 }
 
+export async function createRoom(hostId: string) {
+  const roomCode = crypto.randomUUID().slice(0, 6).toUpperCase();
+
+  const { data, error } = await supabase
+    .from('rooms')
+    .insert({
+      room_code: roomCode,
+      host_id: hostId,
+      status: 'waiting',
+      phase: 'Lobby',
+      day_number: 0
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
+
 // Helper to subscribe to room updates
 export const subscribeToRoom = (roomId: string, callback: (payload: any) => void) => {
   return supabase
