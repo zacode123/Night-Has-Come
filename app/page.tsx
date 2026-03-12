@@ -168,7 +168,7 @@ export default function Home() {
       }
 
       if (name.toLowerCase().includes('@zahid')) {
-        name = name.replace('@', '');
+        setName(name.replace('@', ''));
       } else if (name.toLowerCase().includes('zahid')) {
         setError('Are you trying to be oversmart? Please choose another name.');
         setIsSubmitting(false);
