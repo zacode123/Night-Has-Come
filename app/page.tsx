@@ -192,6 +192,19 @@ export default function Home() {
       if (error) throw error;
 
       if (data) {
+        await fetch('/api/notify-admin', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            name,
+            personality,
+            age,
+            avatar
+          })
+        });
+          
         localStorage.setItem('playerId', data.id);
         Cookies.set('playerId', data.id, { expires: 7 });
         Cookies.set('playerStatus', 'pending', { expires: 7 });
