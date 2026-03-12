@@ -56,31 +56,31 @@ export async function approvePlayer(playerId: string) {
   }
 
   let roomId = rooms?.[0]?.id;
+
   if (!roomId) {
-    const { data: newRoom, error: roomError } = await supabaseAdmin
-      .from('rooms')
-      .insert({
-        room_code: crypto.randomUUID().substring(0, 6).toUpperCase(),
-        status: 'waiting',
-        phase: 'Lobby',
-        day_number: 0,
-        host_id: playerId
+    const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/create-room`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        hostId: playerId
       })
-      .select()
-      .single();
+    });
 
-    if (roomError) {
-      console.error('Error creating room:', roomError);
-      return { success: false, error: roomError.message };
+    const result = await response.json();
+    if (!response.ok) {
+      console.error('Error creating room:', result.error);
+      return { success: false, error: result.error };
     }
-
-    roomId = newRoom?.id;
+    roomId = result.roomId;
   }
 
   if (!roomId) {
     console.error('Room ID not available after creation');
     return { success: false, error: 'Room creation failed' };
   }
+  
   const { data: players, error: playersError } = await supabaseAdmin
     .from('players')
     .select('*')
