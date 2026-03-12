@@ -1,6 +1,6 @@
 export const gameConfig = {
   maxPlayers: 12,
-  minPlayers: 4,
+  minPlayers: 3,
   maxMafia: 3,
   doctorCooldown: 1,
   nightDuration: 30, // seconds
