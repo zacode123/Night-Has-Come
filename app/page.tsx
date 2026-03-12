@@ -115,6 +115,13 @@ export default function Home() {
         return;
       }
 
+      if (name.toLowerCase().includes('zahid')) {
+        setError('Are you trying to be oversmart? Please choose another name.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      
       // Create player
       const { data, error } = await supabase
         .from('players')
