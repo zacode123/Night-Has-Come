@@ -34,7 +34,7 @@ export default function PlayerCard({
     <div className="flex items-center gap-4">
 
       <img
-        src={player.profile_image ||
+        src={player.avatar_base64 ||
         `data:image/svg+xml;utf8,
         <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
           <circle cx='50' cy='50' r='50' fill='%236b7280'/>
