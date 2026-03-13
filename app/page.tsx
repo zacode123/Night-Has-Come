@@ -387,7 +387,7 @@ export default function Home() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Enter your name"
-                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors placeholder-gray-400"
+                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors"
                       required
                       minLength={2}
                       maxLength={20}
@@ -400,7 +400,7 @@ export default function Home() {
                       value={password}
                       placeholder="Enter your password"
                       onChange={(e)=>setPassword(e.target.value)}
-                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100"
+                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors"
                       required
                       min={6}
                       />
