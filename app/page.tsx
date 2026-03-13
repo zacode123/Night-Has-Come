@@ -355,7 +355,7 @@ export default function Home() {
                 transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 className="text-3xl font-serif text-red-500 mb-6 text-center drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]"
               >
-                Sign up
+                Sign Up
               </motion.h2>
               
               <form onSubmit={handleJoin} className="space-y-6">
@@ -398,6 +398,7 @@ export default function Home() {
                     <input
                       type="password"
                       value={password}
+                      placeholder="Enter your password"
                       onChange={(e)=>setPassword(e.target.value)}
                       className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100"
                       required
