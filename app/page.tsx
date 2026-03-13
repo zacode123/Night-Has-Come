@@ -509,10 +509,10 @@ export default function Home() {
                   placeholder="Username"
                   className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 rounded-lg text-red-100 placeholder-transparent"
                 />
-                <label className="absolute left-4 top-2 text-red-400 text-xs transition-all
+                <label className="absolute left-4 top-2 text-red-400 text-xs transition-all bg-black/90
                   peer-placeholder-shown:top-4
                   peer-placeholder-shown:text-sm
-                  peer-focus:top-2
+                  peer-focus:top-1
                   peer-focus:text-xs"
                 >Username</label>
               </div>
