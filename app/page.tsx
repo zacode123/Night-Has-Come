@@ -497,7 +497,7 @@ export default function Home() {
                 onClick={()=>{
                   setShowLoginModal(false)
                   setShowModal(true)
-                })
+                };
                 className="text-red-400 hover:text-red-300 mb-4 text-sm"
               >← Back</button>
               <h2 className="text-2xl text-red-500 mb-6 text-center">Sign In</h2>
