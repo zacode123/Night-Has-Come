@@ -2,7 +2,7 @@
 
 import { useLongPress } from '@/hooks/longPress';
 import { Check, X, Trash2 } from 'lucide-react';
-import { getPersonalityBorder } from '@/libs/personalityBorder';
+import { getPersonalityBorder } from '@/lib/personalityBorder';
 
 interface PlayerCardProps {
   player: any;
