@@ -410,6 +410,7 @@ export default function Home() {
                     <input 
                       type="number" 
                       value={age}
+                      placeholder="Enter your age"
                       onChange={(e) => setAge(e.target.value)}
                       min={10}
                       max={20}
