@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { getPersonalityBorder } from '@/libs/personalityBorder';
+import { getPersonalityBorder } from '@/lib/personalityBorder';
 import {
   loginAdmin,
   logoutAdmin,
