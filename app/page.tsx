@@ -21,7 +21,7 @@ export default function Home() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [loginName, setLoginName] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
-  const [age, setAge] = useState('15');
+  const [age, setAge] = useState('');
   const [personality, setPersonality] = useState('Leader');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -334,7 +334,7 @@ export default function Home() {
         </motion.p>
       </div>
 
-      {/* Registration Modal */}
+      {/* Sign Up Modal */}
       <AnimatePresence>
         {showModal && (
           <motion.div 
@@ -462,7 +462,7 @@ export default function Home() {
                     disabled={isSubmitting || name.length < 2}
                     className="flex-1 py-3 bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg font-medium transition-colors shadow-[0_0_20px_rgba(220,38,38,0.4)]"
                   >
-                    {isSubmitting ? 'Signing up...' : 'Sign up'}
+                    {isSubmitting ? 'Signing up...' : 'Sign Up'}
                   </button>
                 </div>
                 <p
@@ -477,38 +477,63 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Sign In Modal */}
       <AnimatePresence>
         {showLoginModal && (
           <motion.div
             initial={{opacity:0}}
             animate={{opacity:1}}
             exit={{opacity:0}}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
           >
             <motion.div
               initial={{scale:0.9}}
               animate={{scale:1}}
               exit={{scale:0.9}}
-              className="bg-black border border-red-600 p-8 rounded-xl w-full max-w-md"
+              className="bg-black/80 border border-red-600/50 p-8 rounded-2xl w-full max-w-sm sm:max-w-md shadow-[0_0_40px_rgba(220,38,38,0.2)]"
             >
+              <button
+                onClick={()=>{
+                  setShowLoginModal(false)
+                  setShowModal(true)
+                })
+                className="text-red-400 hover:text-red-300 mb-4 text-sm"
+              >← Back</button>
               <h2 className="text-2xl text-red-500 mb-6 text-center">Sign In</h2>
-              <input
-                type="text"
-                placeholder="Username"
-                value={loginName}
-                onChange={(e)=>setLoginName(e.target.value)}
-                className="w-full mb-4 px-4 py-3 bg-red-950/20 border border-red-900 rounded"
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={loginPassword}
-                onChange={(e)=>setLoginPassword(e.target.value)}
-                className="w-full mb-6 px-4 py-3 bg-red-950/20 border border-red-900 rounded"
-              />
+              <div className="relative mb-6">
+                <input
+                  type="text"
+                  value={loginName}
+                  onChange={(e)=>setLoginName(e.target.value)}
+                  placeholder="Username"
+                  className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 rounded-lg text-red-100 placeholder-transparent"
+                />
+                <label className="absolute left-4 top-2 text-red-400 text-xs transition-all
+                  peer-placeholder-shown:top-4
+                  peer-placeholder-shown:text-sm
+                  peer-focus:top-2
+                  peer-focus:text-xs"
+                >Username</label>
+              </div>
+              <div className="relative mb-6">
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(e)=>setLoginPassword(e.target.value)}
+                  placeholder="Password"
+                  className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 rounded-lg text-red-100 placeholder-transparent"
+                />
+                <label className="absolute left-4 top-2 text-red-400 text-xs transition-all
+                  peer-placeholder-shown:top-4
+                  peer-placeholder-shown:text-sm
+                  peer-focus:top-2
+                  peer-focus:text-xs"
+                >Password</label>
+              </div>
               <button
                 onClick={handleLogin}
-                className="w-full py-3 bg-red-700 rounded"
+                className="w-full py-3 bg-red-700 hover:bg-red-600 rounded-lg"
               >Login</button>
             </motion.div>
           </motion.div>
