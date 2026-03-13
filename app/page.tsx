@@ -511,8 +511,10 @@ export default function Home() {
                 />
                 <label className="absolute left-4 top-2 text-red-400 text-xs transition-all bg-black/90
                   peer-placeholder-shown:top-4
-                  peer-placeholder-shown:text-sm
+                  peer-placeholder-shown:right-3
+                  peer-placeholder-shown:text-md
                   peer-focus:top-1
+                  peer-focus:right-0
                   peer-focus:text-xs"
                 >Username</label>
               </div>
