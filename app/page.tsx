@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import EXIF from 'exif-js';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield } from 'lucide-react';
 import Cookies from 'js-cookie';
