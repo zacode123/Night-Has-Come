@@ -154,7 +154,7 @@ export default function AdminPage() {
   if (!isLoggedIn) return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
       <div className="bg-gray-900 border border-gray-800 p-8 rounded-2xl w-full max-w-md shadow-2xl">
-        <h1 className="text-3xl font-bold mb-6 text-center text-blue-400">Admin Login</h1>
+        <h1 animate={{ y: [0, -5, 0] }} transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }} className="text-3xl font-bold font-serif mb-6 text-center text-blue-400 drop-shadow-[0_0_10px_rgba(59,130,246,0.5)]">Admin Login</h1>
         {loginError && <div className="bg-red-900/50 border border-red-500 text-red-200 p-3 rounded mb-6 text-sm text-center">{loginError}</div>}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
