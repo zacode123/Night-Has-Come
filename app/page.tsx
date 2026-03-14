@@ -303,7 +303,7 @@ export default function Home() {
           >
             Trust no one. Survive the night.
           </motion.p>
-          <span className="absolute -top-2 -right-2 bg-red-600 text-black text-xs font-bold px-2 py-[2px] rounded-xl shadow-[0_0_10px_rgba(220,38,38,0.9)]">BETA</span>
+          <span className="absolute -top-4 -right-4 bg-red-600 text-black text-xs font-bold px-2 py-[2px] rounded-xl shadow-[0_0_10px_rgba(220,38,38,0.9)]">BETA</span>
         </div>
 
         <motion.button
