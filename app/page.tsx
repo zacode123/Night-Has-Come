@@ -528,7 +528,7 @@ export default function Home() {
                     type="submit"
                     onMouseEnter={() => audioEngine.playHover()}
                     onClick={() => audioEngine.playClick()}
-                    disabled={isSubmitting || name.length < 2 || password.length < 6 || age < 10 || age > 20}
+                    disabled={isSubmitting || name.length < 2 || password.length < 6 || Number(age) < 10 || Number(age) > 20}
                     className="flex-1 py-3 bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg font-medium transition-colors shadow-[0_0_20px_rgba(220,38,38,0.4)]"
                   >
                     {isSubmitting ? 'Signing up...' : 'Sign Up'}
