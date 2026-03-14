@@ -457,10 +457,10 @@ export default function Home() {
                           audioEngine.playSelect();
                           setPersonality(p.id);
                         }}
-                        className={`cursor-pointer p-3 rounded-lg border transition-all ${
+                        className={`cursor-pointer p-3 rounded-lg transition-all ${
                           personality === p.id 
-                            ? 'bg-red-900/50 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.3)]' 
-                            : 'bg-black/50 border-red-900/50 hover:border-red-300'
+                            ? 'bg-red-900/50 border-3 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.3)]' 
+                            : 'bg-black/50 border border-red-900/50 hover:border-red-400'
                         }`}
                       >
                         <div className="text-red-200 font-medium mb-1">{p.id}</div>
@@ -478,7 +478,7 @@ export default function Home() {
                       audioEngine.playClick();
                       setShowModal(false);
                     }}
-                    className="flex-1 py-3 border border-red-900/50 text-red-400 rounded-lg hover:border-2 hover:border-red-500 hover:bg-red-800 transition-colors"
+                    className="flex-1 py-3 border border-red-900/50 text-red-400 rounded-lg hover:border-3 hover:border-red-500 hover:bg-red-700 transition-colors"
                   >
                     Back
                   </button>
@@ -498,7 +498,7 @@ export default function Home() {
                     setShowLoginModal(true)
                   }}
                   className="text-center text-sm text-white/70 mt-4 cursor-pointer hover:text-white/90"
-                >Already have an account? Sign in</p>
+                >Already have an account?<span className="text-red-500 hover:text-red-400"> Sign in</span></p>
               </form>
             </motion.div>
           </motion.div>
