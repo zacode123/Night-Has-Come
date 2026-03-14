@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { getPersonalityBorder } from '@/lib/personalityBorder';
+import { motion } from 'motion/react';
 import {
   loginAdmin,
   logoutAdmin,
