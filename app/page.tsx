@@ -376,7 +376,7 @@ export default function Home() {
                   <div className="relative w-24 h-24 self-center">
                     {/* Image Preview */}
                     <div
-                      className="w-24 h-24 rounded-full overflow-hidden border-2 border-red-500 flex items-center justify-center bg-red-950/30 cursor-pointer"
+                      className={`w-24 h-24 rounded-full overflow-hidden flex items-center justify-center bg-red-950/30 cursor-pointer transition-all duration-300 border-4 ${getPersonalityBorder(personality)}`}
                       onClick={() => {
                         if (avatar) {
                           setShowAvatarPreview(true);
