@@ -642,7 +642,7 @@ export default function Home() {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.8 }}
-              className="w-48 h-48 sm:w-64 sm:h-64 rounded-full object-cover border-4 border-red-500 shadow-lg"
+              className={`w-48 h-48 sm:w-64 sm:h-64 rounded-full object-cover border-4 ${getPersonalityBorder(personality)}`}
             />
           </motion.div>
         )}
