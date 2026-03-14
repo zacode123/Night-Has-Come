@@ -460,7 +460,7 @@ export default function Home() {
                         className={`cursor-pointer p-3 rounded-lg border transition-all ${
                           personality === p.id 
                             ? 'bg-red-900/50 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.3)]' 
-                            : 'bg-black/50 border-red-500 hover:border-red-300'
+                            : 'bg-black/50 border-red-900/50 hover:border-red-300'
                         }`}
                       >
                         <div className="text-red-200 font-medium mb-1">{p.id}</div>
@@ -478,7 +478,7 @@ export default function Home() {
                       audioEngine.playClick();
                       setShowModal(false);
                     }}
-                    className="flex-1 py-3 border border-red-900/50 text-red-400 rounded-lg hover:bg-red-950/30 transition-colors"
+                    className="flex-1 py-3 border border-red-900/50 text-red-400 rounded-lg hover:border-2 hover:border-red-500 hover:bg-red-800 transition-colors"
                   >
                     Back
                   </button>
