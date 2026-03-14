@@ -375,12 +375,18 @@ export default function Home() {
                 <div className="flex flex-col items-start">
                   <label className="text-sm text-red-400 mb-3 uppercase tracking-wider">Profile Picture</label>
                   <div className="relative w-24 h-24 self-center">
+                    <input type="file" accept="image/*" onChange={handleAvatarUpload} id="avatarUpload" className="hidden" />
                     {/* Image Preview */}
                     <div
                       className={`w-24 h-24 rounded-full overflow-hidden flex items-center justify-center bg-red-950/30 cursor-pointer transition-all duration-300 border-4 ${getPersonalityBorder(personality)}`}
+                      onMouseEnter={() => audioEngine.playHover()}
                       onClick={() => {
+                        audioEngine.playClick();
                         if (avatar) {
                           setShowAvatarPreview(true);
+                        } else {
+                          const input = document.getElementById('avatarUpload') as HTMLInputElement;
+                          if (input) input.click();
                         }
                       }}
                     >
@@ -390,9 +396,6 @@ export default function Home() {
                         <svg xmlns="http://www.w3.org/2000/svg" height="32px" viewBox="0 -960 960 960" width="32px" fill="#F87171"><path d="M480-480q-51 0-85.5-34.5T360-600q0-50 34.5-85t85.5-35q50 0 85 35t35 85q0 51-35 85.5T480-480Zm-.35-60q25.35 0 42.85-17.15t17.5-42.5q0-25.35-17.35-42.85t-43-17.5Q454-660 437-642.65t-17 43Q420-574 437.15-557t42.5 17ZM240-240v-76q0-27 17.5-47.5T300-397q42-22 86.94-32.5 44.95-10.5 93-10.5Q528-440 573-429.5t87 32.5q25 13 42.5 33.5T720-316v76H240Zm147-127q-45 13-87 39v28h360v-28q-42-26-87-39t-93-13q-48 0-93 13Zm93-233Zm92.77 300H660 300h272.77ZM140-80q-24 0-42-18t-18-42v-172h60v172h172v60H140ZM80-648v-172q0-24 18-42t42-18h172v60H140v172H80ZM648-80v-60h172v-172h60v172q0 24-18 42t-42 18H648Zm172-568v-172H648v-60h172q24 0 42 18t18 42v172h-60Z"/></svg>
                       )}
                     </div>
-                    {avatar && (
-                      <input type="file" accept="image/*" onChange={handleAvatarUpload} id="avatarUpload" className="hidden" />
-                    )}
                    {avatar && (
                      <label htmlFor="avatarUpload" className="absolute bottom-0 left-0 w-7 h-7 bg-red-500 rounded-full flex items-center justify-center border-2 border-black cursor-pointer" onMouseEnter={() => audioEngine.playHover()} onClick={() => audioEngine.playClick()}>
                        <svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="#FFFFFF"><path d="M479.5-267q72.5 0 121.5-49t49-121.5q0-72.5-49-121T479.5-607q-72.5 0-121 48.5t-48.5 121q0 72.5 48.5 121.5t121 49Zm0-60q-47.5 0-78.5-31.5t-31-79q0-47.5 31-78.5t78.5-31q47.5 0 79 31t31.5 78.5q0 47.5-31.5 79t-79 31.5ZM140-120q-24 0-42-18t-18-42v-513q0-23 18-41.5t42-18.5h147l73-87h240l73 87h147q23 0 41.5 18.5T880-693v513q0 24-18.5 42T820-120H140Zm0-60h680v-513H645l-73-87H388l-73 87H140v513Zm340-257Z"/></svg>
