@@ -171,7 +171,7 @@ export default function Home() {
         canvas.height = size;
 
         // Get orientation from EXIF
-        EXIF.getData(img, function() {
+        EXIF.getData(img, function(this: any) {
           const orientation = EXIF.getTag(this, "Orientation") || 1;
 
           // Pre-rotate the canvas to fix orientation
