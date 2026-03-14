@@ -95,7 +95,7 @@ export default function Home() {
     audioEngine.startMainMenuAmbient();
   };
 
-  const handleLogin = async () => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     const hash = await hash(loginPassword);
@@ -564,13 +564,7 @@ export default function Home() {
                 </div>
               )}
 
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleLogin();
-                }}
-                className="space-y-6"
-              >
+              <form onSubmit={handleLogin} className="space-y-6">
                 <div className="relative">
                   <input
                     type="text"
