@@ -170,46 +170,44 @@ export default function Home() {
         canvas.width = size;
         canvas.height = size;
 
-        if (img instanceof HTMLImageElement) {
-          // Get orientation from EXIF
-          EXIF.getData(img, function() {
-            const orientation = EXIF.getTag(this, "Orientation") || 1;
+        // Get orientation from EXIF
+        EXIF.getData(img, function() {
+          const orientation = EXIF.getTag(this, "Orientation") || 1;
 
-            // Pre-rotate the canvas to fix orientation
-            switch(orientation) {
-              case 2: ctx.transform(-1, 0, 0, 1, size, 0); break; // horizontal flip
-              case 3: ctx.transform(-1, 0, 0, -1, size, size); break; // 180 rotate
-              case 4: ctx.transform(1, 0, 0, -1, 0, size); break; // vertical flip
-              case 5: ctx.transform(0, 1, 1, 0, 0, 0); break; // rotate 90 + flip
-              case 6: ctx.transform(0, 1, -1, 0, size, 0); break; // rotate 90
-              case 7: ctx.transform(0, -1, -1, 0, size, size); break; // rotate -90 + flip
-              case 8: ctx.transform(0, -1, 1, 0, 0, size); break; // rotate -90
-              default: break;
-            }
+          // Pre-rotate the canvas to fix orientation
+          switch(orientation) {
+            case 2: ctx.transform(-1, 0, 0, 1, size, 0); break; // horizontal flip
+            case 3: ctx.transform(-1, 0, 0, -1, size, size); break; // 180 rotate
+            case 4: ctx.transform(1, 0, 0, -1, 0, size); break; // vertical flip
+            case 5: ctx.transform(0, 1, 1, 0, 0, 0); break; // rotate 90 + flip
+            case 6: ctx.transform(0, 1, -1, 0, size, 0); break; // rotate 90
+            case 7: ctx.transform(0, -1, -1, 0, size, size); break; // rotate -90 + flip
+            case 8: ctx.transform(0, -1, 1, 0, 0, size); break; // rotate -90
+            default: break;
+          }
 
-            // Calculate square crop to preserve central part
-            const minSide = Math.min(img.width, img.height);
-            const sx = (img.width - minSide) / 2;
-            const sy = (img.height - minSide) / 2;
+          // Calculate square crop to preserve central part
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
 
-            // Draw circular mask
-            ctx.beginPath();
-            ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.clip();
+          // Draw circular mask
+          ctx.beginPath();
+          ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
 
-            // Draw image cropped to square inside circle
-            ctx.drawImage(
-              img,
-              sx, sy, minSide, minSide,  // source crop
-              0, 0, size, size           // destination canvas
-            );
+          // Draw image cropped to square inside circle
+          ctx.drawImage(
+            img,
+            sx, sy, minSide, minSide,  // source crop
+            0, 0, size, size           // destination canvas
+          );
 
-            // Export final avatar
-            const compressed = canvas.toDataURL("image/jpeg", 0.6);
-            setAvatar(compressed);
-          });
-        }
+          // Export final avatar
+          const compressed = canvas.toDataURL("image/jpeg", 0.6);
+          setAvatar(compressed);
+        });
       };
       img.src = event.target?.result as string;
     };
