@@ -99,12 +99,13 @@ export default function Home() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSignInError('');
     const password_hash = await hash(loginPassword);
     const {data} = await supabase.from('players').select('*').eq('username', loginName).eq('password_hash', password_hash).single();
     if(!data){
       setSignInError('Invalid username or password!');
       return;
+    } else{
+      setSignInError('');
     }
     localStorage.setItem('playerId', data.id);
     Cookies.set('playerId', data.id, {expires:7});
@@ -126,6 +127,8 @@ export default function Home() {
     if (file.size > 2 * 1024 * 1024) {
       setSignUpError("Image must be smaller than 2MB!");
       return;
+    } else {
+      setSignUpError('');
     }
     const img = new Image();
     const reader = new FileReader();
@@ -148,7 +151,6 @@ export default function Home() {
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSignUpError('');
     if (name.length < 2 || name.length > 20) return;
     setIsSubmitting(true);
     const ageNum = parseInt(age);
@@ -156,6 +158,8 @@ export default function Home() {
       setSignUpError('Age must be between 10 and 20.');
       setIsSubmitting(false);
       return;
+    } else {
+      setSignUpError('');
     }
     
     try {
@@ -170,14 +174,19 @@ export default function Home() {
         setSignUpError('User already registered! Please login.');
         setIsSubmitting(false);
         return;
+      } else {
+        setSignUpError('');
       }
 
       if (name.toLowerCase().includes('@zahid')) {
+        setSignUpError('');
         setName(name.replace('@', ''));
       } else if (name.toLowerCase().includes('zahid')) {
         setSignUpError('Are you trying to be oversmart? Please choose another name.');
         setIsSubmitting(false);
         return;
+      } else {
+        setSignUpError('');
       }
 
       const password_hash = await hash(password);
