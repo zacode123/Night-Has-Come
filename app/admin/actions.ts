@@ -10,8 +10,10 @@ const supabaseAdmin = getServiceSupabase();
 export async function loginAdmin(username: string, password: string) {  
   const hashedUsername = process.env.ADMIN_USERNAME;  
   const hashedPassword = process.env.ADMIN_PASSWORD;
-  
-  if (hash(username) === hashedUsername && hash(password) === hashedPassword) {  
+  const usernameHash = await hash(username);
+  const passwordHash = await hash(password);
+
+  if (usernameHash === hashedUsername && passwordHash === hashedPassword) {
     const cookieStore = await cookies();  
     cookieStore.set('admin_session', 'true', {  
       httpOnly: true,  
