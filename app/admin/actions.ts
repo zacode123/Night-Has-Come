@@ -8,10 +8,10 @@ const supabaseAdmin = getServiceSupabase();
 /* ---------------- ADMIN AUTH ---------------- */  
   
 export async function loginAdmin(username: string, password: string) {  
-  const validUsername = process.env.ADMIN_USERNAME || 'admin';  
-  const validPassword = process.env.ADMIN_PASSWORD || 'password123';  
+  const hashedUsername = process.env.ADMIN_USERNAME;  
+  const hashedPassword = process.env.ADMIN_PASSWORD;
   
-  if (username === validUsername && password === validPassword) {  
+  if (hash(username) === hashedUsername && hash(password) === hashedPassword) {  
     const cookieStore = await cookies();  
     cookieStore.set('admin_session', 'true', {  
       httpOnly: true,  
@@ -23,7 +23,16 @@ export async function loginAdmin(username: string, password: string) {
   
   return { success: false };  
 }  
-  
+
+async function hash(d: string) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(d);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex;
+}
+
 export async function logoutAdmin() {  
   const cookieStore = await cookies();  
   cookieStore.delete('admin_session');  
