@@ -28,8 +28,8 @@ export default function Home() {
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
   const [signUpError, setSignUpError] = useState('');
   const [signInError, setSignInError] = useState('');
-  const isSignUpInvalid = isSubmitting || name.length < 2 || password.length < 6 || Number(age) < 10 || Number(age) > 20;
-  const isSignInInvalid = SignInName.length < 2 || SignInPassword.length < 6;
+  const isSignUpInvalid = isSubmitting || name.length < 3 || name.length > 20 || password.length < 6 || password.length > 10 || Number(age) < 10 || Number(age) > 20;
+  const isSignInInvalid = SignInName.length < 3 || SignInName.length > 20 || SignInPassword.length < 6 || SignInPassword.length > 10;
   const router = useRouter();
 
   const personalities = [
@@ -146,7 +146,7 @@ export default function Home() {
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     return hashHex;
   }
-  
+
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -156,25 +156,63 @@ export default function Home() {
     } else {
       setSignUpError('');
     }
-    const img = new Image();
+
     const reader = new FileReader();
     reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 96; // final avatar size
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        canvas.width = size;
+        canvas.height = size;
+
+        // Get orientation from EXIF
+        EXIF.getData(img, function() {
+          const orientation = EXIF.getTag(this, "Orientation") || 1;
+
+          // Optional: pre-rotate the canvas to fix orientation
+          switch(orientation) {
+            case 2: ctx.transform(-1, 0, 0, 1, size, 0); break; // horizontal flip
+            case 3: ctx.transform(-1, 0, 0, -1, size, size); break; // 180 rotate
+            case 4: ctx.transform(1, 0, 0, -1, 0, size); break; // vertical flip
+            case 5: ctx.transform(0, 1, 1, 0, 0, 0); break; // rotate 90 + flip
+            case 6: ctx.transform(0, 1, -1, 0, size, 0); break; // rotate 90
+            case 7: ctx.transform(0, -1, -1, 0, size, size); break; // rotate -90 + flip
+            case 8: ctx.transform(0, -1, 1, 0, 0, size); break; // rotate -90
+            default: break;
+          }
+
+          // Calculate square crop to preserve central part
+          const minSide = Math.min(img.width, img.height);
+          const sx = (img.width - minSide) / 2;
+          const sy = (img.height - minSide) / 2;
+
+          // Draw circular mask
+          ctx.beginPath();
+          ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+
+          // Draw image cropped to square inside circle
+          ctx.drawImage(
+            img,
+            sx, sy, minSide, minSide,  // source crop
+            0, 0, size, size           // destination canvas
+          );
+
+          // Export final avatar
+          const compressed = canvas.toDataURL("image/jpeg", 0.6);
+          setAvatar(compressed);
+        });
+      };
       img.src = event.target?.result as string;
-    };
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const size = 96;
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(img, 0, 0, size, size);
-      const compressed = canvas.toDataURL("image/jpeg", 0.6);
-      setAvatar(compressed);
     };
     reader.readAsDataURL(file);
   };
-
+  
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
