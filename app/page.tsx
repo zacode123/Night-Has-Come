@@ -670,7 +670,11 @@ export default function Home() {
               >
                 <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#F87171"><path d="M650-80 250-480l400-400 61 61.67L372.67-480 711-141.67 650-80Z"/></svg>
               Back</button>
-              <h2 className="text-2xl text-red-500 mb-4 text-center">Sign In</h2>
+              <motion.h2 
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                className="text-3xl font-serif text-red-500 mb-6 text-center drop-shadow-[0_0_10px_rgba(220,38,38,0.5)]"
+              >Sign In</motion.h2>
 
               {signInError && (
                 <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-2 rounded text-sm text-center mb-4">
