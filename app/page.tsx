@@ -506,16 +506,17 @@ export default function Home() {
                   type="text"
                   value={loginName}
                   onChange={(e)=>setLoginName(e.target.value)}
-                  placeholder="Username"
+                  placeholder=" "
                   className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 rounded-lg text-red-100 placeholder-transparent"
                 />
-                <label className="absolute left-4 top-2 text-red-400 text-xs transition-all bg-black/90
-                  peer-placeholder-shown:top-4
-                  peer-placeholder-shown:right-3
-                  peer-placeholder-shown:text-md
-                  peer-focus:top-1
-                  peer-focus:right-0
-                  peer-focus:text-xs"
+                <label className="absolute left-3 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-1
+                  peer-placeholder-shown:top-1/2
+                  peer-placeholder-shown:text-sm
+                  peer-focus:top-0
+                  peer-focus:text-xs
+                  peer-focus:left-2
+                  peer-not-placeholder-shown:top-0
+                  peer-not-placeholder-shown:text-xs"
                 >Username</label>
               </div>
               <div className="relative mb-6">
@@ -526,11 +527,14 @@ export default function Home() {
                   placeholder="Password"
                   className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 rounded-lg text-red-100 placeholder-transparent"
                 />
-                <label className="absolute left-4 top-2 text-red-400 text-xs transition-all
-                  peer-placeholder-shown:top-4
+                <label className="absolute left-3 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-1
+                  peer-placeholder-shown:top-1/2
                   peer-placeholder-shown:text-sm
-                  peer-focus:top-2
-                  peer-focus:text-xs"
+                  peer-focus:top-0
+                  peer-focus:text-xs
+                  peer-focus:left-2
+                  peer-not-placeholder-shown:top-0
+                  peer-not-placeholder-shown:text-xs"
                 >Password</label>
               </div>
               <button
