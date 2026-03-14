@@ -473,7 +473,11 @@ export default function Home() {
                   </div>
                 )}
                 <div className="flex flex-col items-start">
-                  <label className="text-sm text-red-400 mb-3 uppercase tracking-wider">Profile Picture <span className="normal-case text-xs text-red-300">(Please choose a profile picture less than 2mb)</span></label>
+                  <label className="text-sm text-red-400 mb-3 uppercase tracking-wider flex justify-between items-center">Profile Picture
+                    <span className="flex items-center normal-case text-xs text-red-300" style={{ marginRight: '3px' }}>
+                      <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#FFFFFF"><path d="M444-288h72v-240h-72v240Zm61.5-322.29q10.5-10.29 10.5-25.5t-10.29-25.71q-10.29-10.5-25.5-10.5t-25.71 10.29q-10.5 10.29-10.5 25.5t10.29 25.71q10.29 10.5 25.5 10.5t25.71-10.29ZM480.28-96Q401-96 331-126t-122.5-82.5Q156-261 126-330.96t-30-149.5Q96-560 126-629.5q30-69.5 82.5-122T330.96-834q69.96-30 149.5-30t149.04 30q69.5 30 122 82.5T834-629.28q30 69.73 30 149Q864-401 834-331t-82.5 122.5Q699-156 629.28-126q-69.73 30-149 30Zm-.28-72q130 0 221-91t91-221q0-130-91-221t-221-91q-130 0-221 91t-91 221q0 130 91 221t221 91Zm0-312Z"/></svg>
+                    Minimum profile picture size 2MB.</span>
+                  </label>        
                   <div className="relative w-24 h-24 self-center">
                     <input type="file" accept="image/*" onChange={handleAvatarUpload} id="avatarUpload" className="hidden" />
                     {/* Image Preview */}
@@ -663,8 +667,8 @@ export default function Home() {
                 }}
                 className="text-red-400 hover:text-red-300 mb-4 text-sm"
               >
-                ⟨ Back
-              </button>
+                <svg xmlns="http://www.w3.org/2000/svg" height="40px" viewBox="0 -960 960 960" width="40px" fill="#FFFFFF"><path d="M650-80 250-480l400-400 61 61.67L372.67-480 711-141.67 650-80Z"/></svg>
+              Back</button>
               <h2 className="text-2xl text-red-500 mb-4 text-center">Sign In</h2>
 
               {signInError && (
