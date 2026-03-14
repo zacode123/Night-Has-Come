@@ -40,7 +40,10 @@ export default function Home() {
     { id: 'Strategic Thinker', desc: 'Plans ahead, analyzes everything.' },
     { id: 'Mysterious', desc: 'Hard to read, unpredictable.' },
     { id: 'Aggressive', desc: 'Quick to accuse, loud.' },
-    { id: 'Friendly', desc: 'Trusts easily, builds alliances.' }
+    { id: 'Friendly', desc: 'Trusts easily, builds alliances.' },
+    { id: 'Cautious', desc: 'Thinks twice before acting, avoids risks.' },
+    { id: 'Empathetic', desc: 'Understands others’ feelings deeply.' },
+    { id: 'Rebellious', desc: 'Challenges rules, questions authority.' }
   ];
 
   useEffect(() => {
