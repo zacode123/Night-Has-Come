@@ -158,14 +158,30 @@ export default function AdminPage() {
         {loginError && <div className="bg-red-900/50 border border-red-500 text-red-200 p-3 rounded mb-6 text-sm text-center">{loginError}</div>}
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Username</label>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)}
-              className="w-full bg-black border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors" required />
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} minLength={3} placeholder=""
+              className="peer w-full bg-blue-950/20 border border-blue-900/50 rounded-lg px-4 py-3 text-blue-100 focus:outline-none focus:border-blue-500 focus:border-3 transition-colors" required />
+            <label className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400 text-base transition-all duration-200 bg-black px-2
+              peer-placeholder-shown:top-1/2
+              peer-placeholder-shown:text-base
+              peer-focus:top-0
+              peer-focus:text-sm
+              peer-focus:left-2
+              peer-not-placeholder-shown:top-0
+              peer-not-placeholder-shown:text-sm"
+            >Username</label>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-400 mb-1">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              className="w-full bg-black border border-gray-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500 transition-colors" required />
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} minLength={6} placeholder=""
+              className="peer w-full bg-blue-950/20 border border-blue-900/50 rounded-lg px-4 py-3 text-blue-100 focus:outline-none focus:border-blue-500 focus:border-3 transition-colors" required />
+            <label className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-400 text-base transition-all duration-200 bg-black px-2
+              peer-placeholder-shown:top-1/2
+              peer-placeholder-shown:text-base
+              peer-focus:top-0
+              peer-focus:text-sm
+              peer-focus:left-2
+              peer-not-placeholder-shown:top-0
+              peer-not-placeholder-shown:text-sm"
+            >Password</label>
           </div>
           <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg transition-colors mt-4">Login</button>
         </form>
