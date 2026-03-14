@@ -454,7 +454,7 @@ export default function Home() {
                       type="text"
                       placeholder="Coming Soon"
                       disabled
-                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 cursor-not-allowed"
+                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-400 cursor-not-allowed"
                     />
                     <label className="absolute left-4 -top-2 text-red-400 text-sm bg-black px-2">Special Feature</label>
                   </div>
