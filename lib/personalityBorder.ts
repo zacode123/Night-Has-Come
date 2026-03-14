@@ -1,12 +1,15 @@
 export const personalityBorder: Record<string, string> = {
-  "Leader": "border-red-500 shadow-[0_0_10px_rgba(239,68,68,0.6)]",
-  "Quiet Observer": "border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.6)]",
-  "Funny / Comic": "border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]",
-  "Strategic Thinker": "border-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.6)]",
-  "Mysterious": "border-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.6)]",
-  "Aggressive": "border-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.6)]",
-  "Friendly": "border-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)]",
-  default: "border-white"
+  "Leader": "border-red-500 border-2 ring-4 ring-red-400",
+  "Quiet Observer": "border-sky-500 border-2 ring-4 ring-sky-400",
+  "Funny / Comic": "border-amber-400 border-2 ring-4 ring-amber-300",
+  "Strategic Thinker": "border-violet-500 border-2 ring-4 ring-violet-400",
+  "Mysterious": "border-indigo-500 border-2 ring-4 ring-indigo-400",
+  "Aggressive": "border-orange-600 border-2 ring-4 ring-orange-400",
+  "Friendly": "border-emerald-500 border-2 ring-4 ring-emerald-400",
+  "Cautious": "border-amber-600 border-2 ring-4 ring-amber-500",
+  "Empathetic": "border-pink-400 border-2 ring-4 ring-pink-300",
+  "Rebellious": "border-fuchsia-600 border-2 ring-4 ring-fuchsia-400",
+  default: "border-white border-2 ring-2 ring-white/30"
 };
 
 export function getPersonalityBorder(personality?: string) {
