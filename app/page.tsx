@@ -578,8 +578,8 @@ export default function Home() {
                   </button>
                   <button 
                     type="submit"
-                    onMouseEnter={() => audioEngine.playHover()}
-                    onClick={() => audioEngine.playClick()}
+                    onMouseEnter={() => if (!isSignUpInvalid) audioEngine.playHover()}
+                    onClick={() => if (!isSignUpInvalid) audioEngine.playClick()}
                     className={`flex-1 py-3 bg-red-700 text-white rounded-lg font-medium ${ isSignUpInvalid ? 'opacity-50' : 'hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(220,38,38,0.4)]'}`}
                   >
                     {isSubmitting ? 'Signing up...' : 'Sign Up'}
@@ -680,8 +680,8 @@ export default function Home() {
 
                 <button
                   type="submit"
-                  onMouseEnter={() => audioEngine.playHover()}
-                  onClick={() => audioEngine.playClick()}
+                  onMouseEnter={() => if (!isSignInInvalid) audioEngine.playHover()}
+                  onClick={() => if (!isSignInInvalid) audioEngine.playClick()}
                   className={`w-full py-3 bg-red-700 rounded-lg ${isSignInInvalid ? 'opacity-50' : 'hover:bg-red-600'}`}
                 >
                   Login
