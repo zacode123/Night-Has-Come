@@ -390,14 +390,15 @@ export default function Home() {
                       required
                       minLength={2}
                       maxLength={20}
-                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-800 focus:border-2 transition-colors"
+                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
                       peer-placeholder-shown:top-1/2
                       peer-placeholder-shown:text-base
-                      peer-focus:-top-2
+                      peer-focus:top-0
                       peer-focus:text-sm
-                      peer-not-placeholder-shown:-top-2
+                      peer-focus:left-2
+                      peer-not-placeholder-shown:top-0
                       peer-not-placeholder-shown:text-sm"
                     >Username</label>
                   </div>
@@ -410,7 +411,7 @@ export default function Home() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       minLength={6}
-                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-2 transition-colors"
+                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
                       peer-placeholder-shown:top-1/2
@@ -432,7 +433,7 @@ export default function Home() {
                       min={10}
                       max={20}
                       required
-                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-600 focus:border-2 transition-colors"
+                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
                       peer-placeholder-shown:top-1/2
@@ -458,8 +459,8 @@ export default function Home() {
                         }}
                         className={`cursor-pointer p-3 rounded-lg border transition-all ${
                           personality === p.id 
-                            ? 'bg-red-900/40 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.3)]' 
-                            : 'bg-black/50 border-red-900/30 hover:border-red-700/50'
+                            ? 'bg-red-900/50 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.3)]' 
+                            : 'bg-black/50 border-red-500 hover:border-red-300'
                         }`}
                       >
                         <div className="text-red-200 font-medium mb-1">{p.id}</div>
@@ -533,7 +534,7 @@ export default function Home() {
                   value={loginName}
                   onChange={(e)=>setLoginName(e.target.value)}
                   placeholder=""
-                  className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 focus:border-2 focus:border-red-600 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
+                  className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                 />
                 <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
                   peer-placeholder-shown:top-1/2
@@ -551,7 +552,7 @@ export default function Home() {
                   value={loginPassword}
                   onChange={(e)=>setLoginPassword(e.target.value)}
                   placeholder=""
-                  className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 focus:border-2 focus:border-red-600 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
+                  className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                 />
                 <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
                   peer-placeholder-shown:top-1/2
