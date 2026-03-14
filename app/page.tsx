@@ -179,14 +179,14 @@ export default function Home() {
         return;
       }
 
-      const passwordHash = await hashPassword(password);
+      const password_hash = await hash(password);
       
       // Create player
       const { data, error } = await supabase.from('players').insert({
         username: name,
         age: parseInt(age),
         personality: personality,
-        password_hash: passwordHash,
+        password_hash: password_hash,
         avatar_base64: avatar,
         status: 'pending',
         alive: true,
