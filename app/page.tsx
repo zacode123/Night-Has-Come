@@ -15,13 +15,13 @@ import { getPersonalityBorder } from '@/lib/personalityBorder';
 
 export default function Home() {
   const [hasEntered, setHasEntered] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [showLoginModal, setShowLoginModal] = useState(false);
-  const [loginName, setLoginName] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const [showSignInModal, setShowSignInModal] = useState(false);
+  const [SignInName, setSignInName] = useState('');
+  const [SignInPassword, setSignInPassword] = useState('');
   const [age, setAge] = useState('');
   const [personality, setPersonality] = useState('Leader');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -97,7 +97,7 @@ export default function Home() {
     audioEngine.startMainMenuAmbient();
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     const password_hash = await hash(loginPassword);
     const {data} = await supabase.from('players').select('*').eq('username', loginName).eq('password_hash', password_hash).single();
@@ -149,7 +149,7 @@ export default function Home() {
     reader.readAsDataURL(file);
   };
 
-  const handleJoin = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (name.length < 2 || name.length > 20) return;
     setIsSubmitting(true);
@@ -333,7 +333,7 @@ export default function Home() {
           onHoverStart={() => audioEngine.playHover()}
           onClick={() => {
             audioEngine.playClick();
-            setShowModal(true);
+            setShowSignUpModal(true);
           }}
           className="sm:px-12 sm:py-6 px-6 py-3 rounded-[25px] border-2 border-red-600 bg-red-900/30 backdrop-blur-sm flex items-center justify-center text-xl tracking-widest hover:bg-red-800/50 transition-all text-red-100 shadow-[0_0_20px_rgba(220,38,38,0.4)]"
         >
@@ -353,7 +353,7 @@ export default function Home() {
 
       {/* Sign Up Modal */}
       <AnimatePresence>
-        {showModal && (
+        {showSignUpModal && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -375,14 +375,14 @@ export default function Home() {
                 Sign Up
               </motion.h2>
               
-              <form onSubmit={handleJoin} className="space-y-6">
+              <form onSubmit={handleSignUp} className="space-y-6">
                 {signUpError && (
                   <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-2 rounded text-sm text-center">
                     {signUpError}
                   </div>
                 )}
                 <div className="flex flex-col items-start">
-                  <label className="text-sm text-red-400 mb-3 uppercase tracking-wider">Profile Picture</label>
+                  <label className="text-sm text-red-400 mb-3 uppercase tracking-wider">Profile Picture <span className="normal-case text-xs text-red-300">(Please choose a profile picture less than 2mb)</span></label>
                   <div className="relative w-24 h-24 self-center">
                     <input type="file" accept="image/*" onChange={handleAvatarUpload} id="avatarUpload" className="hidden" />
                     {/* Image Preview */}
@@ -518,7 +518,7 @@ export default function Home() {
                     onMouseEnter={() => audioEngine.playHover()}
                     onClick={() => {
                       audioEngine.playClick();
-                      setShowModal(false);
+                      setShowSignUpModal(false);
                     }}
                     className="flex-1 py-3 border border-red-700/50 text-red-500 rounded-lg focus:border-2 focus:border-red-500 transition-colors"
                   >
@@ -528,7 +528,7 @@ export default function Home() {
                     type="submit"
                     onMouseEnter={() => audioEngine.playHover()}
                     onClick={() => audioEngine.playClick()}
-                    disabled={isSubmitting || name.length < 2}
+                    disabled={isSubmitting || name.length < 2 || password.length < 6 || age < 10 || age > 20}
                     className="flex-1 py-3 bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg font-medium transition-colors shadow-[0_0_20px_rgba(220,38,38,0.4)]"
                   >
                     {isSubmitting ? 'Signing up...' : 'Sign Up'}
@@ -536,8 +536,8 @@ export default function Home() {
                 </div>
                 <p
                   onClick={()=>{
-                    setShowModal(false)
-                    setShowLoginModal(true)
+                    setShowSignUpModal(false)
+                    setShowSignInModal(true)
                   }}
                   className="text-center text-sm text-white/70 mt-4 cursor-pointer hover:text-white/90"
                 >Already have an account?<span className="text-red-500 hover:text-red-400"> Sign in</span></p>
@@ -549,7 +549,7 @@ export default function Home() {
 
       {/* Sign In Modal */}
       <AnimatePresence>
-        {showLoginModal && (
+        {showSignInModal && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -564,12 +564,13 @@ export default function Home() {
             >
               <button
                 onClick={() => {
-                  setShowLoginModal(false);
-                  setShowModal(true);
+                  audioEngine.playClick();
+                  setShowSignInModal(false);
+                  setShowSignUpModal(true);
                 }}
                 className="text-red-400 hover:text-red-300 mb-4 text-sm"
               >
-                ← Back
+                ⟨ Back
               </button>
               <h2 className="text-2xl text-red-500 mb-4 text-center">Sign In</h2>
 
@@ -579,12 +580,12 @@ export default function Home() {
                 </div>
               )}
 
-              <form onSubmit={handleLogin} className="space-y-6">
+              <form onSubmit={handleSignIn} className="space-y-6">
                 <div className="relative">
                   <input
                     type="text"
-                    value={loginName}
-                    onChange={(e) => setLoginName(e.target.value)}
+                    value={SignInName}
+                    onChange={(e) => setSignInName(e.target.value)}
                     placeholder=""
                     className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                     required
@@ -605,8 +606,8 @@ export default function Home() {
                 <div className="relative">
                   <input
                     type="password"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
+                    value={SignInPassword}
+                    onChange={(e) => setSignInPassword(e.target.value)}
                     placeholder=""
                     className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                     required
@@ -626,7 +627,10 @@ export default function Home() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-red-700 hover:bg-red-600 rounded-lg"
+                  onMouseEnter={() => audioEngine.playHover()}
+                  onClick={() => audioEngine.playClick()}
+                  disabled={SignInName.length < 2 || SignInPassword.length < 6}
+                  className="w-full py-3 bg-red-700 disabled:opacity-50 hover:bg-red-600 rounded-lg"
                 >
                   Login
                 </button>
