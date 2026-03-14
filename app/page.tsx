@@ -28,6 +28,8 @@ export default function Home() {
   const [showAvatarPreview, setShowAvatarPreview] = useState(false);
   const [signUpError, setSignUpError] = useState('');
   const [signInError, setSignInError] = useState('');
+  const isSignUpInvalid = isSubmitting || name.length < 2 || password.length < 6 || Number(age) < 10 || Number(age) > 20;
+  const isSignInInvalid = SignInName.length < 2 || SignInPassword.length < 6;
   const router = useRouter();
 
   const personalities = [
@@ -528,8 +530,7 @@ export default function Home() {
                     type="submit"
                     onMouseEnter={() => audioEngine.playHover()}
                     onClick={() => audioEngine.playClick()}
-                    disabled={isSubmitting || name.length < 2 || password.length < 6 || Number(age) < 10 || Number(age) > 20}
-                    className="flex-1 py-3 bg-red-700 hover:bg-red-600 disabled:opacity-50 text-white rounded-lg font-medium transition-colors shadow-[0_0_20px_rgba(220,38,38,0.4)]"
+                    className={`flex-1 py-3 bg-red-700 text-white rounded-lg font-medium ${ isSignUpInvalid ? 'opacity-50' : 'hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(220,38,38,0.4)]'}`}
                   >
                     {isSubmitting ? 'Signing up...' : 'Sign Up'}
                   </button>
@@ -629,8 +630,7 @@ export default function Home() {
                   type="submit"
                   onMouseEnter={() => audioEngine.playHover()}
                   onClick={() => audioEngine.playClick()}
-                  disabled={SignInName.length < 2 || SignInPassword.length < 6}
-                  className="w-full py-3 bg-red-700 disabled:opacity-50 hover:bg-red-600 rounded-lg"
+                  className={`w-full py-3 bg-red-700 rounded-lg ${isSignInInvalid ? 'opacity-50' : 'hover:bg-red-600'}`}
                 >
                   Login
                 </button>
