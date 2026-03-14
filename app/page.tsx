@@ -415,9 +415,10 @@ export default function Home() {
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
                       peer-placeholder-shown:top-1/2
                       peer-placeholder-shown:text-base
-                      peer-focus:-top-2
+                      peer-focus:top-0
                       peer-focus:text-sm
-                      peer-not-placeholder-shown:-top-2
+                      peer-focus:left-2
+                      peer-not-placeholder-shown:top-0
                       peer-not-placeholder-shown:text-sm"
                     >Password</label>
                   </div>
@@ -436,9 +437,10 @@ export default function Home() {
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
                       peer-placeholder-shown:top-1/2
                       peer-placeholder-shown:text-base
-                      peer-focus:-top-2
+                      peer-focus:top-0
                       peer-focus:text-sm
-                      peer-not-placeholder-shown:-top-2
+                      peer-focus:left-2
+                      peer-not-placeholder-shown:top-0
                       peer-not-placeholder-shown:text-sm"
                     >Age (10-20)</label>
                   </div>
@@ -533,7 +535,7 @@ export default function Home() {
                   placeholder=""
                   className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 rounded-lg text-red-100 placeholder-transparent"
                 />
-                <label className="absolute left-3 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
+                <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
                   peer-placeholder-shown:top-1/2
                   peer-placeholder-shown:text-base
                   peer-focus:top-0
@@ -551,7 +553,7 @@ export default function Home() {
                   placeholder=""
                   className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 rounded-lg text-red-100 placeholder-transparent"
                 />
-                <label className="absolute left-3 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
+                <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
                   peer-placeholder-shown:top-1/2
                   peer-placeholder-shown:text-base
                   peer-focus:top-0
