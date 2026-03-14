@@ -24,7 +24,8 @@ export default function Home() {
   const [age, setAge] = useState('');
   const [personality, setPersonality] = useState('Leader');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [signUpError, setSignUpError] = useState('');
+  const [signInError, setSignInError] = useState('');
   const router = useRouter();
 
   const personalities = [
@@ -95,10 +96,12 @@ export default function Home() {
   };
 
   const handleLogin = async () => {
-    const hash = await hashPassword(loginPassword);
+    e.preventDefault();
+    setError('');
+    const hash = await hash(loginPassword);
     const {data} = await supabase.from('players').select('*').eq('username', loginName).eq('password_hash', hash).single();
     if(!data){
-      setError('Invalid username or password!');
+      setSignInError('Invalid username or password!');
       return;
     }
     localStorage.setItem('playerId', data.id);
@@ -106,9 +109,9 @@ export default function Home() {
     router.push('/lobby');
   };
   
-  async function hashPassword(password: string) {
+  async function hash(d: string) {
     const encoder = new TextEncoder();
-    const data = encoder.encode(password);
+    const data = encoder.encode(d);
     const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
     const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
@@ -119,7 +122,7 @@ export default function Home() {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
-      setError("Image must be smaller than 2MB!");
+      setSignUpError("Image must be smaller than 2MB!");
       return;
     }
     const img = new Image();
@@ -148,7 +151,7 @@ export default function Home() {
     setIsSubmitting(true);
     const ageNum = parseInt(age);
     if (isNaN(ageNum) || ageNum < 10 || ageNum > 20) {
-      setError('Age must be between 10 and 20.');
+      setSignUpError('Age must be between 10 and 20.');
       setIsSubmitting(false);
       return;
     }
@@ -162,7 +165,7 @@ export default function Home() {
         .maybeSingle();
 
       if (existingUser) {
-        setError('User already registered! Please login.');
+        setSignUpError('User already registered! Please login.');
         setIsSubmitting(false);
         return;
       }
@@ -170,7 +173,7 @@ export default function Home() {
       if (name.toLowerCase().includes('@zahid')) {
         setName(name.replace('@', ''));
       } else if (name.toLowerCase().includes('zahid')) {
-        setError('Are you trying to be oversmart? Please choose another name.');
+        setSignUpError('Are you trying to be oversmart? Please choose another name.');
         setIsSubmitting(false);
         return;
       }
@@ -212,7 +215,7 @@ export default function Home() {
       }
     } catch (error) {
       console.error('Error joining:', error);
-      setError('Failed to join. Please try again.');
+      setSignUpError('Failed to join. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -362,9 +365,9 @@ export default function Home() {
               </motion.h2>
               
               <form onSubmit={handleJoin} className="space-y-6">
-                {error && (
+                {signUpError && (
                   <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-2 rounded text-sm text-center">
-                    {error}
+                    {signUpError}
                   </div>
                 )}
                 <div className="flex flex-col items-start">
@@ -533,65 +536,92 @@ export default function Home() {
       <AnimatePresence>
         {showLoginModal && (
           <motion.div
-            initial={{opacity:0}}
-            animate={{opacity:1}}
-            exit={{opacity:0}}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
           >
             <motion.div
-              initial={{scale:0.9}}
-              animate={{scale:1}}
-              exit={{scale:0.9}}
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
               className="bg-black/80 border border-red-600/50 p-8 rounded-2xl w-full max-w-sm sm:max-w-md shadow-[0_0_40px_rgba(220,38,38,0.2)]"
             >
               <button
-                onClick={()=>{
-                  setShowLoginModal(false)
-                  setShowModal(true)
+                onClick={() => {
+                  setShowLoginModal(false);
+                  setShowModal(true);
                 }}
                 className="text-red-400 hover:text-red-300 mb-4 text-sm"
-              >← Back</button>
-              <h2 className="text-2xl text-red-500 mb-6 text-center">Sign In</h2>
-              <div className="relative mb-6">
-                <input
-                  type="text"
-                  value={loginName}
-                  onChange={(e)=>setLoginName(e.target.value)}
-                  placeholder=""
-                  className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
-                />
-                <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
-                  peer-placeholder-shown:top-1/2
-                  peer-placeholder-shown:text-base
-                  peer-focus:top-0
-                  peer-focus:text-sm
-                  peer-focus:left-2
-                  peer-not-placeholder-shown:top-0
-                  peer-not-placeholder-shown:text-sm"
-                >Username</label>
-              </div>
-              <div className="relative mb-6">
-                <input
-                  type="password"
-                  value={loginPassword}
-                  onChange={(e)=>setLoginPassword(e.target.value)}
-                  placeholder=""
-                  className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
-                />
-                <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
-                  peer-placeholder-shown:top-1/2
-                  peer-placeholder-shown:text-base
-                  peer-focus:top-0
-                  peer-focus:text-sm
-                  peer-focus:left-2
-                  peer-not-placeholder-shown:top-0
-                  peer-not-placeholder-shown:text-sm"
-                >Password</label>
-              </div>
-              <button
-                onClick={handleLogin}
-                className="w-full py-3 bg-red-700 hover:bg-red-600 rounded-lg"
-              >Login</button>
+              >
+                ← Back
+              </button>
+              <h2 className="text-2xl text-red-500 mb-4 text-center">Sign In</h2>
+
+              {signInError && (
+                <div className="bg-red-900/50 border border-red-500 text-red-200 px-4 py-2 rounded text-sm text-center mb-4">
+                  {signInError}
+                </div>
+              )}
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleLogin();
+                }}
+                className="space-y-6"
+              >
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={loginName}
+                    onChange={(e) => setLoginName(e.target.value)}
+                    placeholder=""
+                    className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
+                    required
+                  />
+                  <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
+                    peer-placeholder-shown:top-1/2
+                    peer-placeholder-shown:text-base
+                    peer-focus:top-0
+                    peer-focus:text-sm
+                    peer-focus:left-2
+                    peer-not-placeholder-shown:top-0
+                    peer-not-placeholder-shown:text-sm"
+                  >
+                    Username
+                  </label>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder=""
+                    className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
+                    required
+                  />
+                  <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
+                    peer-placeholder-shown:top-1/2
+                    peer-placeholder-shown:text-base
+                    peer-focus:top-0
+                    peer-focus:text-sm
+                    peer-focus:left-2
+                    peer-not-placeholder-shown:top-0
+                    peer-not-placeholder-shown:text-sm"
+                  >
+                    Password
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-3 bg-red-700 hover:bg-red-600 rounded-lg"
+                >
+                  Login
+                </button>
+              </form>
             </motion.div>
           </motion.div>
         )}
