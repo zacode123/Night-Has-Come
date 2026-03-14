@@ -98,7 +98,7 @@ export default function Home() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setSignInError('');
     const hash = await hash(loginPassword);
     const {data} = await supabase.from('players').select('*').eq('username', loginName).eq('password_hash', hash).single();
     if(!data){
@@ -147,7 +147,7 @@ export default function Home() {
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setSignUpError('');
     if (name.length < 2 || name.length > 20) return;
     setIsSubmitting(true);
     const ageNum = parseInt(age);
