@@ -99,8 +99,8 @@ export default function Home() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setSignInError('');
-    const hash = await hash(loginPassword);
-    const {data} = await supabase.from('players').select('*').eq('username', loginName).eq('password_hash', hash).single();
+    const password_hash = await hash(loginPassword);
+    const {data} = await supabase.from('players').select('*').eq('username', loginName).eq('password_hash', password_hash).single();
     if(!data){
       setSignInError('Invalid username or password!');
       return;
