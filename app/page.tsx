@@ -280,12 +280,13 @@ export default function Home() {
             z: { duration: 1.5 },
             y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
           }}
-          className="mb-0 py-0"
+          className="relative mb-0 py-0 inline-block"
         >
           <DrippingText 
             text="NIGHT HAS COME" 
             className="text-5xl sm:text-9xl lg:text-8xl font-['var(--font-nosifer)'] font-black tracking-[0.05em] text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.9)] drop-shadow-[0_0_30px_rgba(220,38,38,0.7)]"
           />
+          <span className="absolute -top-1 -right-8 rotate-12 bg-red-600 text-black text-xs font-bold px-2 py-1 rounded">BETA</span>
         </motion.div>
         
         <motion.p 
@@ -445,6 +446,16 @@ export default function Home() {
                       peer-not-placeholder-shown:text-sm"
                     >Age (10-20)</label>
                   </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Coming Soon"
+                      disabled
+                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 opacity-50 cursor-not-allowed"
+                    />
+                    <label className="absolute left-4 -top-2 text-red-400 text-sm bg-black px-2">Special Feature</label>
+                  </div>
                 </div>
 
                 <div>
@@ -478,7 +489,7 @@ export default function Home() {
                       audioEngine.playClick();
                       setShowModal(false);
                     }}
-                    className="flex-1 py-3 border border-red-900/50 text-red-400 rounded-lg focus:border-2 focus:border-red-500 focus:shadow-[0_0_15px_rgba(220,38,38,0.3)] transition-colors"
+                    className="flex-1 py-3 text-red-500 rounded-lg focus:border-2 focus:border-red-500 transition-colors"
                   >
                     Back
                   </button>
