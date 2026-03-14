@@ -101,6 +101,30 @@ export default function Home() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (SignInName.length < 3) {
+      setSignInError('Minimum username length is 3!');
+      return;
+    } else {
+      setSignInError('');
+    }
+    if (SignInName.length > 20) {
+      setSignInError('Maximum username length is 20!');
+      return;
+    } else {
+      setSignInError('');
+    }
+    if (SignInPassword.length < 6) {
+      setSignInError('Minimum password length is 6!');
+      return;
+    } else {
+      setSignInError('');
+    }
+    if (SignInPassword.length > 10) {
+      setSignInError('Maximum password length is 10!');
+      return;
+    } else {
+      setSignInError('');
+    }
     const password_hash = await hash(SignInPassword);
     const {data} = await supabase.from('players').select('*').eq('username', SignInName).eq('password_hash', password_hash).single();
     if(!data){
@@ -153,8 +177,35 @@ export default function Home() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.length < 2 || name.length > 20) return;
     setIsSubmitting(true);
+    if (name.length < 3) {
+      setSignUpError('Minimum username length is 3!');
+      setIsSubmitting(false);
+      return;
+    } else {
+      setSignUpError('');
+    }
+    if (name.length > 20) {
+      setSignUpError('Maximum username length us 20!');
+      setIsSubmitting(false);
+      return;
+    } else {
+      setSignUpError('');
+    }
+    if (password.length < 6) {
+      setSignUpError('Minimum password length is 6!');
+      setIsSubmitting(false);
+      return;
+    } else {
+      setSignUpError('');
+    }
+    if (password.length > 10) {
+      setSignUpError('Maximum password length us 10!');
+      setIsSubmitting(false);
+      return;
+    } else {
+      setSignUpError('');
+    }
     const ageNum = parseInt(age);
     if (isNaN(ageNum) || ageNum < 10 || ageNum > 20) {
       setSignUpError('Age must be between 10 and 20.');
@@ -422,8 +473,7 @@ export default function Home() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      minLength={2}
-                      maxLength={20}
+                      minLength={3}
                       className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
@@ -588,6 +638,7 @@ export default function Home() {
                     value={SignInName}
                     onChange={(e) => setSignInName(e.target.value)}
                     placeholder=""
+                    minLength={3}
                     className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                     required
                   />
@@ -610,6 +661,7 @@ export default function Home() {
                     value={SignInPassword}
                     onChange={(e) => setSignInPassword(e.target.value)}
                     placeholder=""
+                    minLength={6}
                     className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                     required
                   />
