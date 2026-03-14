@@ -380,43 +380,67 @@ export default function Home() {
                   )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Player Name</label>
-                    <input 
-                      type="text" 
+                  
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder=" "
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter your name"
-                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors"
                       required
                       minLength={2}
                       maxLength={20}
+                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors"
                     />
+                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
+                      peer-placeholder-shown:top-1/2
+                      peer-placeholder-shown:text-base
+                      peer-focus:-top-2
+                      peer-focus:text-sm
+                      peer-not-placeholder-shown:-top-2
+                      peer-not-placeholder-shown:text-sm"
+                    >Username</label>
                   </div>
-                  <div>
-                    <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Password</label>
+
+                  <div className="relative">
                     <input
                       type="password"
+                      placeholder=" "
                       value={password}
-                      placeholder="Enter your password"
-                      onChange={(e)=>setPassword(e.target.value)}
-                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors"
+                      onChange={(e) => setPassword(e.target.value)}
                       required
-                      min={6}
-                      />
+                      minLength={6}
+                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors"
+                    />
+                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
+                      peer-placeholder-shown:top-1/2
+                      peer-placeholder-shown:text-base
+                      peer-focus:-top-2
+                      peer-focus:text-sm
+                      peer-not-placeholder-shown:-top-2
+                      peer-not-placeholder-shown:text-sm"
+                    >Password</label>
                   </div>
-                  <div>
-                    <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Age (10-20)</label>
-                    <input 
-                      type="number" 
+                  
+                  <div className="relative">
+                    <input
+                      type="number"
+                      placeholder=" "
                       value={age}
-                      placeholder="Enter your age"
                       onChange={(e) => setAge(e.target.value)}
                       min={10}
                       max={20}
-                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors"
                       required
+                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 transition-colors"
                     />
+                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
+                      peer-placeholder-shown:top-1/2
+                      peer-placeholder-shown:text-base
+                      peer-focus:-top-2
+                      peer-focus:text-sm
+                      peer-not-placeholder-shown:-top-2
+                      peer-not-placeholder-shown:text-sm"
+                    >Age (10-20)</label>
                   </div>
                 </div>
 
@@ -506,17 +530,17 @@ export default function Home() {
                   type="text"
                   value={loginName}
                   onChange={(e)=>setLoginName(e.target.value)}
-                  placeholder=" "
+                  placeholder=""
                   className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 rounded-lg text-red-100 placeholder-transparent"
                 />
-                <label className="absolute left-3 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-1
+                <label className="absolute left-3 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
                   peer-placeholder-shown:top-1/2
-                  peer-placeholder-shown:text-sm
+                  peer-placeholder-shown:text-base
                   peer-focus:top-0
-                  peer-focus:text-xs
+                  peer-focus:text-sm
                   peer-focus:left-2
                   peer-not-placeholder-shown:top-0
-                  peer-not-placeholder-shown:text-xs"
+                  peer-not-placeholder-shown:text-sm"
                 >Username</label>
               </div>
               <div className="relative mb-6">
@@ -524,17 +548,17 @@ export default function Home() {
                   type="password"
                   value={loginPassword}
                   onChange={(e)=>setLoginPassword(e.target.value)}
-                  placeholder="Password"
+                  placeholder=""
                   className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900 rounded-lg text-red-100 placeholder-transparent"
                 />
-                <label className="absolute left-3 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-1
+                <label className="absolute left-3 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
                   peer-placeholder-shown:top-1/2
-                  peer-placeholder-shown:text-sm
+                  peer-placeholder-shown:text-base
                   peer-focus:top-0
-                  peer-focus:text-xs
+                  peer-focus:text-sm
                   peer-focus:left-2
                   peer-not-placeholder-shown:top-0
-                  peer-not-placeholder-shown:text-xs"
+                  peer-not-placeholder-shown:text-sm"
                 >Password</label>
               </div>
               <button
