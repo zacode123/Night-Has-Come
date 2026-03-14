@@ -280,29 +280,31 @@ export default function Home() {
             z: { duration: 1.5 },
             y: { duration: 4, repeat: Infinity, ease: "easeInOut" }
           }}
-          className="relative mb-0 py-0 inline-block"
+          className="mb-0 py-0"
         >
           <DrippingText 
             text="NIGHT HAS COME" 
             className="text-5xl sm:text-9xl lg:text-8xl font-['var(--font-nosifer)'] font-black tracking-[0.05em] text-red-600 drop-shadow-[0_0_15px_rgba(220,38,38,0.9)] drop-shadow-[0_0_30px_rgba(220,38,38,0.7)]"
           />
-          <span className="absolute -top-2 -right-6 bg-red-600 text-black text-xs sm:text-sm font-bold px-2 py-1 rounded-md shadow-[0_0_10px_rgba(220,38,38,0.9)]">BETA</span>
         </motion.div>
-        
-        <motion.p 
-          initial={{ opacity: 0 }}
-          animate={{ 
-            opacity: 1,
-            y: [0, -5, 0]
-          }}
-          transition={{ 
-            opacity: { duration: 1, delay: 0.5 },
-            y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
-          }}
-          className="text-sm sm:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
-        >
-          Trust no one. Survive the night.
-        </motion.p>
+
+        <div className="relative inline-block">
+          <motion.p 
+            initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: 1,
+              y: [0, -5, 0]
+            }}
+            transition={{ 
+              opacity: { duration: 1, delay: 0.5 },
+              y: { duration: 3, repeat: Infinity, ease: "easeInOut", delay: 0.5 }
+            }}
+            className="text-sm sm:text-xl font-bold text-zinc-300 tracking-widest mb-8 px-6 py-3 rounded-xl bg-white/5 backdrop-blur-md border border-white/10 shadow-lg drop-shadow-[0_0_5px_rgba(220,38,38,0.5)]"
+          >
+            Trust no one. Survive the night.
+          </motion.p>
+          <span className="absolute -top-3 -right-3 bg-red-600 text-black text-xs font-bold px-2 py-[2px] rounded shadow-[0_0_10px_rgba(220,38,38,0.9)]">BETA</span>
+        </div>
 
         <motion.button
           initial={{ opacity: 0, scale: 0.9 }}
