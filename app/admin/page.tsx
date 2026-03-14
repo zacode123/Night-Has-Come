@@ -23,7 +23,8 @@ export default function AdminPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-
+  
+  
   const [players, setPlayers] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
@@ -184,7 +185,7 @@ export default function AdminPage() {
               peer-not-placeholder-shown:text-sm"
             >Password</label>
           </div>
-          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded-lg transition-colors mt-4">Login</button>
+          <button type="submit" className={`w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg mt-4 ${isLoginValid ? 'opacity-50' : 'hover:bg-blue-500 transition-colors'}`}>Login</button>
         </form>
       </div>
     </div>
