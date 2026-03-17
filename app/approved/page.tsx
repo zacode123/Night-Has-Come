@@ -13,6 +13,8 @@ export default function ApprovedPage() {
   const router = useRouter();
 
   useEffect(() => {
+    let channel
+    
     const init = async () => {
       const playerId =
         Cookies.get('playerId') || localStorage.getItem('playerId');
@@ -55,7 +57,7 @@ export default function ApprovedPage() {
 
       audioEngine.startMainMenuAmbient();
 
-      const channel = supabase
+      channel = supabase
         .channel(`approved_room_${playerId}`)
         .on(
           'postgres_changes',
