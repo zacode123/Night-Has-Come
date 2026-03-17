@@ -556,7 +556,7 @@ export default function Home() {
                     >Password</label>
                     <button
                       type="button"
-                      onClick={() => setShowSignUpPassword(!showSignUpPassword)}
+                      onClick={() => setShowSignUpPassword(prev => !prev)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-200"
                     >
                       {showSignUpPassword ? (
@@ -745,7 +745,7 @@ export default function Home() {
                   </label>
                   <button
                     type="button"
-                    onClick={() => setShowSignInPassword(!showSignInPassword)}
+                    onClick={() => setShowSignInPassword(prev => !prev)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-200"
                   >
                     {showSignInPassword ? (
