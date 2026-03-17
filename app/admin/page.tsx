@@ -66,10 +66,16 @@ export default function AdminPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoginInvalid) return;
+    setIsProcessing(true);
     setLoginError('');
     const res = await loginAdmin(username, password);
-    if (res.success) setIsLoggedIn(true);
-    else setLoginError('Invalid username or password');
+    if (res.success) {
+      setIsLoggedIn(true);
+    } else {
+      setLoginError('Invalid username or password');
+    }
+    setIsProcessing(false);
   };
 
   const handleLogout = async () => {
@@ -255,9 +261,13 @@ export default function AdminPage() {
             }}
             className={`w-full bg-gradient-to-r from-blue-600 to-cyan-500 py-3 rounded-lg font-semibold transition duration-200 ${isLoginInvalid ? 'opacity-50' : 'hover:scale-[1.02] hover:shadow-xl hover:brightness-110 hover:-translate-y-[1px]'}`}
           >
-            Login
+            {isProcessing ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Logging in...
+                </span>
+            ) : 'Login'}
           </button>
-
         </form>
       </div>
     </div>
