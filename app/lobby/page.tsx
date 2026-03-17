@@ -10,19 +10,16 @@ export default function WaitingLobby() {
   const router = useRouter();
 
   useEffect(() => {
-    audioEngine.startMainMenuAmbient();
-  }, []);
+    let channel = null;
 
-  useEffect(() => {
-    const localId = localStorage.getItem('playerId');
+    const init = async () => {
+      const localId = localStorage.getItem('playerId');
 
-    if (!localId) {
-      router.push('/');
-      return;
-    }
+      if (!localId) {
+        router.push('/');
+        return;
+      }
 
-    // Initial status check
-    const checkStatus = async () => {
       const { data } = await supabase
         .from('players')
         .select('status')
@@ -37,57 +34,64 @@ export default function WaitingLobby() {
 
       if (data.status === 'approved') {
         router.push('/approved');
+        return;
       }
 
       if (data.status === 'rejected') {
         localStorage.removeItem('playerId');
         router.push('/rejected');
+        return;
       }
-    };
 
-    checkStatus();
+      audioEngine.startMainMenuAmbient();
 
-    // Realtime listener
-    const channel = supabase
-      .channel(`player_status:${localId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'players',
-          filter: `id=eq.${localId}`,
-        },
-        (payload) => {
-          const newStatus = payload.new.status;
+      channel = supabase
+        .channel(`player_status:${localId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'players',
+            filter: `id=eq.${localId}`,
+          },
+          (payload) => {
+            const newStatus = payload.new.status;
 
-          if (newStatus === 'approved') {
-            router.push('/approved');
+            if (newStatus === 'approved') {
+              audioEngine.stopMainMenuAmbient();
+              router.push('/approved');
+            }
+
+            if (newStatus === 'rejected') {
+              audioEngine.stopMainMenuAmbient();
+              localStorage.removeItem('playerId');
+              router.push('/rejected');
+            }
           }
-
-          if (newStatus === 'rejected') {
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'players',
+            filter: `id=eq.${localId}`,
+          },
+          () => {
+            audioEngine.stopMainMenuAmbient();
             localStorage.removeItem('playerId');
             router.push('/rejected');
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'DELETE',
-          schema: 'public',
-          table: 'players',
-          filter: `id=eq.${localId}`,
-        },
-        () => {
-          localStorage.removeItem('playerId');
-          router.push('/rejected');
-        }
-      )
-      .subscribe();
+        )
+        .subscribe();
+    };
+
+    init();
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
+      audioEngine.stopMainMenuAmbient();
     };
   }, [router]);
 
@@ -95,9 +99,7 @@ export default function WaitingLobby() {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white relative overflow-hidden">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(30,58,138,0.2)_0%,transparent_70%)] z-10" />
 
-      <div
-        className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center opacity-40 mix-blend-overlay z-0"
-      />
+      <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1920&q=80')] bg-cover bg-center opacity-40 mix-blend-overlay z-0" />
 
       <motion.div
         animate={{
