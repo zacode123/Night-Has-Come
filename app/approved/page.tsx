@@ -51,7 +51,7 @@ export default function ApprovedPage() {
         .eq('room_code', 'MAFIA')
         .single();
 
-      if (room?.status === 'started') {
+      if (room?.status === 'in_game') {
         router.push('/game/MAFIA');
         return;
       }
