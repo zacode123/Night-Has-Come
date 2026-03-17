@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { XCircle, RefreshCcw } from 'lucide-react';
 import Cookies from 'js-cookie';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from '@/components/DrippingText';
@@ -18,7 +19,7 @@ export default function RejectedPage() {
     const playerId =
       Cookies.get('playerId') || localStorage.getItem('playerId');
 
-    let channel;
+    let channel: RealtimeChannel | null = null;
 
     if (playerId) {
       channel = supabase
