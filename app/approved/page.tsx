@@ -68,7 +68,7 @@ export default function ApprovedPage() {
             filter: 'room_code=eq.MAFIA',
           },
           (payload) => {
-            if (payload.new.status === 'started') {
+            if (payload.new.status === 'in_game') {
               audioEngine.stopMainMenuAmbient();
               router.push('/game/MAFIA');
             }
