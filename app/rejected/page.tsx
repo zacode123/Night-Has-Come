@@ -15,13 +15,13 @@ export default function RejectedPage() {
     audioEngine.startMainMenuAmbient();
 
     return () => {
-      audioEngine.stopMainMenuAmbient();
+      audioEngine.stopAmbient();
     };
   }, []);
 
   const handleReset = () => {
     audioEngine.playClick();
-    audioEngine.stopMainMenuAmbient();
+    audioEngine.stopAmbient();
     Cookies.remove('playerId');
     Cookies.remove('playerStatus');
     localStorage.removeItem('playerId');
