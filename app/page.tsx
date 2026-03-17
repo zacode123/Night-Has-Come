@@ -107,6 +107,7 @@ export default function Home() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     if (SignInName.length < 3) {
       setSignInError('Minimum username length is 3!');
       return;
@@ -139,6 +140,7 @@ export default function Home() {
     } else{
       setSignInError('');
     }
+    setIsSubmitting(false);
     localStorage.setItem('playerId', data.id);
     Cookies.set('playerId', data.id, {expires:7});
     router.push('/lobby');
@@ -645,7 +647,12 @@ export default function Home() {
                     }}
                     className={`flex-1 py-3 bg-red-700 text-white rounded-lg font-medium ${ isSignUpInvalid ? 'opacity-50' : 'hover:bg-red-600 transition-colors shadow-[0_0_20px_rgba(220,38,38,0.4)]'}`}
                   >
-                    {isSubmitting ? 'Signing up...' : 'Sign Up'}
+                    {isSubmitting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Signing up...
+                      </span>
+                    ) : 'Sign Up'}
                   </button>
                 </div>
                 <p
@@ -766,7 +773,12 @@ export default function Home() {
                   }}
                   className={`w-full py-3 bg-red-700 rounded-lg ${isSignInInvalid ? 'opacity-50' : 'hover:bg-red-600'}`}
                 >
-                  Login
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Signing in...
+                    </span>
+                  ) : 'Sign In'}
                 </button>
               </form>
             </motion.div>
