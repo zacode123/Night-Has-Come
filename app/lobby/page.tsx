@@ -59,12 +59,12 @@ export default function WaitingLobby() {
             const newStatus = payload.new.status;
 
             if (newStatus === 'approved') {
-              audioEngine.stopMainMenuAmbient();
+              audioEngine.stopAmbient();
               router.push('/approved');
             }
 
             if (newStatus === 'rejected') {
-              audioEngine.stopMainMenuAmbient();
+              audioEngine.stopAmbient();
               localStorage.removeItem('playerId');
               router.push('/rejected');
             }
@@ -79,7 +79,7 @@ export default function WaitingLobby() {
             filter: `id=eq.${localId}`,
           },
           () => {
-            audioEngine.stopMainMenuAmbient();
+            audioEngine.stopAmbient();
             localStorage.removeItem('playerId');
             router.push('/rejected');
           }
@@ -91,7 +91,7 @@ export default function WaitingLobby() {
 
     return () => {
       if (channel) supabase.removeChannel(channel);
-      audioEngine.stopMainMenuAmbient();
+      audioEngine.stopAmbient();
     };
   }, [router]);
 
