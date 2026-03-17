@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
+import { audioEngine } from '@/lib/audioEngine';
 import { getPersonalityBorder } from '@/lib/personalityBorder';
 import { motion } from 'motion/react';
 import {
