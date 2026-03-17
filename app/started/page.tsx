@@ -20,7 +20,7 @@ export default function StartedPage() {
 
   const handleHome = () => {
     audioEngine.playClick();
-    audioEngine.stopMainMenuAmbient();
+    audioEngine.stopAmbient();
     router.push('/');
   };
 
