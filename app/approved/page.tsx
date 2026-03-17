@@ -55,7 +55,7 @@ export default function ApprovedPage() {
 
       audioEngine.startMainMenuAmbient();
 
-      channel = supabase
+      const channel = supabase
         .channel(`approved_room_${playerId}`)
         .on(
           'postgres_changes',
