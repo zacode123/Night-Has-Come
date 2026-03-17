@@ -13,7 +13,10 @@ import {
   rejectPlayer,
   deletePlayer,
   startGame,
-  stopGame
+  stopGame,
+  createRoom,
+  renameRoom,
+  deleteRoom
 } from './actions';
 import { gameConfig } from '@/config/gameConfig';
 import PlayerCard from '@/components/PlayerCard';
@@ -27,6 +30,9 @@ export default function AdminPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
 
   const isLoginInvalid =
     username.length < 3 || username.length > 20 ||
@@ -92,10 +98,14 @@ export default function AdminPage() {
 
   // ---------------- HANDLERS ----------------
   const handleApprovePlayer = async (id: string) => {
+    if (!selectedRoomId) {
+      console.log('Select a room first');
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const res = await approvePlayer(id);
-      if (res.roomId) setCurrentRoomId(res.roomId);
+      await approvePlayer(id, selectedRoomId);
       fetchData();
     } finally {
       setIsProcessing(false);
@@ -115,20 +125,34 @@ export default function AdminPage() {
     finally { setIsProcessing(false); setConfirmModal((p: any) => ({ ...p, show: false })); }
   };
 
-  const handleStartGame = async () => {
-    const waitingRoom = rooms.find(r => r.status === 'waiting');
-    if (!waitingRoom) return;
+  const handleCreateRoom = async () => {
+    if (!newRoomName.trim()) return;
 
+    await createRoom(newRoomName);
+    setNewRoomName('');
+    fetchData();
+  };
+
+  const handleDeleteRoom = async (roomId: string) => {
+    await deleteRoom(roomId);
+    fetchData();
+  };
+  
+  const handleStartGame = async (roomId: string) => {
     setIsProcessing(true);
-    await startGame(waitingRoom.id);
+    const res = await startGame(roomId);
     await fetchData();
     setIsProcessing(false);
 
-    router.push(`/game/${waitingRoom.id}`);
+    if (res.success) {
+      router.push(`/game/${roomId}`);
+    } else {
+      console.error(res.error);
+    }
   };
 
   const handleStopGame = async () => {
-    const activeRoom = rooms.find(r => r.status === 'playing');
+    const activeRoom = rooms.find(r => r.status === 'in_game');
     if (!activeRoom) return;
 
     setIsProcessing(true);
@@ -213,7 +237,7 @@ export default function AdminPage() {
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
 
         <div className="flex gap-3 flex-wrap">
-          <button onClick={handleStartGame} disabled={!canStartGame || isProcessing}
+          <button onClick={() => setShowRoomModal(true)} disabled={!canStartGame || isProcessing}
             className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-lg shadow">
             {isProcessing ? 'Starting...' : 'Start Game'}
           </button>
@@ -271,6 +295,79 @@ export default function AdminPage() {
         ))}
       </div>
 
+      {/* Rooms */}
+      <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
+        <h2 className="text-xl mb-4">Rooms</h2>
+        <div className="flex gap-2 mb-4">
+          <input
+            value={newRoomName}
+            onChange={(e) => setNewRoomName(e.target.value)}
+            placeholder="Room name"
+            className="bg-white/10 px-3 py-2 rounded-lg text-white"
+         />
+         <button onClick={handleCreateRoom} className="bg-blue-600 px-4 rounded-lg">
+           Create
+         </button>
+       </div>
+
+       <div className="space-y-2">
+         {rooms.map(room => (
+           <div key={room.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg">
+
+             <div>
+               <p className="font-semibold">{room.name}</p>
+               <p className="text-xs text-gray-400">{room.status}</p>
+             </div>
+
+             <div className="flex gap-2">
+               <button
+                 onClick={() => setSelectedRoomId(room.id)}
+                 className={`px-3 py-1 rounded ${selectedRoomId === room.id ? 'bg-green-500' : 'bg-gray-700'}`}
+               >
+                 Select
+               </button>
+
+               <button
+                 onClick={() => handleDeleteRoom(room.id)}
+                 className="px-3 py-1 bg-red-600 rounded"
+               >
+                 Delete
+               </button>
+            </div>
+          </div>
+        ))}
+      </div>
+     </div>
+
+      {/* ShowRoomModal */}
+      {showRoomModal && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center">
+          <div className="bg-gray-900 p-6 rounded-xl w-80">
+            <h2 className="mb-4 text-lg">Select Room</h2>
+            <div className="space-y-2">
+              {rooms.filter(r => r.status === 'waiting').map(room => (
+                <button
+                  key={room.id}
+                  onClick={() => {
+                    handleStartGame(room.id);
+                    setShowRoomModal(false);
+                  }}
+                  className="w-full bg-green-600 py-2 rounded"
+                >
+                  {room.name}
+                </button>
+             ))}
+           </div>
+
+           <button
+             onClick={() => setShowRoomModal(false)}
+             className="mt-4 w-full bg-gray-700 py-2 rounded"
+           >
+             Cancel
+           </button>
+         </div>
+       </div>
+     )}
     </div>
   );
 }
