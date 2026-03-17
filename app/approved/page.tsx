@@ -13,8 +13,6 @@ export default function ApprovedPage() {
   const router = useRouter();
 
   useEffect(() => {
-    let channel = null;
-
     const init = async () => {
       const playerId =
         Cookies.get('playerId') || localStorage.getItem('playerId');
