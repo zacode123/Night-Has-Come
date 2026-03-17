@@ -274,7 +274,10 @@ export default function AdminPage() {
       <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
         <h2 className="text-xl mb-4">Approved Players</h2>
         {approvedPlayers.map(player => (
-          <PlayerCard key={player.id} player={player} onLongPress={openPlayerModal}
+          <PlayerCard 
+            key={player.id} 
+            player={player} 
+            onLongPress={openPlayerModal}
             onReject={(p) => openConfirm('Remove', p.username, () => handleRejectPlayer(p.id), 'danger')}
             actionType="approved"
             isProcessing={isProcessing}
@@ -286,7 +289,10 @@ export default function AdminPage() {
       <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
         <h2 className="text-xl mb-4">Rejected Players</h2>
         {rejectedPlayers.map(player => (
-          <PlayerCard key={player.id} player={player}
+          <PlayerCard 
+            key={player.id} 
+            player={player}
+            onLongPress={openPlayerModal}
             onApprove={(p) => openConfirm('Approve', p.username, () => handleApprovePlayer(p.id), 'success')}
             onDelete={(p) => openConfirm('Delete', p.username, () => handleDeletePlayer(p.id), 'danger')}
             actionType="rejected"
