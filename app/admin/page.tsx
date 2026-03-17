@@ -38,7 +38,7 @@ export default function AdminPage() {
 
   const isLoginInvalid =
     username.length < 3 || username.length > 20 ||
-    password.length < 6 || password.length > 10;
+    password.length < 6 || password.length > 20;
 
   const [players, setPlayers] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
