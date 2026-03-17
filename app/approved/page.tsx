@@ -13,14 +13,37 @@ export default function ApprovedPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const checkGameStart = async () => {
-      const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
+    let channel = null;
+
+    const init = async () => {
+      const playerId =
+        Cookies.get('playerId') || localStorage.getItem('playerId');
+
       if (!playerId) {
         router.push('/');
         return;
       }
 
-      // Check if game has started
+      const { data: player } = await supabase
+        .from('players')
+        .select('status')
+        .eq('id', playerId)
+        .maybeSingle();
+
+      if (!player) {
+        localStorage.removeItem('playerId');
+        Cookies.remove('playerId');
+        router.push('/rejected');
+        return;
+      }
+
+      if (player.status === 'rejected') {
+        localStorage.removeItem('playerId');
+        Cookies.remove('playerId');
+        router.push('/rejected');
+        return;
+      }
+
       const { data: room } = await supabase
         .from('rooms')
         .select('status')
@@ -32,29 +55,70 @@ export default function ApprovedPage() {
         return;
       }
 
-      // Realtime subscription for game start
-      const channel = supabase.channel('game-start-check')
-        .on('postgres_changes', { 
-          event: 'UPDATE', 
-          schema: 'public', 
-          table: 'rooms', 
-          filter: 'room_code=eq.MAFIA' 
-        }, (payload) => {
-          if (payload.new.status === 'started') {
-            router.push('/game/MAFIA');
-          }
-        })
-        .subscribe();
+      audioEngine.startMainMenuAmbient();
 
-      return () => { supabase.removeChannel(channel); };
+      channel = supabase
+        .channel(`approved_room_${playerId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'rooms',
+            filter: 'room_code=eq.MAFIA',
+          },
+          (payload) => {
+            if (payload.new.status === 'started') {
+              audioEngine.stopMainMenuAmbient();
+              router.push('/game/MAFIA');
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'players',
+            filter: `id=eq.${playerId}`,
+          },
+          (payload) => {
+            if (payload.new.status === 'rejected') {
+              audioEngine.stopMainMenuAmbient();
+              localStorage.removeItem('playerId');
+              Cookies.remove('playerId');
+              router.push('/rejected');
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'players',
+            filter: `id=eq.${playerId}`,
+          },
+          () => {
+            audioEngine.stopMainMenuAmbient();
+            localStorage.removeItem('playerId');
+            Cookies.remove('playerId');
+            router.push('/rejected');
+          }
+        )
+        .subscribe();
     };
 
-    checkGameStart();
+    init();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+      audioEngine.stopMainMenuAmbient();
+    };
   }, [router]);
 
   return (
     <div className="min-h-screen bg-black text-zinc-200 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Cinematic Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,40,0,0.8)_0%,rgba(0,0,0,1)_100%)]" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-emerald-600/10 rounded-full blur-[120px]" />
@@ -74,8 +138,8 @@ export default function ApprovedPage() {
           <CheckCircle2 size={120} strokeWidth={1.5} />
         </motion.div>
 
-        <DrippingText 
-          text="APPROVED" 
+        <DrippingText
+          text="APPROVED"
           className="text-5xl md:text-6xl font-['var(--font-nosifer)'] font-black tracking-widest text-emerald-500 mb-6 drop-shadow-[0_0_10px_rgba(16,185,129,0.8)]"
         />
 
