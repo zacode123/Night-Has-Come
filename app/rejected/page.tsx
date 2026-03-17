@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { XCircle, RefreshCcw } from 'lucide-react';
@@ -10,8 +11,17 @@ import DrippingText from '@/components/DrippingText';
 export default function RejectedPage() {
   const router = useRouter();
 
+  useEffect(() => {
+    audioEngine.startMainMenuAmbient();
+
+    return () => {
+      audioEngine.stopMainMenuAmbient();
+    };
+  }, []);
+
   const handleReset = () => {
     audioEngine.playClick();
+    audioEngine.stopMainMenuAmbient();
     Cookies.remove('playerId');
     Cookies.remove('playerStatus');
     localStorage.removeItem('playerId');
@@ -20,7 +30,6 @@ export default function RejectedPage() {
 
   return (
     <div className="min-h-screen bg-black text-zinc-200 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Cinematic Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(60,0,0,0.8)_0%,rgba(0,0,0,1)_100%)]" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-600/10 rounded-full blur-[120px]" />
@@ -40,8 +49,8 @@ export default function RejectedPage() {
           <XCircle size={120} strokeWidth={1.5} />
         </motion.div>
 
-        <DrippingText 
-          text="REJECTED" 
+        <DrippingText
+          text="REJECTED"
           className="text-5xl md:text-6xl font-['var(--font-nosifer)'] font-black tracking-widest text-red-600 mb-6 drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"
         />
 
