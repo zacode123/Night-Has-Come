@@ -67,7 +67,7 @@ export default function ApprovedPage() {
           },
           (payload) => {
             if (payload.new.status === 'in_game') {
-              audioEngine.stopMainMenuAmbient();
+              audioEngine.stopAmbient();
               router.push('/game/MAFIA');
             }
           }
@@ -82,7 +82,7 @@ export default function ApprovedPage() {
           },
           (payload) => {
             if (payload.new.status === 'rejected') {
-              audioEngine.stopMainMenuAmbient();
+              audioEngine.stopAmbient();
               localStorage.removeItem('playerId');
               Cookies.remove('playerId');
               router.push('/rejected');
@@ -98,7 +98,7 @@ export default function ApprovedPage() {
             filter: `id=eq.${playerId}`,
           },
           () => {
-            audioEngine.stopMainMenuAmbient();
+            audioEngine.stopAmbient();
             localStorage.removeItem('playerId');
             Cookies.remove('playerId');
             router.push('/rejected');
@@ -111,7 +111,7 @@ export default function ApprovedPage() {
 
     return () => {
       if (channel) supabase.removeChannel(channel);
-      audioEngine.stopMainMenuAmbient();
+      audioEngine.stopAmbient();
     };
   }, [router]);
 
