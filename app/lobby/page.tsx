@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { motion } from 'motion/react';
 import { audioEngine } from '@/lib/audioEngine';
@@ -10,7 +11,7 @@ export default function WaitingLobby() {
   const router = useRouter();
 
   useEffect(() => {
-    let channel = null;
+    let channel: RealtimeChannel | null = null;
 
     const init = async () => {
       const localId = localStorage.getItem('playerId');
