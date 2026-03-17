@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { AlertTriangle, Home } from 'lucide-react';
@@ -9,14 +10,22 @@ import DrippingText from '@/components/DrippingText';
 export default function StartedPage() {
   const router = useRouter();
 
+  useEffect(() => {
+    audioEngine.startMainMenuAmbient();
+
+    return () => {
+      audioEngine.stopMainMenuAmbient();
+    };
+  }, []);
+
   const handleHome = () => {
     audioEngine.playClick();
+    audioEngine.stopMainMenuAmbient();
     router.push('/');
   };
 
   return (
     <div className="min-h-screen bg-black text-zinc-200 flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      {/* Cinematic Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(60,0,0,0.8)_0%,rgba(0,0,0,1)_100%)]" />
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-600/10 rounded-full blur-[120px]" />
