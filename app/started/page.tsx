@@ -14,7 +14,7 @@ export default function StartedPage() {
     audioEngine.startMainMenuAmbient();
 
     return () => {
-      audioEngine.stopMainMenuAmbient();
+      audioEngine.stopAmbient();
     };
   }, []);
 
