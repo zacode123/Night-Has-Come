@@ -13,7 +13,7 @@ export default function ApprovedPage() {
   const router = useRouter();
 
   useEffect(() => {
-    let channel
+    let channel: RealtimeChannel | null = null;
     
     const init = async () => {
       const playerId =
