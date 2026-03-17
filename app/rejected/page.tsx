@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { XCircle, RefreshCcw } from 'lucide-react';
 import Cookies from 'js-cookie';
+import { supabase } from '@/lib/supabaseClient';
 import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from '@/components/DrippingText';
 
@@ -14,10 +15,37 @@ export default function RejectedPage() {
   useEffect(() => {
     audioEngine.startMainMenuAmbient();
 
+    const playerId =
+      Cookies.get('playerId') || localStorage.getItem('playerId');
+
+    let channel;
+
+    if (playerId) {
+      channel = supabase
+        .channel(`rejected_watch_${playerId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'players',
+            filter: `id=eq.${playerId}`,
+          },
+          (payload) => {
+            if (payload.new.status === 'approved') {
+              audioEngine.stopAmbient();
+              router.push('/approved');
+            }
+          }
+        )
+        .subscribe();
+    }
+
     return () => {
+      if (channel) supabase.removeChannel(channel);
       audioEngine.stopAmbient();
     };
-  }, []);
+  }, [router]);
 
   const handleReset = () => {
     audioEngine.playClick();
