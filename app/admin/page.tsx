@@ -217,6 +217,9 @@ export default function AdminPage() {
            <input  
              placeholder=" "  
              value={username}  
+             minLength={3}
+             maxLength={20}
+             required
              onChange={e => setUsername(e.target.value)}  
              className="peer w-full bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"  
            />  
@@ -234,6 +237,9 @@ export default function AdminPage() {
              type={showPassword ? 'text' : 'password'}  
              placeholder=" "  
              value={password}  
+             minLength={6}
+             maxLength={20}
+             required
              onChange={e => setPassword(e.target.value)}  
              className="peer w-full bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"  
            />  
