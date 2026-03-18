@@ -41,7 +41,8 @@ class AudioEngine {
       };
       window.addEventListener('click', resumeAudio);
       window.addEventListener('touchstart', resumeAudio);
-
+      console.log("Added click listener for resumeAudio");
+      
       // Setup Media Session API for better background/notification handling
       if ('mediaSession' in navigator) {
         navigator.mediaSession.setActionHandler('play', () => {
