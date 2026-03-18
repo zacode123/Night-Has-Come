@@ -449,7 +449,7 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-white/5 backdrop-blur-xl"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red-900/10 backdrop-blur-xl"
           >
             <motion.div 
               initial={{ scale: 0.9, y: 20, rotateX: 10 }}
