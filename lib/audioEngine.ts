@@ -29,20 +29,6 @@ class AudioEngine {
       // Try to resume immediately if called from a user gesture
       this.getAudioContext();
 
-      // Global click listener to resume audio (fallback for subsequent interactions)
-      const resumeAudio = () => {
-        console.log("Global click detected, resuming audio context...");
-        this.getAudioContext();
-        if (this.currentAmbientName) {
-          this.playAmbient(this.currentAmbientName);
-        }
-        window.removeEventListener('click', resumeAudio);
-        window.removeEventListener('touchstart', resumeAudio);
-      };
-      window.addEventListener('click', resumeAudio);
-      window.addEventListener('touchstart', resumeAudio);
-      console.log("Added click listener for resumeAudio");
-      
       // Setup Media Session API for better background/notification handling
       if ('mediaSession' in navigator) {
         navigator.mediaSession.setActionHandler('play', () => {
