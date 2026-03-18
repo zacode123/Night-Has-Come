@@ -102,6 +102,7 @@ export default function Home() {
   const handleEnter = () => {
     setHasEntered(true);
     audioEngine.init();
+    console.log("init audio called", new Date().toISOString());
     audioEngine.startMainMenuAmbient();
   };
 
