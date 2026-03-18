@@ -515,7 +515,7 @@ export default function Home() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
+                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 focus:shadow-[0_0_10px_rgba(220,38,38,0.4) transition-colors"
                     />
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-white/10 backdrop-blur-md px-2
                       peer-placeholder-shown:top-1/2
@@ -535,7 +535,7 @@ export default function Home() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
+                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 focus:shadow-[0_0_10px_rgba(220,38,38,0.4) transition-colors"
                     />
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-white/10 backdrop-blur-md px-2
                       peer-placeholder-shown:top-1/2
@@ -566,7 +566,7 @@ export default function Home() {
                       value={age}
                       onChange={(e) => setAge(e.target.value)}
                       required
-                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
+                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 focus:shadow-[0_0_10px_rgba(220,38,38,0.4) transition-colors"
                     />
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-white/10 backdrop-blur-md px-2
                       peer-placeholder-shown:top-1/2
@@ -603,7 +603,7 @@ export default function Home() {
                         className={`cursor-pointer p-3 rounded-lg transition-all ${
                           personality === p.id 
                             ? 'bg-red-900/50 border-2 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.3)]' 
-                            : 'bg-black/50 border border-red-800 focus:border-red-400'
+                            : 'bg-black/50 border border-red-800 focus:border-red-400 focus:shadow-[0_0_10px_rgba(220,38,38,0.4)'
                         }`}
                       >
                         <div className="text-red-200 font-medium mb-1">{p.id}</div>
