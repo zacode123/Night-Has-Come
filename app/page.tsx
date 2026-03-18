@@ -115,24 +115,28 @@ export default function Home() {
     setIsSubmitting(true);
     if (SignInName.length < 3) {
       setSignInError('Minimum username length is 3!');
+      setIsSubmitting(false);
       return;
     } else {
       setSignInError('');
     }
     if (SignInName.length > 20) {
       setSignInError('Maximum username length is 20!');
+      setIsSubmitting(false);
       return;
     } else {
       setSignInError('');
     }
     if (SignInPassword.length < 6) {
       setSignInError('Minimum password length is 6!');
+      setIsSubmitting(false);
       return;
     } else {
       setSignInError('');
     }
     if (SignInPassword.length > 10) {
       setSignInError('Maximum password length is 10!');
+      setIsSubmitting(false);
       return;
     } else {
       setSignInError('');
@@ -141,11 +145,11 @@ export default function Home() {
     const {data} = await supabase.from('players').select('*').eq('username', SignInName).eq('password_hash', password_hash).single();
     if(!data){
       setSignInError('Invalid username or password!');
+      setIsSubmitting(false);
       return;
     } else{
       setSignInError('');
     }
-    setIsSubmitting(false);
     localStorage.setItem('playerId', data.id);
     Cookies.set('playerId', data.id, {expires:7});
     router.push('/lobby');
