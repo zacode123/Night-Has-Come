@@ -285,7 +285,7 @@ export default function AdminPage() {
       </button>
       
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
+      <div className="flex justify-between items-center mb-8 mt-12 flex-wrap gap-4">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
 
         <div className="flex gap-3 flex-wrap">
@@ -325,48 +325,54 @@ export default function AdminPage() {
       {/* Pending */}
       <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
         <h2 className="text-xl mb-4">Pending Players</h2>
-        {pendingPlayers.length > 0 ? pendingPlayers.map(player => (
-          <PlayerCard
-            key={player.id}
-            player={player}
-            onLongPress={openPlayerModal}
-            onApprove={(p) => openConfirm('Approve', p.username, () => handleApprovePlayer(p.id), 'success')}
-            onReject={(p) => openConfirm('Reject', p.username, () => handleRejectPlayer(p.id), 'danger')}
-            actionType="pending"
-            isProcessing={isProcessing}
-          />
-        )) : <p className="text-gray-400">No pending players</p>}
+        <div className="space-y-3">
+          {pendingPlayers.length > 0 ? pendingPlayers.map(player => (
+            <PlayerCard
+              key={player.id}
+              player={player}
+              onLongPress={openPlayerModal}
+              onApprove={(p) => openConfirm('Approve', p.username, () => handleApprovePlayer(p.id), 'success')}
+              onReject={(p) => openConfirm('Reject', p.username, () => handleRejectPlayer(p.id), 'danger')}
+              actionType="pending"
+              isProcessing={isProcessing}
+            />
+          )) : <p className="text-gray-400">No pending players</p>}
+        </div>
       </div>
 
       {/* Approved */}
       <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
         <h2 className="text-xl mb-4">Approved Players</h2>
-        {approvedPlayers.map(player => (
-          <PlayerCard 
-            key={player.id} 
-            player={player} 
-            onLongPress={openPlayerModal}
-            onReject={(p) => openConfirm('Remove', p.username, () => handleRejectPlayer(p.id), 'danger')}
-            actionType="approved"
-            isProcessing={isProcessing}
-          />
-        ))}
+        <div className="space-y-3">
+          {approvedPlayers.map(player => (
+            <PlayerCard 
+              key={player.id} 
+              player={player} 
+              onLongPress={openPlayerModal}
+              onReject={(p) => openConfirm('Remove', p.username, () => handleRejectPlayer(p.id), 'danger')}
+              actionType="approved"
+              isProcessing={isProcessing}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Rejected */}
-      <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
+      <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
         <h2 className="text-xl mb-4">Rejected Players</h2>
-        {rejectedPlayers.map(player => (
-          <PlayerCard 
-            key={player.id} 
-            player={player}
-            onLongPress={openPlayerModal}
-            onApprove={(p) => openConfirm('Approve', p.username, () => handleApprovePlayer(p.id), 'success')}
-            onDelete={(p) => openConfirm('Delete', p.username, () => handleDeletePlayer(p.id), 'danger')}
-            actionType="rejected"
-            isProcessing={isProcessing}
-          />
-        ))}
+        <div className="space-y-3">
+          {rejectedPlayers.map(player => (
+            <PlayerCard 
+              key={player.id} 
+              player={player}
+              onLongPress={openPlayerModal}
+              onApprove={(p) => openConfirm('Approve', p.username, () => handleApprovePlayer(p.id), 'success')}
+              onDelete={(p) => openConfirm('Delete', p.username, () => handleDeletePlayer(p.id), 'danger')}
+              actionType="rejected"
+              isProcessing={isProcessing}
+            />
+          ))}
+        </div>
       </div>
 
       {/* Rooms */}
