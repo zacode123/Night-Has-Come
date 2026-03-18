@@ -15,7 +15,6 @@ import Background3D from '@/components/Background3D';
 import { getPersonalityBorder } from '@/lib/personalityBorder';
 
 export default function Home() {
-  const [hasEntered, setHasEntered] = useState(false);
   const [showSignUpModal, setShowSignUpModal] = useState(false);
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
@@ -98,13 +97,6 @@ export default function Home() {
     
     checkStatus();
   }, [router]);
-
-  const handleEnter = () => {
-    setHasEntered(true);
-    audioEngine.init();
-    console.log("init audio called", new Date().toISOString());
-    audioEngine.startMainMenuAmbient();
-  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -330,23 +322,6 @@ export default function Home() {
       setIsSubmitting(false);
     }
   };
-
-  if (!hasEntered) {
-    return (
-      <div 
-        className="min-h-screen bg-black flex items-center justify-center cursor-pointer"
-        onClick={handleEnter}
-      >
-        <motion.div 
-          animate={{ opacity: [0.5, 1, 0.5] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="text-red-500 font-serif tracking-widest text-2xl"
-        >
-          CLICK ANYWHERE TO ENTER
-        </motion.div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-black text-zinc-200 relative overflow-hidden flex flex-col items-center justify-center perspective-[1000px]">
