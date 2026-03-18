@@ -94,8 +94,20 @@ export default function Home() {
         }
       }
     };
-    
+  
     checkStatus();
+
+    const startAudioOnFirstClick = () => {
+      audioEngine.init();
+      audioEngine.startMainMenuAmbient();
+      document.removeEventListener('click', startAudioOnFirstClick);
+    };
+
+    document.addEventListener('click', startAudioOnFirstClick);
+
+    return () => {
+      document.removeEventListener('click', startAudioOnFirstClick);
+    };
   }, [router]);
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -422,7 +434,7 @@ export default function Home() {
           className="mt-12 sm:text-sm text-red-400 text-xs tracking-widest uppercase font-bold drop-shadow-[0_0_10px_rgba(220,38,38,0.8)]"
           style={{ textShadow: '0 0 10px rgba(220,38,38,0.8), 0 0 20px rgba(220,38,38,0.6)' }}
         >
-          Created by Zahid Arman
+          Created by Zahid Arman Ahmed (zacode123)
         </motion.p>
       </div>
 
@@ -499,7 +511,6 @@ export default function Home() {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      minLength={3}
                       className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
@@ -520,7 +531,6 @@ export default function Home() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      minLength={6}
                       className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
                     <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
@@ -551,8 +561,6 @@ export default function Home() {
                       placeholder=" "
                       value={age}
                       onChange={(e) => setAge(e.target.value)}
-                      min={10}
-                      max={20}
                       required
                       className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
@@ -687,8 +695,7 @@ export default function Home() {
                     type="text"
                     value={SignInName}
                     onChange={(e) => setSignInName(e.target.value)}
-                    placeholder=""
-                    minLength={3}
+                    placeholder=" "
                     className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                     required
                   />
@@ -710,8 +717,7 @@ export default function Home() {
                     type={showSignInPassword ? "text" : "password"}
                     value={SignInPassword}
                     onChange={(e) => setSignInPassword(e.target.value)}
-                    placeholder=""
-                    minLength={6}
+                    placeholder=" "
                     className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                     required
                   />
