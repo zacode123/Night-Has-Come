@@ -517,7 +517,7 @@ export default function Home() {
                       required
                       className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
-                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
+                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-white/10 backdrop-blur-md px-2
                       peer-placeholder-shown:top-1/2
                       peer-placeholder-shown:text-base
                       peer-focus:top-0
@@ -537,7 +537,7 @@ export default function Home() {
                       required
                       className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
-                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
+                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-white/10 backdrop-blur-md px-2
                       peer-placeholder-shown:top-1/2
                       peer-placeholder-shown:text-base
                       peer-focus:top-0
@@ -568,7 +568,7 @@ export default function Home() {
                       required
                       className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 transition-colors"
                     />
-                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-black px-2
+                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-white/10 backdrop-blur-md px-2
                       peer-placeholder-shown:top-1/2
                       peer-placeholder-shown:text-base
                       peer-focus:top-0
@@ -586,7 +586,7 @@ export default function Home() {
                       disabled
                       className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 cursor-not-allowed"
                     />
-                    <label className="absolute left-4 -top-2 text-red-400 text-sm bg-black px-2">Special Feature</label>
+                    <label className="absolute left-4 -top-2 text-red-400 text-sm bg-white/10 backdrop-blur-md px-2">Special Feature</label>
                   </div>
                 </div>
 
@@ -663,7 +663,7 @@ export default function Home() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red-900/10 backdrop-blur-md"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red-900/10 backdrop-blur-xl"
           >
             <motion.div
               initial={{ scale: 0.9 }}
@@ -677,7 +677,7 @@ export default function Home() {
                   setShowSignInModal(false);
                   setShowSignUpModal(true);
                 }}
-                className="flex items-center gap-2 text-red-400 hover:text-red-300 mb-4 text-sm"
+                className="flex items-center gap-2 text-white/90 hover:text-white mb-4 text-sm"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="#F87171"><path d="M650-80 250-480l400-400 61 61.67L372.67-480 711-141.67 650-80Z"/></svg>
               Back</button>
@@ -703,7 +703,7 @@ export default function Home() {
                     className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                     required
                   />
-                  <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
+                  <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-white/10 backdrop-blur-md px-2
                     peer-placeholder-shown:top-1/2
                     peer-placeholder-shown:text-base
                     peer-focus:top-0
@@ -725,7 +725,7 @@ export default function Home() {
                     className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
                     required
                   />
-                  <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-black/90 px-2
+                  <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-white/10 backdrop-blur-md px-2
                     peer-placeholder-shown:top-1/2
                     peer-placeholder-shown:text-base
                     peer-focus:top-0
