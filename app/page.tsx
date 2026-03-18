@@ -463,7 +463,7 @@ export default function Home() {
               initial={{ scale: 0.9, y: 20, rotateX: 10 }}
               animate={{ scale: 1, y: 0, rotateX: 0 }}
               exit={{ scale: 0.9, y: 20, rotateX: -10 }}
-              className="bg-black/80 border border-red-600/50 p-8 rounded-2xl w-full sm:max-h-[90vh] sm:overflow-y-auto max-w-2xl shadow-[0_0_50px_rgba(220,38,38,0.2)]"
+              className="bg-black/80 border border-red-600/50 p-8 rounded-2xl w-full sm:max-h-[90vh] sm:overflow-y-auto max-w-2xl shadow-[0_0_50px_rgba(220,38,38,0.2)] scale-95 sm:scale-100 max-h-[90vh] overflow-y-auto"
               style={{ transformStyle: 'preserve-3d' }}
             >
               <motion.h2 
