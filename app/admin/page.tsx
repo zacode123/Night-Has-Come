@@ -331,7 +331,7 @@ export default function AdminPage() {
       {/* Pending */}
       <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
         <h2 className="text-xl mb-4">Pending Players</h2>
-        <div className="space-y-3">
+        <div className="space-y-3 sm:space-y-4">
           {pendingPlayers.length > 0 ? pendingPlayers.map(player => (
             <PlayerCard
               key={player.id}
@@ -349,7 +349,7 @@ export default function AdminPage() {
       {/* Approved */}
       <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
         <h2 className="text-xl mb-4">Approved Players</h2>
-        <div className="space-y-3">
+        <div className="space-y-3 sm:space-y-4">
           {approvedPlayers.map(player => (
             <PlayerCard 
               key={player.id} 
@@ -366,7 +366,7 @@ export default function AdminPage() {
       {/* Rejected */}
       <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
         <h2 className="text-xl mb-4">Rejected Players</h2>
-        <div className="space-y-3">
+        <div className="space-y-3 sm:space-y-4">
           {rejectedPlayers.map(player => (
             <PlayerCard 
               key={player.id} 
