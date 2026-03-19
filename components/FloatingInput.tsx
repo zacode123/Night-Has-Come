@@ -8,7 +8,7 @@ export default function FloatingInput({
   label: string;
   type?: string;
   value: string;
-  onChange: (e: any) => void;
+  onChange?: (e: any) => void;
   disabled?: boolean;
 }) {
   const isFilled = value.length > 0;
