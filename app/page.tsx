@@ -547,7 +547,7 @@ export default function Home() {
                     disabled
                     className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 cursor-not-allowed"
                   />
-                  <label className="absolute left-4 -top-2 text-red-400 text-sm bg-white/10 backdrop-blur-md px-2">Special Feature</label>
+                  <label className="left-4 -top-2 text-red-400 text-sm bg-white/10 backdrop-blur-md px-2">Special Feature</label>
                 </div>
 
                 <div>
@@ -562,7 +562,7 @@ export default function Home() {
                         }}
                         className={`cursor-pointer p-3 rounded-lg transition-all backdrop-blur-md border ${
                           personality === p.id 
-                          ? 'bg-red-500/20 border-red-400/40 shadow-[0_0_20px_rgba(220,38,38,0.25)] scale-[1.02]' 
+                          ? 'bg-red-600 border-red-400/40 shadow-[0_0_20px_rgba(220,38,38,0.25)] scale-[1.02]' 
                           : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
                        }`}
                       >
