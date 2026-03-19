@@ -3,11 +3,13 @@ export default function FloatingInput({
   type = "text",
   value,
   onChange,
+  disabled = false,
 }: {
   label: string;
   type?: string;
   value: string;
   onChange: (e: any) => void;
+  disabled?: boolean;
 }) {
   const isFilled = value.length > 0;
 
@@ -32,13 +34,11 @@ export default function FloatingInput({
         <input
           type={type}
           value={value}
-          onChange={onChange}
-          required
+          onChange={disabled ? undefined : onChange}
+          disabled={disabled}
+          required={!disabled}
           placeholder={label}
-          className="
-            w-full bg-transparent outline-none text-red-100
-            placeholder:text-red-400/50
-          "
+          className="w-full bg-transparent outline-none text-red-100 placeholder:text-red-400/50"
         />
       </fieldset>
     </div>
