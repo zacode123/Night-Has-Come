@@ -101,11 +101,12 @@ export async function deletePlayer(playerId: string) {
 
 export async function createRoom(name: string) {
   await ensureAdmin();
-
+  const room_code = crypto.randomUUID().replace(/-/g, '').toUpperCase().slice(0, 10);
   const { data, error } = await supabaseAdmin
     .from('rooms')
     .insert({
       name,
+      room_code,
       status: 'waiting'
     })
     .select()
