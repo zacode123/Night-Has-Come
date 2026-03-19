@@ -10,6 +10,7 @@ import Cookies from 'js-cookie';
 import { supabase } from '@/lib/supabaseClient';
 import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from "@/components/DrippingText";
+import FloatingInput from "@/components/FloatingInput";
 import GlobalTouchGlow from '@/components/GlobalTouchGlow';
 import Background3D from '@/components/Background3D';
 import { getPersonalityBorder } from '@/lib/personalityBorder';
@@ -508,86 +509,45 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder=" "
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 focus:shadow-[0_0_10px_rgba(220,38,38,0.4) transition-colors"
-                    />
-                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-white/10 backdrop-blur-md px-2
-                      peer-placeholder-shown:top-1/2
-                      peer-placeholder-shown:text-base
-                      peer-focus:top-0
-                      peer-focus:text-sm
-                      peer-focus:left-2
-                      peer-not-placeholder-shown:top-0
-                      peer-not-placeholder-shown:text-sm"
-                    >Username</label>
-                  </div>
+                  <FloatingInput
+                    label= "Username"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
 
-                  <div className="relative">
-                    <input
-                      type={showSignUpPassword ? "text" : "password"}
-                      placeholder=" "
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 focus:shadow-[0_0_10px_rgba(220,38,38,0.4) transition-colors"
-                    />
-                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-white/10 backdrop-blur-md px-2
-                      peer-placeholder-shown:top-1/2
-                      peer-placeholder-shown:text-base
-                      peer-focus:top-0
-                      peer-focus:text-sm
-                      peer-focus:left-2
-                      peer-not-placeholder-shown:top-0
-                      peer-not-placeholder-shown:text-sm"
-                    >Password</label>
-                    <button
-                      type="button"
-                      onClick={() => setShowSignUpPassword(prev => !prev)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-200"
-                    >
-                      {showSignUpPassword ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/></svg>
-                      ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>
-                      )}
-                    </button>
-                  </div>
-                  
-                  <div className="relative">
-                    <input
-                      type="number"
-                      placeholder=" "
-                      value={age}
-                      onChange={(e) => setAge(e.target.value)}
-                      required
-                      className="peer w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 focus:outline-none focus:border-red-500 focus:border-3 focus:shadow-[0_0_10px_rgba(220,38,38,0.4) transition-colors"
-                    />
-                    <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-base transition-all duration-200 bg-white/10 backdrop-blur-md px-2
-                      peer-placeholder-shown:top-1/2
-                      peer-placeholder-shown:text-base
-                      peer-focus:top-0
-                      peer-focus:text-sm
-                      peer-focus:left-2
-                      peer-not-placeholder-shown:top-0
-                      peer-not-placeholder-shown:text-sm"
-                    >Age (10-20)</label>
-                  </div>
+                  <FloatingInput
+                    label= "Password"
+                    type={showSignUpPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSignUpPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-200"
+                  >
+                    {showSignUpPassword ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>
+                    )}
+                  </button>
 
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Coming Soon"
-                      disabled
-                      className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 cursor-not-allowed"
-                    />
-                    <label className="absolute left-4 -top-2 text-red-400 text-sm bg-white/10 backdrop-blur-md px-2">Special Feature</label>
-                  </div>
+                  <FloatingInput
+                    label= "Age (10-20)"
+                    type="number"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Coming Soon"
+                    disabled
+                    className="w-full bg-red-950/20 border border-red-900/50 rounded-lg px-4 py-3 text-red-100 cursor-not-allowed"
+                  />
+                  <label className="absolute left-4 -top-2 text-red-400 text-sm bg-white/10 backdrop-blur-md px-2">Special Feature</label>
                 </div>
 
                 <div>
@@ -692,62 +652,32 @@ export default function Home() {
                   {signInError}
                 </div>
               )}
-
+              
               <form onSubmit={handleSignIn} className="space-y-6">
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={SignInName}
-                    onChange={(e) => setSignInName(e.target.value)}
-                    placeholder=" "
-                    className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
-                    required
-                  />
-                  <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-white/10 backdrop-blur-md px-2
-                    peer-placeholder-shown:top-1/2
-                    peer-placeholder-shown:text-base
-                    peer-focus:top-0
-                    peer-focus:text-sm
-                    peer-focus:left-2
-                    peer-not-placeholder-shown:top-0
-                    peer-not-placeholder-shown:text-sm"
-                  >
-                    Username
-                  </label>
-                </div>
+                <FloatingInput
+                  label= "Username"
+                  type="text"
+                  value={SignInName}
+                  onChange={(e) => setSignInName(e.target.value)}
+                />
 
-                <div className="relative">
-                  <input
-                    type={showSignInPassword ? "text" : "password"}
-                    value={SignInPassword}
-                    onChange={(e) => setSignInPassword(e.target.value)}
-                    placeholder=" "
-                    className="peer w-full px-4 pt-6 pb-2 bg-red-950/20 border border-red-900/50 focus:border-3 focus:border-red-500 focus:outline-none rounded-lg text-red-100 placeholder-transparent"
-                    required
-                  />
-                  <label className="absolute left-4 top-1/2 -translate-y-1/2 text-red-400 text-sm transition-all duration-200 bg-white/10 backdrop-blur-md px-2
-                    peer-placeholder-shown:top-1/2
-                    peer-placeholder-shown:text-base
-                    peer-focus:top-0
-                    peer-focus:text-sm
-                    peer-focus:left-2
-                    peer-not-placeholder-shown:top-0
-                    peer-not-placeholder-shown:text-sm"
-                  >
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowSignInPassword(prev => !prev)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-200"
-                  >
-                    {showSignInPassword ? (
-                      <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/></svg>
-                    ) : (
-                      <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>
-                    )}
-                  </button>
-                </div>
+                <FloatingInput
+                  label= "Password"
+                  type={showSignInPassword ? "text" : "password"}
+                  value={SignInPassword}
+                  onChange={(e) => setSignInPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSignInPassword(prev => !prev)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-200"
+                >
+                  {showSignInPassword ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>
+                  )}
+                </button>
 
                 <button
                   type="submit"
