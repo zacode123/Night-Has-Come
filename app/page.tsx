@@ -609,7 +609,7 @@ export default function Home() {
                     setShowSignInModal(true)
                   }}
                   className="text-center text-sm text-white/70 mt-4 cursor-pointer hover:text-white/90"
-                >Already have an account?<span className="text-red-500 hover:text-red-400"> Sign in</span></p>
+                >Already have an account?<span className="text-red-500 hover:text-red-400">Sign in</span></p>
               </form>
             </motion.div>
           </motion.div>
