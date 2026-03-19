@@ -1,4 +1,4 @@
-function FloatingInput({
+export default function FloatingInput({
   label,
   type = "text",
   value,
