@@ -549,6 +549,7 @@ export default function Home() {
                     value="Coming Soon"
                     disabled
                   />
+                </div>
 
                 <div>
                   <label className="block text-sm text-red-400 mb-2 uppercase tracking-wider">Choose Your Personality</label>
