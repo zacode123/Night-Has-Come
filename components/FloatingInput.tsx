@@ -33,6 +33,7 @@ function FloatingInput({
           type={type}
           value={value}
           onChange={onChange}
+          required
           placeholder={label}
           className="
             w-full bg-transparent outline-none text-red-100
