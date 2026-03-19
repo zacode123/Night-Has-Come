@@ -560,11 +560,11 @@ export default function Home() {
                           audioEngine.playSelect();
                           setPersonality(p.id);
                         }}
-                        className={`cursor-pointer p-3 rounded-lg transition-all ${
+                        className={`cursor-pointer p-3 rounded-lg transition-all backdrop-blur-md border ${
                           personality === p.id 
-                            ? 'bg-red-900/50 border-2 border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.3)]' 
-                            : 'bg-black/50 border border-red-800 focus:border-red-400 focus:shadow-[0_0_10px_rgba(220,38,38,0.4)'
-                        }`}
+                          ? 'bg-red-500/20 border-red-400/40 shadow-[0_0_20px_rgba(220,38,38,0.25)] scale-[1.02]' 
+                          : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                       }`}
                       >
                         <div className="text-red-200 font-medium mb-1">{p.id}</div>
                         <div className="text-red-500/70 text-xs">{p.desc}</div>
@@ -581,7 +581,7 @@ export default function Home() {
                       audioEngine.playClick();
                       setShowSignUpModal(false);
                     }}
-                    className="flex-1 py-3 border border-red-700/50 text-red-500 rounded-lg focus:border-2 focus:border-red-500 transition-colors"
+                    className="flex-1 py-3 bg-black/20 backdrop-blur-sm border border-red-500/30 text-red-400 rounded-lg hover:bg-black/30 hover:border-red-400 focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:border-red-400 transition-all"
                   >
                     Back
                   </button>
