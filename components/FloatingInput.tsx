@@ -1,12 +1,12 @@
 export default function FloatingInput({
   label,
-  type = "text",
+  type,
   value,
   onChange,
   disabled = false,
 }: {
   label: string;
-  type?: string;
+  type: string;
   value: string;
   onChange?: (e: any) => void;
   disabled?: boolean;
