@@ -94,9 +94,9 @@ export default function FloatingInput({
           position: absolute;
           pointer-events: none;
           user-select: none;
-          font-size: 1.3rem;
+          font-size: 1.1rem;
           color: var(--label-idle);
-          top: 60%;
+          top: 55%;
           left: 23px;
           transform: translateY(-50%) scale(1);
           transform-origin: left center;
@@ -111,7 +111,7 @@ export default function FloatingInput({
         .fi-wrap fieldset:focus-within ~ .fi-label,
         .fi-wrap.fi-filled .fi-label {
           color: var(--label-active);
-          top: 4%;
+          top: 6%;
           left: 20px;
           transform: translateY(-50%) scale(0.78);
           transition:
