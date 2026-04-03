@@ -97,7 +97,7 @@ export default function FloatingInput({
           font-size: 0.875rem;
           color: var(--label-idle);
           top: 50%;
-          left: 14px;
+          left: 19px;
           transform: translateY(-50%) scale(1);
           transform-origin: left center;
           transition:
