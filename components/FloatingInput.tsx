@@ -94,10 +94,10 @@ export default function FloatingInput({
           position: absolute;
           pointer-events: none;
           user-select: none;
-          font-size: 0.875rem;
+          font-size: 1rem;
           color: var(--label-idle);
           top: 50%;
-          left: 19px;
+          left: 25px;
           transform: translateY(-50%) scale(1);
           transform-origin: left center;
           transition:
