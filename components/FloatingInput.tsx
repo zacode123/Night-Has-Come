@@ -111,7 +111,7 @@ export default function FloatingInput({
         .fi-wrap fieldset:focus-within ~ .fi-label,
         .fi-wrap.fi-filled .fi-label {
           color: var(--label-active);
-          top: 6%;
+          top: 10%;
           left: 20px;
           transform: translateY(-50%) scale(0.78);
           transition:
