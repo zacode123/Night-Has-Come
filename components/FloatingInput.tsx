@@ -74,7 +74,7 @@ export default function FloatingInput({
         .fi-wrap fieldset:focus-within legend,
         .fi-wrap.fi-filled legend {
           max-width: 200px;
-          padding: 0 4px;
+          padding: 0 6px 0 4px;
         }
 
         .fi-wrap input {
