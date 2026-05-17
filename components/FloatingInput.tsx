@@ -25,7 +25,7 @@ export default function FloatingInput({
       '--border-active': '#ef4444',
       '--glow':          '0 0 0 1px rgba(239,68,68,0.2), 0 0 16px rgba(220,38,38,0.25)',
       '--label-idle':    'rgba(252,165,165,0.7)',
-      '--label-active':  '#dc2626',
+      '--label-active':  '#fb7185',
       '--bg':            'rgba(80,10,10,0.55)',
     },
     blue: {
