@@ -25,7 +25,7 @@ export default function FloatingInput({
       '--border-active': '#ef4444',
       '--glow':          '0 0 0 1px rgba(239,68,68,0.2), 0 0 16px rgba(220,38,38,0.25)',
       '--label-idle':    'rgba(252,165,165,0.7)',
-      '--label-active':  '#f87171',
+      '--label-active':  '#ef4444',
       '--bg':            'rgba(80,10,10,0.55)',
     },
     blue: {
@@ -33,7 +33,7 @@ export default function FloatingInput({
       '--border-active': '#3b82f6',
       '--glow':          '0 0 0 1px rgba(59,130,246,0.2), 0 0 16px rgba(37,99,235,0.25)',
       '--label-idle':    'rgba(147,197,253,0.7)',
-      '--label-active':  '#60a5fa',
+      '--label-active':  '#3b82f6',
       '--bg':            'rgba(10,20,60,0.55)',
     },
   }[color];
@@ -123,7 +123,7 @@ export default function FloatingInput({
       `}</style>
 
       <div
-        className={`fi-wrap${isFilled ? ' fi-filled' : ''}`}
+        className={`fi-wrap${isFilled || disabled ? ' fi-filled' : ''}`}
         style={t as React.CSSProperties}
       >
         <fieldset>
