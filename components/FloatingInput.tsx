@@ -17,7 +17,7 @@ export default function FloatingInput({
   disabled?: boolean;
   color?: Color;
 }) {
-  const isFilled = value.length > 0 || disabled;
+  const isFilled = value.length > 0;
 
   const t = {
     red: {
