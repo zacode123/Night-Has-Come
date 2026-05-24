@@ -71,6 +71,26 @@ export default function AdminPage() {
     if (isLoginInvalid) return;
     setIsProcessing(true);
     setLoginError('');
+    if (username.length < 3) {
+      setLoginError('Minimum username length is 3!');
+      setIsProcessing(false);
+      return;
+    }
+    if (username.length > 20) {
+      setLoginError('Maximum username length is 20!');
+      setIsProcessing(false);
+      return;
+    }
+    if (password.length < 6) {
+      setLoginError('Minimum password length is 6!');
+      setIsProcessing(false);
+      return;
+    }
+    if (password.length > 10) {
+      setLoginError('Maximum password length is 10!');
+      setIsProcessing(false);
+      return;
+    }
     const res = await loginAdmin(username, password);
     if (res.success) {
       setIsLoggedIn(true);
