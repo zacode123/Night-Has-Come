@@ -114,33 +114,26 @@ export default function Home() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSignInError('');
     if (SignInName.length < 3) {
       setSignInError('Minimum username length is 3!');
       setIsSubmitting(false);
       return;
-    } else {
-      setSignInError('');
     }
     if (SignInName.length > 20) {
       setSignInError('Maximum username length is 20!');
       setIsSubmitting(false);
       return;
-    } else {
-      setSignInError('');
     }
     if (SignInPassword.length < 6) {
       setSignInError('Minimum password length is 6!');
       setIsSubmitting(false);
       return;
-    } else {
-      setSignInError('');
     }
     if (SignInPassword.length > 10) {
       setSignInError('Maximum password length is 10!');
       setIsSubmitting(false);
       return;
-    } else {
-      setSignInError('');
     }
     const password_hash = await hash(SignInPassword);
     const {data} = await supabase.from('players').select('*').eq('username', SignInName).eq('password_hash', password_hash).single();
@@ -148,8 +141,6 @@ export default function Home() {
       setSignInError('Invalid username or password!');
       setIsSubmitting(false);
       return;
-    } else{
-      setSignInError('');
     }
     localStorage.setItem('playerId', data.id);
     Cookies.set('playerId', data.id, {expires:7});
@@ -171,8 +162,6 @@ export default function Home() {
     if (file.size > 2 * 1024 * 1024) {
       setSignUpError("Image must be smaller than 2MB!");
       return;
-    } else {
-      setSignUpError('');
     }
 
     const reader = new FileReader();
@@ -234,41 +223,32 @@ export default function Home() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSignUpError('');
     if (name.length < 3) {
       setSignUpError('Minimum username length is 3!');
       setIsSubmitting(false);
       return;
-    } else {
-      setSignUpError('');
     }
     if (name.length > 20) {
       setSignUpError('Maximum username length us 20!');
       setIsSubmitting(false);
       return;
-    } else {
-      setSignUpError('');
     }
     if (password.length < 6) {
       setSignUpError('Minimum password length is 6!');
       setIsSubmitting(false);
       return;
-    } else {
-      setSignUpError('');
     }
     if (password.length > 10) {
       setSignUpError('Maximum password length us 10!');
       setIsSubmitting(false);
       return;
-    } else {
-      setSignUpError('');
     }
     const ageNum = parseInt(age);
     if (isNaN(ageNum) || ageNum < 10 || ageNum > 20) {
       setSignUpError('Age must be between 10 and 20.');
       setIsSubmitting(false);
       return;
-    } else {
-      setSignUpError('');
     }
     
     try {
@@ -283,19 +263,14 @@ export default function Home() {
         setSignUpError('User already registered! Please login.');
         setIsSubmitting(false);
         return;
-      } else {
-        setSignUpError('');
       }
 
       if (name.toLowerCase().includes('@zahid')) {
-        setSignUpError('');
         setName(name.replace('@', ''));
       } else if (name.toLowerCase().includes('zahid')) {
         setSignUpError('Are you trying to be oversmart? Please choose another name.');
         setIsSubmitting(false);
         return;
-      } else {
-        setSignUpError('');
       }
 
       const password_hash = await hash(password);
