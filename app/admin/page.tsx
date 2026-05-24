@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { audioEngine } from '@/lib/audioEngine';
 import { getPersonalityBorder } from '@/lib/personalityBorder';
+import FloatingInput from "@/components/FloatingInput";
 import { motion } from 'motion/react';
 import {
   loginAdmin,
@@ -214,43 +215,23 @@ export default function AdminPage() {
        <form onSubmit={handleLogin} className="space-y-6">  
 
          <div className="relative">  
-           <input  
-             placeholder=" "  
-             value={username}  
-             minLength={3}
-             maxLength={20}
-             required
-             onChange={e => setUsername(e.target.value)}  
-             className="peer w-full bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"  
-           />  
-
-           <label className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-md transition-all duration-200  
-             peer-focus:top-1 peer-focus:translate-y-0 peer-focus:text-sm peer-focus:text-blue-400  
-             peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:text-sm  
-             px-1 bg-black/40 backdrop-blur-md">  
-             Username  
-           </label>  
+           <FloatingInput
+             label="Username"
+             type="text"
+             value={username}
+             color="blue"
+             onChange={e => setUsername(e.target.value)}
+           />
          </div>  
 
          <div className="relative">  
-           <input  
-             type={showPassword ? 'text' : 'password'}  
-             placeholder=" "  
-             value={password}  
-             minLength={6}
-             maxLength={20}
-             required
-             onChange={e => setPassword(e.target.value)}  
-             className="peer w-full bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"  
-           />  
-
-           <label className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-md transition-all duration-200  
-             peer-focus:top-1 peer-focus:translate-y-0 peer-focus:text-sm peer-focus:text-blue-400  
-             peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:translate-y-0 peer-not-placeholder-shown:text-sm  
-             px-1 bg-black/40 backdrop-blur-md">  
-             Password  
-           </label>  
-
+           <FloatingInput
+             label="Password"
+             type={showPassword ? 'text' : 'password'}
+             value={password}
+             color="blue"
+             onChange={e => setPassword(e.target.value)}
+           />
            <button  
              type="button"  
              onClick={() => setShowPassword(prev => !prev)}  
