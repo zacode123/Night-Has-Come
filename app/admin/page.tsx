@@ -354,39 +354,43 @@ export default function AdminPage() {
       </div>
 
       {/* Approved */}
-      <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
-        <h2 className="text-xl mb-4">Approved Players</h2>
-        <div className="space-y-3 sm:space-y-4">
-          {approvedPlayers.map(player => (
-            <PlayerCard 
-              key={player.id} 
-              player={player} 
-              onLongPress={openPlayerModal}
-              onReject={(p) => openConfirm('Remove', p.username, () => handleRejectPlayer(p.id), 'danger')}
-              actionType="approved"
-              isProcessing={isProcessing}
-            />
-          ))}
+      {approvedPlayers.length > 0 && (
+        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
+          <h2 className="text-xl mb-4">Approved Players</h2>
+          <div className="space-y-3 sm:space-y-4">
+            {approvedPlayers.map(player => (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                onLongPress={openPlayerModal}
+                onReject={(p) => openConfirm('Remove', p.username, () => handleRejectPlayer(p.id), 'danger')}
+                actionType="approved"
+                isProcessing={isProcessing}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Rejected */}
-      <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
-        <h2 className="text-xl mb-4">Rejected Players</h2>
-        <div className="space-y-3 sm:space-y-4">
-          {rejectedPlayers.map(player => (
-            <PlayerCard 
-              key={player.id} 
-              player={player}
-              onLongPress={openPlayerModal}
-              onApprove={(p) => openConfirm('Approve', p.username, () => handleApprovePlayer(p.id), 'success')}
-              onDelete={(p) => openConfirm('Delete', p.username, () => handleDeletePlayer(p.id), 'danger')}
-              actionType="rejected"
-              isProcessing={isProcessing}
-            />
-          ))}
+      {rejectedPlayers.length > 0 && (
+        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
+          <h2 className="text-xl mb-4">Rejected Players</h2>
+          <div className="space-y-3 sm:space-y-4">
+            {rejectedPlayers.map(player => (
+              <PlayerCard
+                key={player.id}
+                player={player}
+                onLongPress={openPlayerModal}
+                onApprove={(p) => openConfirm('Approve', p.username, () => handleApprovePlayer(p.id), 'success')}
+                onDelete={(p) => openConfirm('Delete', p.username, () => handleDeletePlayer(p.id), 'danger')}
+                actionType="rejected"
+                isProcessing={isProcessing}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Rooms */}
       <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
