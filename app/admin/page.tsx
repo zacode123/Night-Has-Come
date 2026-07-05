@@ -203,7 +203,7 @@ export default function AdminPage() {
   const hasPendingRequests = pendingPlayers.length > 0;
 
   const canStartGame = waitingRoom && players.filter(p => p.room_id === waitingRoom.id && p.status === 'approved').length >= gameConfig.minPlayers;
-  const canStopGame = /*Add if game has started*/ true;
+  const canStopGame = rooms.some(r => r.status === 'in_game');
 
   // ---------------- LOADING ----------------
   if (isLoading) return (
@@ -300,27 +300,31 @@ export default function AdminPage() {
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
 
         <div className="flex gap-3 flex-wrap">
-          <button
-            onMouseEnter={() => audioEngine.playHover()}
-            onClick={() => {
-              audioEngine.playClick();
-              setShowRoomModal(true);
-            }} 
-            disabled={!canStartGame || isProcessing}
-            className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-lg shadow">
-            {isProcessing ? 'Starting...' : 'Start Game'}
-          </button>
+          { canStartGame && (
+            <button
+              onMouseEnter={() => audioEngine.playHover()}
+              onClick={() => {
+                audioEngine.playClick();
+                setShowRoomModal(true);
+              }} 
+              disabled={isProcessing}
+              className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-lg shadow">
+              {isProcessing ? 'Starting...' : 'Start Game'}
+            </button>
+          )}
 
-          <button
-             onMouseEnter={() => audioEngine.playHover()}
-             onClick={() => {
-               audioEngine.playClick();
-               handleStopGame();
-            }}
-            disabled={!canStopGame || isProcessing}
-            className="px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg shadow">
-            Stop Game
-          </button>
+          { canStopGame && (
+            <button
+               onMouseEnter={() => audioEngine.playHover()}
+               onClick={() => {
+                 audioEngine.playClick();
+                 handleStopGame();
+              }}
+              disabled={isProcessing}
+              className="px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg shadow">
+              {isProcessing ? 'Stopping...' : 'Stop Game'}
+            </button>
+          )}
 
           <button
             onMouseEnter={() => audioEngine.playHover()}
