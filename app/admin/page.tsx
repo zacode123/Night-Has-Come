@@ -202,10 +202,8 @@ export default function AdminPage() {
 
   const hasPendingRequests = pendingPlayers.length > 0;
 
-  const canStartGame =
-    !hasPendingRequests &&
-    waitingRoom &&
-    players.filter(p => p.room_id === waitingRoom.id && p.status === 'approved').length >= gameConfig.minPlayers;
+  const canStartGame = waitingRoom && players.filter(p => p.room_id === waitingRoom.id && p.status === 'approved').length >= gameConfig.minPlayers;
+  const canStopGame = /*Add if game has started*/ true;
 
   // ---------------- LOADING ----------------
   if (isLoading) return (
@@ -319,6 +317,7 @@ export default function AdminPage() {
                audioEngine.playClick();
                handleStopGame();
             }}
+            disabled={!canStopGame || isProcessing}
             className="px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg shadow">
             Stop Game
           </button>
