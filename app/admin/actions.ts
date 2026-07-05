@@ -75,7 +75,7 @@ export async function approvePlayer(playerId: string, roomId: string) {
 export async function rejectPlayer(playerId: string) {
   await ensureAdmin();
 
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from('players')
     .update({
       status: 'rejected',
@@ -83,17 +83,19 @@ export async function rejectPlayer(playerId: string) {
     })
     .eq('id', playerId);
 
+  if (error) return { success: false, error: error.message };
   return { success: true };
 }
 
 export async function deletePlayer(playerId: string) {
   await ensureAdmin();
 
-  await supabaseAdmin
+  const { error } = await supabaseAdmin
     .from('players')
     .delete()
     .eq('id', playerId);
 
+  if (error) return { success: false, error: error.message };
   return { success: true };
 }
 
