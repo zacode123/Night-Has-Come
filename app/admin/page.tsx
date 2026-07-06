@@ -20,7 +20,7 @@ import {
 } from './actions';
 import { gameConfig } from '@/config/gameConfig';
 import PlayerCard from '@/components/PlayerCard';
-import { AlertTriangle, CheckCircle, Info, XCircle, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, XCircle, X, Trash2 } from 'lucide-react';
 
 // --- TYPES FOR NOTIFICATIONS ---
 type NotificationType = 'success' | 'error' | 'warning' | 'info';
