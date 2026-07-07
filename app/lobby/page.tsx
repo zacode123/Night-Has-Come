@@ -28,8 +28,7 @@ export default function WaitingLobby() {
         .maybeSingle();
 
       if (!data) {
-        localStorage.removeItem('playerId');
-        router.push('/rejected');
+        router.push('/');
         return;
       }
 
@@ -39,7 +38,6 @@ export default function WaitingLobby() {
       }
 
       if (data.status === 'rejected') {
-        localStorage.removeItem('playerId');
         router.push('/rejected');
         return;
       }
@@ -66,7 +64,6 @@ export default function WaitingLobby() {
 
             if (newStatus === 'rejected') {
               audioEngine.stopAmbient();
-              localStorage.removeItem('playerId');
               router.push('/rejected');
             }
           }
@@ -81,7 +78,6 @@ export default function WaitingLobby() {
           },
           () => {
             audioEngine.stopAmbient();
-            localStorage.removeItem('playerId');
             router.push('/rejected');
           }
         )
