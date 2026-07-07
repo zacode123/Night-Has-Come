@@ -17,13 +17,7 @@ export default function StartedPage() {
       audioEngine.stopAmbient();
     };
   }, []);
-
-  const handleHome = () => {
-    audioEngine.playClick();
-    audioEngine.stopAmbient();
-    router.push('/');
-  };
-
+  
   return (
     <div className="min-h-screen bg-black text-zinc-200 flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute inset-0 z-0">
