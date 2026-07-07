@@ -15,7 +15,6 @@ export default function RejectedPage() {
 
   useEffect(() => {
     let channel: RealtimeChannel | null = null;
-    audioEngine.startMainMenuAmbient();
 
     const init = async () => {
       const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
@@ -41,6 +40,8 @@ export default function RejectedPage() {
         return;
       }
 
+      audioEngine.startMainMenuAmbient();
+      
       if (playerId) {
         channel = supabase
           .channel(`rejected_watch_${playerId}`)
