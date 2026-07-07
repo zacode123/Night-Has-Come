@@ -35,7 +35,6 @@ export default function RejectedPage() {
         return;
       }
       
-
       if (player.status === 'approved') {
         router.push('/approved');
         return;
