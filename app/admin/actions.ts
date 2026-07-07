@@ -166,15 +166,12 @@ export async function startGame(roomId: string) {
     return { success: false, error: 'Not enough players' };
   }
 
-  const hostId = players[0].id; // first player becomes host
-
   const { error } = await supabaseAdmin
     .from('rooms')
     .update({
       status: 'in_game',
-      phase: 'Night',
-      day_number: 1,
-      host_id: hostId
+      phase: 'DAY',
+      day_number: 1
     })
     .eq('id', roomId);
 
@@ -187,23 +184,13 @@ export async function stopGame(roomId: string) {
   await ensureAdmin();
 
   try {
-    // remove players from room
-    await supabaseAdmin
-      .from('players')
-      .update({
-        room_id: null,
-        status: 'approved'
-      })
-      .eq('room_id', roomId);
-
     // reset room but KEEP it
     await supabaseAdmin
       .from('rooms')
       .update({
         status: 'waiting',
         phase: null,
-        day_number: null,
-        host_id: null
+        day_number: null
       })
       .eq('id', roomId);
 
