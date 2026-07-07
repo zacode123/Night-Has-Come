@@ -463,19 +463,72 @@ export default function AdminPage() {
       {/* Approved */}
       {approvedPlayers.length > 0 && (
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
-          <h2 className="text-xl mb-4 font-semibold text-green-200">Approved Players</h2>
-          <div className="space-y-3 sm:space-y-4">
-            {approvedPlayers.map(player => (
-              <PlayerCard
-                key={player.id}
-                player={player}
-                onLongPress={openPlayerModal}
-                onReject={(p) => openConfirm('Remove', `Remove ${p.username} from the game?`, () => handleRejectPlayer(p.id), 'danger')}
-                actionType="approved"
-                isProcessing={isProcessing}
-              />
-            ))}
-          </div>
+          <h2 className="text-xl mb-6 font-semibold text-green-200">Approved Players (By Room)</h2>
+          
+          {/* Group players by their Room */}
+          {rooms.map(room => {
+            const roomPlayers = approvedPlayers.filter(p => p.room_id === room.id);
+            
+            // If no approved players are in this room, don't show the room header here
+            if (roomPlayers.length === 0) return null;
+
+            return (
+              <div key={room.id} className="mb-8 last:mb-0 bg-black/20 rounded-xl p-4 border border-white/5">
+                <div className="flex items-center flex-wrap gap-3 mb-4 border-b border-white/10 pb-3">
+                  <h3 className="text-lg font-bold text-white">
+                    {room.name}
+                  </h3>
+                  <span className="text-xs font-mono text-gray-400 bg-black/50 px-2 py-1 rounded-md border border-white/10">
+                    Code: {room.room_code}
+                  </span>
+                  <span className="text-xs text-green-400 bg-green-900/30 border border-green-900 px-2 py-1 rounded-full">
+                    {roomPlayers.length} / {gameConfig.minPlayers} Min Players
+                  </span>
+                </div>
+                
+                <div className="space-y-3 sm:space-y-4">
+                  {roomPlayers.map(player => (
+                    <PlayerCard
+                      key={player.id}
+                      player={player}
+                      onLongPress={openPlayerModal}
+                      onReject={(p) => openConfirm('Remove', `Remove ${p.username} from the game?`, () => handleRejectPlayer(p.id), 'danger')}
+                      actionType="approved"
+                      isProcessing={isProcessing}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Fallback for approved players without a valid room (e.g. if a room was deleted improperly) */}
+          {(() => {
+            const orphanedPlayers = approvedPlayers.filter(p => !rooms.some(r => r.id === p.room_id));
+            if (orphanedPlayers.length === 0) return null;
+            
+            return (
+              <div className="mb-8 last:mb-0 bg-red-900/10 rounded-xl p-4 border border-red-900/30">
+                <div className="flex items-center gap-2 mb-4 border-b border-red-900/30 pb-3">
+                  <h3 className="text-lg font-bold text-red-400">
+                    Unassigned / Unknown Room
+                  </h3>
+                </div>
+                <div className="space-y-3 sm:space-y-4">
+                  {orphanedPlayers.map(player => (
+                    <PlayerCard
+                      key={player.id}
+                      player={player}
+                      onLongPress={openPlayerModal}
+                      onReject={(p) => openConfirm('Remove', `Remove ${p.username}?`, () => handleRejectPlayer(p.id), 'danger')}
+                      actionType="approved"
+                      isProcessing={isProcessing}
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
