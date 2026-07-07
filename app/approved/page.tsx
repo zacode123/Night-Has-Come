@@ -17,47 +17,67 @@ export default function ApprovedPage() {
     let channel: RealtimeChannel | null = null;
     
     const init = async () => {
-      const playerId =
-        Cookies.get('playerId') || localStorage.getItem('playerId');
+      // 1. Get the player ID
+      const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
 
       if (!playerId) {
         router.push('/');
         return;
       }
 
+      // 2. Fetch the player securely. We use select('*') so we can flexibly catch
+      // whether your database links them via 'room_id' or 'room_code'.
       const { data: player } = await supabase
         .from('players')
-        .select('status')
+        .select('*')
         .eq('id', playerId)
         .maybeSingle();
 
-      if (!player) {
+      // 3. Handle missing or rejected players
+      if (!player || player.status === 'rejected') {
         localStorage.removeItem('playerId');
         Cookies.remove('playerId');
         router.push('/rejected');
         return;
       }
 
-      if (player.status === 'rejected') {
-        localStorage.removeItem('playerId');
-        Cookies.remove('playerId');
-        router.push('/rejected');
-        return;
+      // 4. Dynamically identify their room. 
+      // (This safely handles both common database architectures)
+      const playerRoomCode = player.room_code;
+      const playerRoomId = player.room_id;
+      
+      if (!playerRoomCode && !playerRoomId) {
+         // Failsafe: If they somehow have no room assigned, send them home
+         router.push('/');
+         return;
       }
 
+      const roomQueryColumn = playerRoomCode ? 'room_code' : 'id';
+      const roomQueryValue = playerRoomCode || playerRoomId;
+
+      // 5. Fetch their specific room's status
       const { data: room } = await supabase
         .from('rooms')
-        .select('status')
-        .eq('room_code', 'MAFIA')
+        .select('room_code, status')
+        .eq(roomQueryColumn, roomQueryValue)
         .single();
 
-      if (room?.status === 'in_game') {
-        router.push('/game/MAFIA');
+      if (!room) {
+        router.push('/');
+        return;
+      }
+
+      const dynamicRoomCode = room.room_code;
+
+      // 6. If the game already started, push them to their dynamic room URL
+      if (room.status === 'in_game') {
+        router.push(`/game/${dynamicRoomCode}`);
         return;
       }
 
       audioEngine.startMainMenuAmbient();
 
+      // 7. Set up listeners dynamically bound to their specific room
       channel = supabase
         .channel(`approved_room_${playerId}`)
         .on(
@@ -66,12 +86,12 @@ export default function ApprovedPage() {
             event: 'UPDATE',
             schema: 'public',
             table: 'rooms',
-            filter: 'room_code=eq.MAFIA',
+            filter: `room_code=eq.${dynamicRoomCode}`, // <-- DYNAMIC FILTER!
           },
           (payload) => {
             if (payload.new.status === 'in_game') {
               audioEngine.stopAmbient();
-              router.push('/game/MAFIA');
+              router.push(`/game/${dynamicRoomCode}`); // <-- DYNAMIC ROUTE!
             }
           }
         )
