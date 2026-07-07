@@ -35,6 +35,11 @@ export default function RejectedPage() {
       return;
     }
 
+    if (player.status === 'pending') {
+      router.push('/lobby');
+      return;
+    }
+    
     let channel: RealtimeChannel | null = null;
 
     if (playerId) {
