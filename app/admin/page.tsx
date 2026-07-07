@@ -514,7 +514,7 @@ export default function AdminPage() {
                   }}
                   className="w-full bg-green-600 hover:bg-green-500 py-3 rounded-lg font-medium transition-colors"
                 >
-                  Start: {room.name}
+                  {room.name}
                 </button>
              ))}
              {rooms.filter(r => r.status === 'waiting').length === 0 && (
