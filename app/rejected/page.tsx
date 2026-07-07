@@ -26,7 +26,7 @@ export default function RejectedPage() {
     // 2. Fetch the player securely. 
     const { data: player } = await supabase
       .from('players')
-      .select('status, room_id')
+      .select('status')
       .eq('id', playerId)
       .maybeSingle();
 
