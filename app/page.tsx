@@ -50,34 +50,34 @@ export default function Home() {
 
   useEffect(() => {
     const checkStatus = async () => {
-      // First check if game has started
-      const { data: room } = await supabase
-        .from('rooms')
-        .select('status')
-        .eq('room_code', 'MAFIA')
-        .single();
-
-      const gameStarted = room?.status === 'started';
       const storedId = Cookies.get('playerId') || localStorage.getItem('playerId');
-
-      if (gameStarted) {
-        if (storedId) {
-          // If player exists, redirect to game
-          router.push('/game/MAFIA');
-        } else {
-          // If no player, redirect to "Game Started" page
-          router.push('/started');
-        }
-        return;
-      }
-
+      
       if (storedId) {
         const { data, error } = await supabase
           .from('players')
-          .select('status, username')
+          .select('status, username, room_id')
           .eq('id', storedId)
+          .maybeSingle();
+
+        const { data: room } = await supabase
+          .from('rooms')
+          .select('status')
+          .eq('room_id', data.room_id)
           .single();
-        
+
+        if (room?.status === 'in_game') {
+          router.push(`/game/${data.room_id}`);
+          return;
+        } else {
+          const { data: rooms } = await supabase
+            .from('rooms')
+            .select('status');
+
+          if (rooms?.some(room => room.status === 'in_game')) {
+            router.push('/started');
+          }
+        }
+
         if (data) {
           Cookies.set('playerStatus', data.status, { expires: 7 });
           
