@@ -14,54 +14,56 @@ export default function RejectedPage() {
   const router = useRouter();
 
   useEffect(() => {
-    audioEngine.startMainMenuAmbient();
-    
-    const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
-
-    if (!playerId) {
-      router.push('/');
-      return;
-    }
-
-    // 2. Fetch the player securely. 
-    const { data: player } = await supabase
-      .from('players')
-      .select('status')
-      .eq('id', playerId)
-      .maybeSingle();
-
-    if (player.status === 'approved') {
-      router.push('/approved');
-      return;
-    }
-
-    if (player.status === 'pending') {
-      router.push('/lobby');
-      return;
-    }
-    
     let channel: RealtimeChannel | null = null;
+    audioEngine.startMainMenuAmbient();
 
-    if (playerId) {
-      channel = supabase
-        .channel(`rejected_watch_${playerId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'players',
-            filter: `id=eq.${playerId}`,
-          },
-          (payload) => {
-            if (payload.new.status === 'approved') {
-              audioEngine.stopAmbient();
-              router.push('/approved');
+    const init = async () => {
+      const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
+
+      if (!playerId) {
+        router.push('/');
+        return;
+      }
+
+      const { data: player } = await supabase
+        .from('players')
+        .select('status')
+        .eq('id', playerId)
+        .maybeSingle();
+
+      if (player.status === 'approved') {
+        router.push('/approved');
+        return;
+      }
+
+      if (player.status === 'pending') {
+        router.push('/lobby');
+        return;
+      }
+
+      if (playerId) {
+        channel = supabase
+          .channel(`rejected_watch_${playerId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'players',
+              filter: `id=eq.${playerId}`,
+            },
+            (payload) => {
+              if (payload.new.status === 'approved') {
+                audioEngine.stopAmbient();
+                router.push('/approved');
+              }
             }
-          }
-        )
-        .subscribe();
+          )
+          .subscribe();
+      }
     }
+
+    init();
 
     return () => {
       if (channel) supabase.removeChannel(channel);
