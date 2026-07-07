@@ -57,16 +57,6 @@ export default function StartedPage() {
         <p className="text-xl text-zinc-400 mb-12 tracking-wider leading-relaxed">
           You cannot join the night once it has begun. Please wait for the next game to start.
         </p>
-
-        <motion.button
-          whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(220, 38, 38, 0.6)' }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleHome}
-          className="flex items-center gap-3 px-8 py-4 bg-red-700 hover:bg-red-600 text-white rounded-full font-bold tracking-widest transition-all shadow-lg"
-        >
-          <Home size={20} />
-          GO TO HOME
-        </motion.button>
       </motion.div>
     </div>
   );
