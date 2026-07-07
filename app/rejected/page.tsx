@@ -31,7 +31,6 @@ export default function RejectedPage() {
       .maybeSingle();
 
     if (player.status === 'approved') {
-      audioEngine.stopAmbient();
       router.push('/approved');
       return;
     }
