@@ -59,26 +59,18 @@ export default function Home() {
           .eq('id', storedId)
           .maybeSingle();
 
-        const { data: room } = await supabase
-          .from('rooms')
-          .select('status')
-          .eq('room_id', data.room_id)
-          .single();
-
-        if (room?.status === 'in_game') {
-          router.push(`/game/${data.room_id}`);
-          return;
-        } else {
-          const { data: rooms } = await supabase
-            .from('rooms')
-            .select('status');
-
-          if (rooms?.some(room => room.status === 'in_game')) {
-            router.push('/started');
-          }
-        }
-
         if (data) {
+          const { data: room } = await supabase
+            .from('rooms')
+            .select('status')
+            .eq('room_id', data.room_id)
+            .single();
+
+          if (room?.status === 'in_game') {
+            router.push(`/game/${data.room_id}`);
+            return;
+          }
+          
           Cookies.set('playerStatus', data.status, { expires: 7 });
           
           if (data.status === 'approved') {
@@ -92,6 +84,14 @@ export default function Home() {
           localStorage.removeItem('playerId');
           Cookies.remove('playerId');
           Cookies.remove('playerStatus');
+        }
+      } else {
+        const { data: rooms } = await supabase
+          .from('rooms')
+          .select('status');
+
+        if (rooms?.some(room => room.status === 'in_game')) {
+          router.push('/started');
         }
       }
     };
