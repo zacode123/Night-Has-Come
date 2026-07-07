@@ -56,7 +56,7 @@ export default function ApprovedPage() {
       // 5. Fetch their specific room's status
       const { data: room } = await supabase
         .from('rooms')
-        .select('room_code, status')
+        .select('status')
         .eq('id', playerRoomId)
         .single();
 
@@ -65,11 +65,9 @@ export default function ApprovedPage() {
         return;
       }
 
-      const dynamicRoomCode = room.room_code;
-
       // 6. If the game already started, push them to their dynamic room URL
       if (room.status === 'in_game') {
-        router.push(`/game/${dynamicRoomCode}`);
+        router.push(`/game/${playerRoomId}`);
         return;
       }
 
@@ -84,12 +82,12 @@ export default function ApprovedPage() {
             event: 'UPDATE',
             schema: 'public',
             table: 'rooms',
-            filter: `room_code=eq.${dynamicRoomCode}`, // <-- DYNAMIC FILTER!
+            filter: `id=eq.${playerRoomId}`, // <-- DYNAMIC FILTER!
           },
           (payload) => {
             if (payload.new.status === 'in_game') {
               audioEngine.stopAmbient();
-              router.push(`/game/${dynamicRoomCode}`); // <-- DYNAMIC ROUTE!
+              router.push(`/game/${playerRoomId}`); // <-- DYNAMIC ROUTE!
             }
           }
         )
