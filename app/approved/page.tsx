@@ -40,25 +40,24 @@ export default function ApprovedPage() {
         return;
       }
 
+      if (player.status !== 'approved') {
+        router.push('/lobby');
+        return;
+      }
+
       // 4. Dynamically identify their room. 
-      // (This safely handles both common database architectures)
-      const playerRoomCode = player.room_code;
       const playerRoomId = player.room_id;
       
-      if (!playerRoomCode && !playerRoomId) {
-         // Failsafe: If they somehow have no room assigned, send them home
+      if (!playerRoomId) {
          router.push('/');
          return;
       }
-
-      const roomQueryColumn = playerRoomCode ? 'room_code' : 'id';
-      const roomQueryValue = playerRoomCode || playerRoomId;
 
       // 5. Fetch their specific room's status
       const { data: room } = await supabase
         .from('rooms')
         .select('room_code, status')
-        .eq(roomQueryColumn, roomQueryValue)
+        .eq('id', playerRoomId)
         .single();
 
       if (!room) {
