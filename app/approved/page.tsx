@@ -25,11 +25,10 @@ export default function ApprovedPage() {
         return;
       }
 
-      // 2. Fetch the player securely. We use select('*') so we can flexibly catch
-      // whether your database links them via 'room_id' or 'room_code'.
+      // 2. Fetch the player securely. 
       const { data: player } = await supabase
         .from('players')
-        .select('*')
+        .select('status, room_id')
         .eq('id', playerId)
         .maybeSingle();
 
