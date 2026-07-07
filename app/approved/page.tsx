@@ -40,7 +40,7 @@ export default function ApprovedPage() {
         return;
       }
 
-      if (player.status !== 'approved') {
+      if (player.status === 'pending') {
         router.push('/lobby');
         return;
       }
