@@ -30,6 +30,12 @@ export default function RejectedPage() {
         .eq('id', playerId)
         .maybeSingle();
 
+      if (!player) {
+        router.push('/');
+        return;
+      }
+      
+
       if (player.status === 'approved') {
         router.push('/approved');
         return;
