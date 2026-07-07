@@ -15,9 +15,13 @@ export default function RejectedPage() {
 
   useEffect(() => {
     audioEngine.startMainMenuAmbient();
+    
+    const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
 
-    const playerId =
-      Cookies.get('playerId') || localStorage.getItem('playerId');
+    if (!playerId) {
+      router.push('/');
+      return;
+    }
 
     let channel: RealtimeChannel | null = null;
 
