@@ -23,6 +23,19 @@ export default function RejectedPage() {
       return;
     }
 
+    // 2. Fetch the player securely. 
+    const { data: player } = await supabase
+      .from('players')
+      .select('status, room_id')
+      .eq('id', playerId)
+      .maybeSingle();
+
+    if (player.status === 'approved') {
+      audioEngine.stopAmbient();
+      router.push('/approved');
+      return;
+    }
+
     let channel: RealtimeChannel | null = null;
 
     if (playerId) {
