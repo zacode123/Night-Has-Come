@@ -1,11 +1,11 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { createClient } from '@/utils/supabase/client'; // Adjust to your Supabase client path
+import { supabase } from '@/lib/supabaseClient';
 
 type RealtimeContextType = {
-  player: any | null; // Replace 'any' with your actual Player type
-  room: any | null;   // Replace 'any' with your actual Room type
+  player: any | null; 
+  room: any | null;   
   isLoading: boolean;
 };
 
@@ -24,12 +24,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [room, setRoom] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize your Supabase client (ensure this uses the browser singleton pattern)
-  const supabase = createClient(); 
-
   useEffect(() => {
     let isMounted = true;
-    let channel = supabase.channel('global-game-state');
+    const channel = supabase.channel('global-game-state');
 
     const initRealtime = async () => {
       // 1. Authenticate current user
@@ -69,14 +66,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'players', filter: `id=eq.${user.id}` },
           (payload) => {
-            const updatedPlayer = payload.new;
+            const updatedPlayer = payload.new as any;
             setPlayer(updatedPlayer);
 
-            // Dynamically handle if the player joins a new room or leaves one
-            if (updatedPlayer.room_id) {
+            // Handle moving between rooms or leaving a room dynamically
+            if (updatedPlayer && updatedPlayer.room_id) {
               setRoom((prevRoom) => {
                 if (prevRoom?.id !== updatedPlayer.room_id) {
-                  // Fetch the newly joined room
                   supabase
                     .from('rooms')
                     .select('*')
@@ -89,7 +85,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
                 return prevRoom;
               });
             } else {
-              setRoom(null); // Player left the room
+              setRoom(null); 
             }
           }
         )
@@ -97,10 +93,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'rooms' },
           (payload) => {
-            // Update the room state ONLY if it's the room the player is currently in
             setRoom((currentRoom) => {
-              if (currentRoom?.id === payload.new.id) {
-                // If it's a DELETE event, payload.new might be missing data depending on your replica settings
+              const targetId = payload.new?.id || payload.old?.id;
+              if (currentRoom?.id === targetId) {
                 return payload.eventType === 'DELETE' ? null : payload.new;
               }
               return currentRoom;
@@ -112,12 +107,16 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
     initRealtime();
 
-    // Cleanup channel on unmount
     return () => {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [supabase]);
+  }, []); // Empty array is completely safe now since supabase is a module import
+
+  if (isLoading) {
+    // Keeps your pure white screen overlay active during the initial setup
+    return <div className="fixed inset-0 bg-white z-[9999]" />;
+  }
 
   return (
     <RealtimeContext.Provider value={{ player, room, isLoading }}>
