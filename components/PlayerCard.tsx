@@ -38,7 +38,7 @@ export default function PlayerCard({
           src={player.avatar_base64 || defaultAvatar}
           alt={player.username}
           onClick={() => onLongPress(player)} // Makes profile pic trigger info popup
-          className={`w-14 h-14 rounded-full ml-1 object-cover border-2 cursor-pointer transition-transform hover:scale-105 ${getPersonalityBorder(player.personality)}`}
+          className={`w-14 h-14 rounded-full m-1 object-cover border-2 cursor-pointer transition-transform hover:scale-105 ${getPersonalityBorder(player.personality)}`}
         />
 
         <div className="flex flex-col truncate">
