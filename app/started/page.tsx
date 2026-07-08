@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { AlertTriangle, Home } from 'lucide-react';
 import { useRealtime } from '@/components/RealtimeProvider';
@@ -8,6 +9,7 @@ import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from '@/components/DrippingText';
 
 export default function StartedPage() {
+  const router = useRouter();
   const { player, room, isLoading } = useRealtime();
 
   useEffect(() => {
