@@ -59,11 +59,11 @@ export default function Home() {
     }
 
     if (room.status === 'in_game') {
-      if (!player) {
-        router.replace('/started');
+      if (player) {
+        router.replace(`/game/${room.id}`);
         return;
       } else {
-        router.replace(`/game/${room.id}`);
+        router.replace('/started');
         return;
       }
     }
@@ -87,6 +87,7 @@ export default function Home() {
     }
   }, [player, isLoading, router]);
 
+  useEffect(() => {
     const startAudioOnFirstClick = () => {
       audioEngine.init();
       audioEngine.startMainMenuAmbient();
