@@ -7,7 +7,7 @@ import EXIF from 'exif-js';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield } from 'lucide-react';
 import Cookies from 'js-cookie';
-import { supabase } from '@/lib/supabaseClient';
+import { useRealtime } from '@/components/RealtimeProvider';
 import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from "@/components/DrippingText";
 import FloatingInput from "@/components/FloatingInput";
@@ -34,6 +34,7 @@ export default function Home() {
   const isSignUpInvalid = isSubmitting || name.length < 3 || name.length > 20 || password.length < 6 || password.length > 10 || Number(age) < 10 || Number(age) > 20;
   const isSignInInvalid = SignInName.length < 3 || SignInName.length > 20 || SignInPassword.length < 6 || SignInPassword.length > 10;
   const router = useRouter();
+  const { player, isLoading } = useRealtime();
 
   const personalities = [
     { id: 'Leader', desc: 'Takes charge, makes decisions.' },
@@ -48,6 +49,26 @@ export default function Home() {
     { id: 'Rebellious', desc: 'Challenges rules, questions authority.' }
   ];
 
+  useEffect(() => {
+    if (isLoading || !player) return;
+
+    // Automatically route them if the admin changes their status
+    if (player.status === 'approved') {
+      router.replace('/approved');
+      return;
+    }
+
+    if (player.status === 'rejected') {
+      router.replace('/rejected');
+      return;
+    }
+
+    if (player.status === 'pending') {
+      router.replace('/lobby');
+      return;
+    }
+  }, [player, isLoading, router]);
+  
   useEffect(() => {
     const checkStatus = async () => {
       const storedId = Cookies.get('playerId') || localStorage.getItem('playerId');
