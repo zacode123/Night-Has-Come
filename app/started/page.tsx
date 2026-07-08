@@ -3,10 +3,38 @@
 import { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { AlertTriangle, Home } from 'lucide-react';
+import { useRealtime } from '@/components/RealtimeProvider';
 import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from '@/components/DrippingText';
 
 export default function StartedPage() {
+  const { player, room, isLoading } = useRealtime();
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (room.status === 'in_game' && player) {
+      router.replace(`/game/${room.id}`);
+      return;
+    }
+    
+    // Automatically route them if the admin changes their status
+    if (player.status === 'approved') {
+      router.replace('/approved');
+      return;
+    }
+
+    if (player.status === 'rejected') {
+      router.replace('/rejected');
+      return;
+    }
+
+    if (player.status === 'pending') {
+      router.replace('/lobby');
+      return;
+    }
+  }, [player, isLoading, router]);
+  
   useEffect(() => {
     audioEngine.startMainMenuAmbient();
 
