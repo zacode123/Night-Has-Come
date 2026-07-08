@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import Cookies from 'js-cookie';
 
 type RealtimeContextType = {
   player: any | null; 
@@ -29,10 +30,9 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const channel = supabase.channel('global-game-state');
 
     const initRealtime = async () => {
-      // 1. Authenticate current user
-      const { data: { user } } = await supabase.auth.getUser();
+      const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
 
-      if (!user) {
+      if (!playerId) {
         if (isMounted) setIsLoading(false);
         return;
       }
@@ -41,7 +41,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       const { data: initialPlayer } = await supabase
         .from('players')
         .select('*')
-        .eq('id', user.id)
+        .eq('id', playerId)
         .single();
 
       if (initialPlayer && isMounted) {
