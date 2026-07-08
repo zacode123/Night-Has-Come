@@ -21,7 +21,7 @@ export default function ApprovedPage() {
       const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
 
       if (!playerId) {
-        router.push('/');
+        router.replace('/');
         return;
       }
 
@@ -34,12 +34,12 @@ export default function ApprovedPage() {
 
       // 3. Handle missing or rejected players
       if (!player || player.status === 'rejected') {
-        router.push('/rejected');
+        router.replace('/rejected');
         return;
       }
 
       if (player.status === 'pending') {
-        router.push('/lobby');
+        router.replace('/lobby');
         return;
       }
 
@@ -47,7 +47,7 @@ export default function ApprovedPage() {
       const playerRoomId = player.room_id;
       
       if (!playerRoomId) {
-         router.push('/');
+         router.replace('/');
          return;
       }
 
@@ -59,13 +59,13 @@ export default function ApprovedPage() {
         .single();
 
       if (!room) {
-        router.push('/');
+        router.replace('/');
         return;
       }
 
       // 6. If the game already started, push them to their dynamic room URL
       if (room.status === 'in_game') {
-        router.push(`/game/${playerRoomId}`);
+        router.replace(`/game/${playerRoomId}`);
         return;
       }
 
@@ -85,7 +85,7 @@ export default function ApprovedPage() {
           (payload) => {
             if (payload.new.status === 'in_game') {
               audioEngine.stopAmbient();
-              router.push(`/game/${playerRoomId}`);
+              router.replace(`/game/${playerRoomId}`);
             }
           }
         )
@@ -100,7 +100,7 @@ export default function ApprovedPage() {
           (payload) => {
             if (payload.new.status === 'rejected') {
               audioEngine.stopAmbient();
-              router.push('/rejected');
+              router.replace('/rejected');
             }
           }
         )
@@ -114,7 +114,7 @@ export default function ApprovedPage() {
           },
           () => {
             audioEngine.stopAmbient();
-            router.push('/rejected');
+            router.replace('/rejected');
           }
         )
         .subscribe();
