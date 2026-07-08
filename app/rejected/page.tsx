@@ -5,75 +5,42 @@ import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { XCircle, RefreshCcw } from 'lucide-react';
 import Cookies from 'js-cookie';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabaseClient';
+import { useRealtime } from '@/components/RealtimeProvider';
 import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from '@/components/DrippingText';
 
 export default function RejectedPage() {
   const router = useRouter();
+  const { player, isLoading } = useRealtime(); // Grab live state
 
+  // Handle routing based on live state changes
   useEffect(() => {
-    let channel: RealtimeChannel | null = null;
+    if (isLoading) return;
 
-    const init = async () => {
-      const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
-
-      if (!playerId) {
-        router.replace('/');
-        return;
-      }
-
-      const { data: player } = await supabase
-        .from('players')
-        .select('status')
-        .eq('id', playerId)
-        .maybeSingle();
-
-      if (!player) {
-        router.replace('/');
-        return;
-      }
-      
-      if (player.status === 'approved') {
-        router.replace('/approved');
-        return;
-      }
-
-      if (player.status === 'pending') {
-        router.replace('/lobby');
-        return;
-      }
-
-      audioEngine.startMainMenuAmbient();
-
-      channel = supabase
-        .channel(`rejected_watch_${playerId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'players',
-            filter: `id=eq.${playerId}`,
-          },
-          (payload) => {
-            if (payload.new.status === 'approved') {
-              audioEngine.stopAmbient();
-              router.replace('/approved');
-            }
-          }
-        )
-        .subscribe();
+    if (!player) {
+      router.replace('/');
+      return;
     }
 
-    init();
+    if (player.status === 'approved') {
+      router.replace('/approved');
+      return;
+    }
+
+    if (player.status === 'pending') {
+      router.replace('/lobby');
+      return;
+    }
+  }, [player, isLoading, router]);
+
+  // Handle ambient audio
+  useEffect(() => {
+    audioEngine.startMainMenuAmbient();
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
       audioEngine.stopAmbient();
     };
-  }, [router]);
+  }, []);
 
   const handleReset = () => {
     audioEngine.playClick();
