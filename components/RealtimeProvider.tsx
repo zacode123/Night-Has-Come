@@ -92,7 +92,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'rooms' },
-          (payload) => {
+          (payload: any) => {
             setRoom((currentRoom: any) => {
               const targetId = payload.new?.id || payload.old?.id;
               if (currentRoom?.id === targetId) {
