@@ -463,7 +463,7 @@ export default function AdminPage() {
       {/* Approved */}
       {approvedPlayers.length > 0 && (
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">
-          <h2 className="text-xl mb-6 font-semibold text-green-200">Approved Players (By Room)</h2>
+          <h2 className="text-xl mb-6 font-semibold text-green-200">Approved Players</h2>
           
           {/* Group players by their Room */}
           {rooms.map(room => {
