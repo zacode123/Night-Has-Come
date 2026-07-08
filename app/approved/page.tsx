@@ -34,8 +34,6 @@ export default function ApprovedPage() {
 
       // 3. Handle missing or rejected players
       if (!player || player.status === 'rejected') {
-        localStorage.removeItem('playerId');
-        Cookies.remove('playerId');
         router.push('/rejected');
         return;
       }
@@ -82,12 +80,12 @@ export default function ApprovedPage() {
             event: 'UPDATE',
             schema: 'public',
             table: 'rooms',
-            filter: `id=eq.${playerRoomId}`, // <-- DYNAMIC FILTER!
+            filter: `id=eq.${playerRoomId}`,
           },
           (payload) => {
             if (payload.new.status === 'in_game') {
               audioEngine.stopAmbient();
-              router.push(`/game/${playerRoomId}`); // <-- DYNAMIC ROUTE!
+              router.push(`/game/${playerRoomId}`);
             }
           }
         )
@@ -102,8 +100,6 @@ export default function ApprovedPage() {
           (payload) => {
             if (payload.new.status === 'rejected') {
               audioEngine.stopAmbient();
-              localStorage.removeItem('playerId');
-              Cookies.remove('playerId');
               router.push('/rejected');
             }
           }
@@ -118,8 +114,6 @@ export default function ApprovedPage() {
           },
           () => {
             audioEngine.stopAmbient();
-            localStorage.removeItem('playerId');
-            Cookies.remove('playerId');
             router.push('/rejected');
           }
         )
