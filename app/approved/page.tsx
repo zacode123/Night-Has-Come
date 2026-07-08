@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
+import { useRealtime } from '@/components/RealtimeProvider';
 import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from '@/components/DrippingText';
 import Cookies from 'js-cookie';
@@ -13,120 +14,47 @@ import Cookies from 'js-cookie';
 export default function ApprovedPage() {
   const router = useRouter();
 
+  // 1. Get live state directly from your global provider
+  const { player, room, isLoading } = useRealtime(); 
+
+  // Handle routing based on live state changes
   useEffect(() => {
-    let channel: RealtimeChannel | null = null;
+    // Do nothing while the provider is initially fetching data
+    if (isLoading) return;
+
+    // If player doesn't exist, or got rejected/deleted, kick them out
+    if (!player || player.status === 'rejected') {
+      router.replace('/rejected');
+      return;
+    }
+
+    // If they were somehow moved back to pending
+    if (player.status === 'pending') {
+      router.replace('/lobby');
+      return;
+    }
+
+    // If they are no longer in a room
+    if (!player.room_id) {
+      router.replace('/');
+      return;
+    }
+
+    // If the admin started the game
+    if (room?.status === 'in_game') {
+      router.replace(`/game/${player.room_id}`);
+      return;
+    }
+  }, [player, room, isLoading, router]); // Re-runs instantly whenever provider state updates
+
+  // Handle ambient audio
+  useEffect(() => {
+    audioEngine.startMainMenuAmbient();
     
-    const init = async () => {
-      // 1. Get the player ID
-      const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
-
-      if (!playerId) {
-        router.replace('/');
-        return;
-      }
-
-      // 2. Fetch the player securely. 
-      const { data: player } = await supabase
-        .from('players')
-        .select('status, room_id')
-        .eq('id', playerId)
-        .maybeSingle();
-
-      // 3. Handle missing or rejected players
-      if (!player || player.status === 'rejected') {
-        router.replace('/rejected');
-        return;
-      }
-
-      if (player.status === 'pending') {
-        router.replace('/lobby');
-        return;
-      }
-
-      // 4. Dynamically identify their room. 
-      const playerRoomId = player.room_id;
-      
-      if (!playerRoomId) {
-         router.replace('/');
-         return;
-      }
-
-      // 5. Fetch their specific room's status
-      const { data: room } = await supabase
-        .from('rooms')
-        .select('status')
-        .eq('id', playerRoomId)
-        .single();
-
-      if (!room) {
-        router.replace('/');
-        return;
-      }
-
-      // 6. If the game already started, push them to their dynamic room URL
-      if (room.status === 'in_game') {
-        router.replace(`/game/${playerRoomId}`);
-        return;
-      }
-
-      audioEngine.startMainMenuAmbient();
-
-      // 7. Set up listeners dynamically bound to their specific room
-      channel = supabase
-        .channel(`approved_room_${playerId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'rooms',
-            filter: `id=eq.${playerRoomId}`,
-          },
-          (payload) => {
-            if (payload.new.status === 'in_game') {
-              audioEngine.stopAmbient();
-              router.replace(`/game/${playerRoomId}`);
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'players',
-            filter: `id=eq.${playerId}`,
-          },
-          (payload) => {
-            if (payload.new.status === 'rejected') {
-              audioEngine.stopAmbient();
-              router.replace('/rejected');
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'DELETE',
-            schema: 'public',
-            table: 'players',
-            filter: `id=eq.${playerId}`,
-          },
-          () => {
-            audioEngine.stopAmbient();
-            router.replace('/rejected');
-          }
-        )
-        .subscribe();
-    };
-
-    init();
-
     return () => {
-      if (channel) supabase.removeChannel(channel);
       audioEngine.stopAmbient();
     };
-  }, [router]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-black text-zinc-200 flex flex-col items-center justify-center p-6 relative overflow-hidden">
