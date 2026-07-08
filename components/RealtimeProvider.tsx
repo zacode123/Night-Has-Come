@@ -64,7 +64,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       channel
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'players', filter: `id=eq.${user.id}` },
+          { event: '*', schema: 'public', table: 'players', filter: `id=eq.${playerId}` },
           (payload) => {
             const updatedPlayer = payload.new as any;
             setPlayer(updatedPlayer);
