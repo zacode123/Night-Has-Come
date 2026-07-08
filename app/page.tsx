@@ -7,6 +7,7 @@ import EXIF from 'exif-js';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield } from 'lucide-react';
 import Cookies from 'js-cookie';
+import { supabase } from '@/lib/supabaseClient';
 import { useRealtime } from '@/components/RealtimeProvider';
 import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from "@/components/DrippingText";
