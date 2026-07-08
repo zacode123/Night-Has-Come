@@ -7,7 +7,6 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import { useRealtime } from '@/components/RealtimeProvider';
 import { audioEngine } from '@/lib/audioEngine';
 import DrippingText from '@/components/DrippingText';
-import Cookies from 'js-cookie';
 
 export default function ApprovedPage() {
   const router = useRouter();
