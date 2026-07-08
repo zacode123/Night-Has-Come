@@ -20,7 +20,7 @@ export default function RejectedPage() {
       const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
 
       if (!playerId) {
-        router.push('/');
+        router.replace('/');
         return;
       }
 
@@ -31,42 +31,40 @@ export default function RejectedPage() {
         .maybeSingle();
 
       if (!player) {
-        router.push('/');
+        router.replace('/');
         return;
       }
       
       if (player.status === 'approved') {
-        router.push('/approved');
+        router.replace('/approved');
         return;
       }
 
       if (player.status === 'pending') {
-        router.push('/lobby');
+        router.replace('/lobby');
         return;
       }
 
       audioEngine.startMainMenuAmbient();
-      
-      if (playerId) {
-        channel = supabase
-          .channel(`rejected_watch_${playerId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'players',
-              filter: `id=eq.${playerId}`,
-            },
-            (payload) => {
-              if (payload.new.status === 'approved') {
-                audioEngine.stopAmbient();
-                router.push('/approved');
-              }
+
+      channel = supabase
+        .channel(`rejected_watch_${playerId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'players',
+            filter: `id=eq.${playerId}`,
+          },
+          (payload) => {
+            if (payload.new.status === 'approved') {
+              audioEngine.stopAmbient();
+              router.replace('/approved');
             }
-          )
-          .subscribe();
-      }
+          }
+        )
+        .subscribe();
     }
 
     init();
@@ -83,7 +81,7 @@ export default function RejectedPage() {
     Cookies.remove('playerId');
     Cookies.remove('playerStatus');
     localStorage.removeItem('playerId');
-    router.push('/');
+    router.replace('/');
   };
 
   return (
