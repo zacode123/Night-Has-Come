@@ -135,8 +135,8 @@ export default function Home() {
       setIsSubmitting(false);
       return;
     }
-    const password_hash = await hash(SignInPassword);
-    const {data} = await supabase.from('players').select('*').eq('username', SignInName).eq('password_hash', password_hash).single();
+    const password_hash = await hash(SignInPassword + process.env.NEXT_PUBLIC_APP_SIGN);
+    const {data} = await supabase.from('players').select('*').eq('username', SignInName).eq('password_hash', password_hash).maybeSingle();
     if(!data){
       setSignInError('Invalid username or password!');
       setIsSubmitting(false);
@@ -224,13 +224,14 @@ export default function Home() {
     e.preventDefault();
     setIsSubmitting(true);
     setSignUpError('');
-    if (name.length < 3) {
+    let fname = name.trim();
+    if (fname.length < 3) {
       setSignUpError('Minimum username length is 3!');
       setIsSubmitting(false);
       return;
     }
-    if (name.length > 20) {
-      setSignUpError('Maximum username length us 20!');
+    if (fname.length > 20) {
+      setSignUpError('Maximum username length is 20!');
       setIsSubmitting(false);
       return;
     }
@@ -240,7 +241,7 @@ export default function Home() {
       return;
     }
     if (password.length > 10) {
-      setSignUpError('Maximum password length us 10!');
+      setSignUpError('Maximum password length is 10!');
       setIsSubmitting(false);
       return;
     }
@@ -256,7 +257,7 @@ export default function Home() {
       const { data: existingUser } = await supabase
         .from('players')
         .select('id')
-        .eq('username', name)
+        .eq('username', fname)
         .maybeSingle();
 
       if (existingUser) {
@@ -265,19 +266,19 @@ export default function Home() {
         return;
       }
 
-      if (name.toLowerCase().includes('@zahid')) {
-        setName(name.replace('@', ''));
-      } else if (name.toLowerCase().includes('zahid')) {
+      if (fname.toLowerCase().includes('@zahid')) {
+        fname = fname.replace('@', '');
+      } else if (fname.toLowerCase().includes('zahid')) {
         setSignUpError('Are you trying to be oversmart? Please choose another name.');
         setIsSubmitting(false);
         return;
       }
 
-      const password_hash = await hash(password);
+      const password_hash = await hash(password + process.env.NEXT_PUBLIC_APP_SIGN);
       
       // Create player
       const { data, error } = await supabase.from('players').insert({
-        username: name,
+        username: fname,
         age: parseInt(age),
         personality: personality,
         password_hash: password_hash,
@@ -296,7 +297,7 @@ export default function Home() {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            name,
+            fname,
             personality,
             age,
             avatar
