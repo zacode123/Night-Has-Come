@@ -71,7 +71,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
             // Handle moving between rooms or leaving a room dynamically
             if (updatedPlayer && updatedPlayer.room_id) {
-              setRoom((prevRoom) => {
+              setRoom((prevRoom: any) => {
                 if (prevRoom?.id !== updatedPlayer.room_id) {
                   supabase
                     .from('rooms')
