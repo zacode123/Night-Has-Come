@@ -2,95 +2,43 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { RealtimeChannel } from '@supabase/supabase-js';
-import { supabase } from '@/lib/supabaseClient';
 import { motion } from 'motion/react';
+import { useRealtime } from '@/components/RealtimeProvider';
 import { audioEngine } from '@/lib/audioEngine';
 
 export default function WaitingLobby() {
   const router = useRouter();
+  const { player, isLoading } = useRealtime();
 
   useEffect(() => {
-    let channel: RealtimeChannel | null = null;
+    // Wait for the provider to finish its initial fetch
+    if (isLoading) return;
 
-    const init = async () => {
-      const localId = localStorage.getItem('playerId');
+    // If player data is missing or they were deleted, kick them to the home screen
+    if (!player) {
+      router.replace('/');
+      return;
+    }
 
-      if (!localId) {
-        router.replace('/');
-        return;
-      }
+    // Automatically route them if the admin changes their status
+    if (player.status === 'approved') {
+      router.replace('/approved');
+      return;
+    }
 
-      const { data } = await supabase
-        .from('players')
-        .select('status')
-        .eq('id', localId)
-        .maybeSingle();
+    if (player.status === 'rejected') {
+      router.replace('/rejected');
+      return;
+    }
+  }, [player, isLoading, router]);
 
-      if (!data) {
-        router.replace('/');
-        return;
-      }
-
-      if (data.status === 'approved') {
-        router.replace('/approved');
-        return;
-      }
-
-      if (data.status === 'rejected') {
-        router.replace('/rejected');
-        return;
-      }
-
-      audioEngine.startMainMenuAmbient();
-
-      channel = supabase
-        .channel(`player_status:${localId}`)
-        .on(
-          'postgres_changes',
-          {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'players',
-            filter: `id=eq.${localId}`,
-          },
-          (payload) => {
-            const newStatus = payload.new.status;
-
-            if (newStatus === 'approved') {
-              audioEngine.stopAmbient();
-              router.replace('/approved');
-            }
-
-            if (newStatus === 'rejected') {
-              audioEngine.stopAmbient();
-              router.replace('/rejected');
-            }
-          }
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'DELETE',
-            schema: 'public',
-            table: 'players',
-            filter: `id=eq.${localId}`,
-          },
-          () => {
-            audioEngine.stopAmbient();
-            router.replace('/rejected');
-          }
-        )
-        .subscribe();
-    };
-
-    init();
+  useEffect(() => {
+    audioEngine.startMainMenuAmbient();
 
     return () => {
-      if (channel) supabase.removeChannel(channel);
       audioEngine.stopAmbient();
     };
-  }, [router]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white relative overflow-hidden">
