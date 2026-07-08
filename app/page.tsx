@@ -67,18 +67,18 @@ export default function Home() {
             .single();
 
           if (room?.status === 'in_game') {
-            router.push(`/game/${data.room_id}`);
+            router.replace(`/game/${data.room_id}`);
             return;
           }
           
           Cookies.set('playerStatus', data.status, { expires: 7 });
           
           if (data.status === 'approved') {
-            router.push('/approved');
+            router.replace('/approved');
           } else if (data.status === 'rejected') {
-            router.push('/rejected');
+            router.replace('/rejected');
           } else if (data.status === 'pending') {
-            router.push('/lobby');
+            router.replace('/lobby');
           }
         } else {
           localStorage.removeItem('playerId');
@@ -91,7 +91,7 @@ export default function Home() {
           .select('status');
 
         if (rooms?.some(room => room.status === 'in_game')) {
-          router.push('/started');
+          router.replace('/started');
         }
       }
     };
@@ -144,7 +144,7 @@ export default function Home() {
     }
     localStorage.setItem('playerId', data.id);
     Cookies.set('playerId', data.id, {expires:7});
-    router.push('/lobby');
+    router.replace('/lobby');
   };
   
   async function hash(d: string) {
@@ -306,7 +306,7 @@ export default function Home() {
         localStorage.setItem('playerId', data.id);
         Cookies.set('playerId', data.id, { expires: 7 });
         Cookies.set('playerStatus', 'pending', { expires: 7 });
-        router.push('/lobby');
+        router.replace('/lobby');
       }
     } catch (error) {
       console.error('Error joining:', error);
