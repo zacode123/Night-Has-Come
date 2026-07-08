@@ -18,9 +18,6 @@ export default function StartedPage() {
     if (room.status === 'in_game' && player) {
       router.replace(`/game/${room.id}`);
       return;
-    }  else {
-      router.replace('/');
-      return;
     }
     
     // Automatically route them if the admin changes their status
@@ -36,6 +33,11 @@ export default function StartedPage() {
 
     if (player.status === 'pending') {
       router.replace('/lobby');
+      return;
+    }
+
+    if (room.status !== 'in_game' && !player) {
+      router.replace('/');
       return;
     }
   }, [player, isLoading, router]);
