@@ -34,7 +34,7 @@ export default function Home() {
   const isSignUpInvalid = isSubmitting || name.length < 3 || name.length > 20 || password.length < 6 || password.length > 10 || Number(age) < 10 || Number(age) > 20;
   const isSignInInvalid = SignInName.length < 3 || SignInName.length > 20 || SignInPassword.length < 6 || SignInPassword.length > 10;
   const router = useRouter();
-  const { player, isLoading } = useRealtime();
+  const { player, room, isLoading } = useRealtime();
 
   const personalities = [
     { id: 'Leader', desc: 'Takes charge, makes decisions.' },
@@ -50,8 +50,26 @@ export default function Home() {
   ];
 
   useEffect(() => {
-    if (isLoading || !player) return;
+    if (isLoading) return;
 
+    if (!player) {
+      localStorage.removeItem('playerId');
+      Cookies.remove('playerId');
+      Cookies.remove('playerStatus');   
+    }
+
+    if (room.status === 'in_game') {
+      if (!player) {
+        router.replace('/started');
+        return;
+      } else {
+        router.replace(`/game/${room.id}`);
+        return;
+      }
+    }
+
+    Cookies.set('playerStatus', player.status, { expires: 7 });
+    
     // Automatically route them if the admin changes their status
     if (player.status === 'approved') {
       router.replace('/approved');
@@ -68,56 +86,6 @@ export default function Home() {
       return;
     }
   }, [player, isLoading, router]);
-  
-  useEffect(() => {
-    const checkStatus = async () => {
-      const storedId = Cookies.get('playerId') || localStorage.getItem('playerId');
-      
-      if (storedId) {
-        const { data, error } = await supabase
-          .from('players')
-          .select('status, username, room_id')
-          .eq('id', storedId)
-          .maybeSingle();
-
-        if (data) {
-          const { data: room } = await supabase
-            .from('rooms')
-            .select('status')
-            .eq('room_id', data.room_id)
-            .single();
-
-          if (room?.status === 'in_game') {
-            router.replace(`/game/${data.room_id}`);
-            return;
-          }
-          
-          Cookies.set('playerStatus', data.status, { expires: 7 });
-          
-          if (data.status === 'approved') {
-            router.replace('/approved');
-          } else if (data.status === 'rejected') {
-            router.replace('/rejected');
-          } else if (data.status === 'pending') {
-            router.replace('/lobby');
-          }
-        } else {
-          localStorage.removeItem('playerId');
-          Cookies.remove('playerId');
-          Cookies.remove('playerStatus');
-        }
-      } else {
-        const { data: rooms } = await supabase
-          .from('rooms')
-          .select('status');
-
-        if (rooms?.some(room => room.status === 'in_game')) {
-          router.replace('/started');
-        }
-      }
-    };
-  
-    checkStatus();
 
     const startAudioOnFirstClick = () => {
       audioEngine.init();
