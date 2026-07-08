@@ -93,7 +93,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'rooms' },
           (payload) => {
-            setRoom((currentRoom) => {
+            setRoom((currentRoom: any) => {
               const targetId = payload.new?.id || payload.old?.id;
               if (currentRoom?.id === targetId) {
                 return payload.eventType === 'DELETE' ? null : payload.new;
