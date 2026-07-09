@@ -410,11 +410,16 @@ export default function AdminPage() {
           <input
             value={newRoomName}
             onChange={(e) => setNewRoomName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreateRoom(); }}
+            onKeyDown={(e) => { 
+              if (e.key === 'Enter') {
+                audioEngine.playClick();
+                handleCreateRoom(); 
+              }
+            }}
             placeholder="New Room Name..."
             className="bg-white/10 px-4 py-2 rounded-lg text-white w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
          />
-         <button onClick={handleCreateRoom} disabled={isProcessing} className="bg-blue-600 hover:bg-blue-500 px-6 font-medium rounded-lg transition-colors">
+         <button onMouseEnter={() => audioEngine.playHover()} onClick={() => { audioEngine.playClick(); handleCreateRoom(); }} disabled={isProcessing} className="bg-blue-600 hover:bg-blue-500 px-6 font-medium rounded-lg transition-colors">
            Create Room
          </button>
        </div>
@@ -428,7 +433,9 @@ export default function AdminPage() {
              </div>
              <div className="flex gap-2">
                <button
+                 onMouseEnter={() => audioEngine.playHover()}
                  onClick={() => {
+                   audioEngine.playClick();
                    setSelectedRoomId(room.id);
                    notify(`Selected Room: ${room.name}`, 'info');
                  }}
@@ -436,7 +443,7 @@ export default function AdminPage() {
                >
                  {selectedRoomId === room.id ? 'Selected' : 'Select'}
                </button>
-               <button onClick={() => handleDeleteRoom(room.id)} disabled={isProcessing} className="p-1.5 bg-red-900/50 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors">
+               <button onMouseEnter={() => audioEngine.playHover()} onClick={() => { audioEngine.playClick(); handleDeleteRoom(room.id); }} disabled={isProcessing} className="p-1.5 bg-red-900/50 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors">
                  <Trash2 size={18} />
                </button>
             </div>
@@ -565,7 +572,9 @@ export default function AdminPage() {
               {rooms.filter(r => r.status === 'waiting').map(room => (
                 <button
                   key={room.id}
+                  onMouseEnter={() => audioEngine.playHover()}
                   onClick={() => {
+                    audioEngine.playClick();
                     handleStartGame(room.id);
                     setShowRoomModal(false);
                   }}
@@ -579,7 +588,8 @@ export default function AdminPage() {
              )}
            </div>
            <button
-             onClick={() => setShowRoomModal(false)}
+             onMouseEnter={() => audioEngine.playHover()}
+             onClick={() => { audioEngine.playClick(); setShowRoomModal(false); }}
              className="mt-4 w-full bg-gray-800 hover:bg-gray-700 py-3 rounded-lg font-medium transition-colors"
            >
              Cancel
@@ -596,7 +606,8 @@ export default function AdminPage() {
               <img
                 src={playerModal.player.avatar_base64 || defaultAvatar}
                 alt={playerModal.player.username}
-                onClick={() => setPreviewImage(playerModal.player.avatar_base64 || defaultAvatar)} // Sets image preview
+                onMouseEnter={() => audioEngine.playHover()}
+                onClick={() => { audioEngine.playClick(); setPreviewImage(playerModal.player.avatar_base64 || defaultAvatar); }} // Sets image preview
                 className={`w-28 h-28 rounded-full object-cover border-4 cursor-pointer hover:scale-105 transition-transform ${getPersonalityBorder(playerModal.player.personality)}`}
                 title="Click to enlarge"
               />
@@ -613,7 +624,8 @@ export default function AdminPage() {
               </div>
 
               <button
-                onClick={() => setPlayerModal({ show: false, player: null })}
+                onMouseEnter={() => audioEngine.playHover()}
+                onClick={() => { audioEngine.playClick(); setPlayerModal({ show: false, player: null }); }}
                 className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-white rounded-lg mt-2 font-medium transition-colors"
               >
                 Close Profile
@@ -655,14 +667,17 @@ export default function AdminPage() {
             <p className="text-gray-300 mb-8">{confirmModal.message}</p>
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => setConfirmModal((prev: any) => ({ ...prev, show: false }))}
+                onMouseEnter={() => audioEngine.playHover()}
+                onClick={() => { audioEngine.playClick(); setConfirmModal((prev: any) => ({ ...prev, show: false })); }}
                 disabled={isProcessing}
                 className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors font-medium"
               >
                 Cancel
               </button>
               <button
+                onMouseEnter={() => audioEngine.playHover()}
                 onClick={async () => {
+                  audioEngine.playClick();
                   setIsProcessing(true);
                   try {
                     await confirmModal.action();
