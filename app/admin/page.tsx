@@ -259,14 +259,18 @@ export default function AdminPage() {
     setIsProcessing(false);
   };
   
-  const handleStartGame = async (roomId: string) => {
+  const handleStartGame = async () => {
+    if (!selectedRoomId) {
+      notify("Please select a room to start the game", 'warning');
+      return;
+    }
     setIsProcessing(true);
-    const res = await startGame(roomId);
+    const res = await startGame(selectedRoomId);
     await fetchData();
     setIsProcessing(false);
     if (res.success) {
       notify('Game started successfully!', 'success');
-      router.push(`/game/${roomId}`);
+      router.push(`/game/${selectedRoomId}`);
     } else {
       notify(res.error || 'Failed to start game', 'error');
     }
@@ -419,7 +423,7 @@ export default function AdminPage() {
               onMouseEnter={() => audioEngine.playHover()}
               onClick={() => {
                 audioEngine.playClick();
-                setShowRoomModal(true);
+                handleStartGame();
               }} 
               disabled={isProcessing}
               className="flex items-center justify-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 rounded-lg shadow font-medium"
@@ -729,41 +733,6 @@ export default function AdminPage() {
           </div>
         </div>
       )}
-
-      {/* ShowRoomModal (for starting game) */}
-      {showRoomModal && (
-        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-700 p-6 rounded-2xl w-full max-w-sm animate-in zoom-in duration-200">
-            <h2 className="mb-6 text-xl font-bold">Select Room to Start</h2>
-            <div className="space-y-3">
-              {rooms.filter(r => r.status === 'waiting').map(room => (
-                <button
-                  key={room.id}
-                  onMouseEnter={() => audioEngine.playHover()}
-                  onClick={() => {
-                    audioEngine.playClick();
-                    handleStartGame(room.id);
-                    setShowRoomModal(false);
-                  }}
-                  className="w-full bg-green-600 hover:bg-green-500 py-3 rounded-lg font-medium transition-colors"
-                >
-                  {room.name}
-                </button>
-             ))}
-             {rooms.filter(r => r.status === 'waiting').length === 0 && (
-               <p className="text-gray-400 text-center py-4">No waiting rooms available.</p>
-             )}
-           </div>
-           <button
-             onMouseEnter={() => audioEngine.playHover()}
-             onClick={() => { audioEngine.playClick(); setShowRoomModal(false); }}
-             className="mt-4 w-full bg-gray-800 hover:bg-gray-700 py-3 rounded-lg font-medium transition-colors"
-           >
-             Cancel
-           </button>
-         </div>
-       </div>
-     )}
 
       {/* Player Modal */}
       {playerModal.show && playerModal.player && (
