@@ -1,7 +1,7 @@
 'use client';
 
 import { useLongPress } from '@/hooks/longPress';
-import { Check, X, Trash2 } from 'lucide-react';
+import { Check, X, Trash2, ArrowRightLeft } from 'lucide-react'; 
 import { getPersonalityBorder } from '@/lib/personalityBorder';
 
 interface PlayerCardProps {
@@ -10,6 +10,7 @@ interface PlayerCardProps {
   onApprove?: (player: any) => void;
   onReject?: (player: any) => void;
   onDelete?: (player: any) => void;
+  onChangeRoom?: (player: any) => void; 
   showActions?: boolean;
   actionType?: 'pending' | 'approved' | 'rejected';
   isProcessing?: boolean;
@@ -21,6 +22,7 @@ export default function PlayerCard({
   onApprove,
   onReject,
   onDelete,
+  onChangeRoom,
   showActions = true,
   actionType = 'pending',
   isProcessing = false,
@@ -38,7 +40,7 @@ export default function PlayerCard({
           src={player.avatar_base64 || defaultAvatar}
           alt={player.username}
           onMouseEnter={() => audioEngine.playHover()}
-          onClick={() => { audioEngine.playClick(); onLongPress(player); }} // Makes profile pic trigger info popup
+          onClick={() => { audioEngine.playClick(); onLongPress(player); }} 
           className={`w-14 h-14 rounded-full m-1 object-cover border-2 cursor-pointer transition-transform hover:scale-105 ${getPersonalityBorder(player.personality)}`}
         />
 
@@ -82,15 +84,26 @@ export default function PlayerCard({
           )}
 
           {actionType === 'approved' && (
-            <button
-              onMouseEnter={() => audioEngine.playHover()}
-              onClick={() => { audioEngine.playClick(); onReject && onReject(player); }}
-              disabled={isProcessing}
-              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded-lg transition-colors"
-              title="Reject Player"
-            >
-              <X size={20} />
-            </button>
+            <>
+              <button
+                onMouseEnter={() => audioEngine.playHover()}
+                onClick={() => { audioEngine.playClick(); onChangeRoom && onChangeRoom(player); }}
+                disabled={isProcessing}
+                className="p-2 text-blue-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-lg transition-colors"
+                title="Change Room"
+              >
+                <ArrowRightLeft size={20} />
+              </button>
+              <button
+                onMouseEnter={() => audioEngine.playHover()}
+                onClick={() => { audioEngine.playClick(); onReject && onReject(player); }}
+                disabled={isProcessing}
+                className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded-lg transition-colors"
+                title="Reject Player"
+              >
+                <X size={20} />
+              </button>
+            </>
           )}
 
           {actionType === 'rejected' && (
