@@ -57,16 +57,7 @@ export default function Home() {
       localStorage.removeItem('playerId');
       Cookies.remove('playerId');
       Cookies.remove('playerStatus');   
-    }
-
-    if (room.status === 'in_game') {
-      if (player) {
-        router.replace(`/game/${room.id}`);
-        return;
-      } else {
-        router.replace('/started');
-        return;
-      }
+      return;
     }
 
     Cookies.set('playerStatus', player.status, { expires: 7 });
@@ -85,6 +76,18 @@ export default function Home() {
     if (player.status === 'pending') {
       router.replace('/lobby');
       return;
+    }
+
+    if (!room) return;
+
+    if (room.status === 'in_game') {
+      if (player) {
+        router.replace(`/game/${room.id}`);
+        return;
+      } else {
+        router.replace('/started');
+        return;
+      }
     }
   }, [player, isLoading, router]);
 
