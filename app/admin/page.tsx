@@ -16,6 +16,7 @@ import {
   startGame,
   stopGame,
   createRoom,
+  renameRoom,
   deleteRoom
 } from './actions';
 import { gameConfig } from '@/config/gameConfig';
@@ -199,10 +200,8 @@ export default function AdminPage() {
       return;
     }
     setIsProcessing(true);
-
-    const res = await createRoom(roomId, editRoomName.trim());
-
-    if (!error) {
+    const res = await renameRoom(roomId, editRoomName.trim());
+    if (res.success) {
       notify('Room renamed successfully', 'success');
       setEditingRoomId(null);
       fetchData();
