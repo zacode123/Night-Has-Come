@@ -156,6 +156,22 @@ export async function deleteRoom(roomId: string) {
 export async function startGame(roomId: string) {
   await ensureAdmin();
 
+  // 1. Fetch the room's current status along with the approved players
+  const { data: room, error: roomError } = await supabaseAdmin
+    .from('rooms')
+    .select('status')
+    .eq('id', roomId)
+    .single();
+
+  if (roomError || !room) {
+    return { success: false, error: 'Room not found' };
+  }
+
+  // 2. Prevent starting a game that is already running
+  if (room.status === 'in_game') {
+    return { success: false, error: 'Cannot start a running game' };
+  }
+
   const { data: players } = await supabaseAdmin
     .from('players')
     .select('*')
@@ -184,7 +200,23 @@ export async function stopGame(roomId: string) {
   await ensureAdmin();
 
   try {
-    // reset room but KEEP it
+    // 1. Fetch the room's current status
+    const { data: room, error: roomError } = await supabaseAdmin
+      .from('rooms')
+      .select('status')
+      .eq('id', roomId)
+      .single();
+
+    if (roomError || !room) {
+      return { success: false, error: 'Room not found' };
+    }
+
+    // 2. Prevent stopping a game that is already waiting
+    if (room.status === 'waiting') {
+      return { success: false, error: 'Cannot stop a waiting game' };
+    }
+
+    // 3. Reset the room back to waiting
     await supabaseAdmin
       .from('rooms')
       .update({
