@@ -43,6 +43,9 @@ export default function AdminPage() {
   const [showRoomModal, setShowRoomModal] = useState(false);
   const [newRoomName, setNewRoomName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
+  const [editRoomName, setEditRoomName] = useState('');
+  
 
   // Notifications State
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -132,7 +135,7 @@ export default function AdminPage() {
   const handleApprovePlayer = async (id: string) => {
     setIsProcessing(true);
     try {
-      const res = await approvePlayer(id, selectedRoomId);
+      const res = await approvePlayer(id, selectedRoomId!);
       if (res.success) {
         notify('Player approved successfully', 'success');
         fetchData();
@@ -214,7 +217,7 @@ export default function AdminPage() {
   const handleChangeRoom = async (id: string) => {
     setIsProcessing(true);
     try {
-      const res = await approvePlayer(id, selectedRoomId);
+      const res = await approvePlayer(id, selectedRoomId!);
       if (res.success) {
         notify('Room of the player has been changed successfully', 'success');
         fetchData();
@@ -558,7 +561,7 @@ export default function AdminPage() {
               onLongPress={openPlayerModal}
               onApprove={(p) => {
                 if (selectedRoomId) {
-                  openConfirm('Approve', `Approve ${p.username} into the selected room?`, handleApprovePlayer(p.id), 'success');
+                  openConfirm('Approve', `Approve ${p.username} into the selected room?`, () => handleApprovePlayer(p.id), 'success');
                 } else {
                   notify("Please select a room first before changing a player's room!", 'warning');
                 }
@@ -605,7 +608,7 @@ export default function AdminPage() {
                       onLongPress={openPlayerModal}
                       onChangeRoom={(p) => {
                         if (selectedRoomId) {
-                          openConfirm('Change Room', `Change the room of ${p.username} to the selected room?`, handleChangeRoom(p.id), 'danger');
+                          openConfirm('Change Room', `Change the room of ${p.username} to the selected room?`, () => handleChangeRoom(p.id), 'danger');
                         } else {
                           notify("Please select a room first before changing a player's room!", 'warning');
                         }
@@ -640,7 +643,7 @@ export default function AdminPage() {
                       onLongPress={openPlayerModal}
                       onChangeRoom={(p) => {
                         if (selectedRoomId) {
-                          openConfirm('Change Room', `Change the room of ${p.username} to the selected room?`, handleChangeRoom(p.id), 'danger');
+                          openConfirm('Change Room', `Change the room of ${p.username} to the selected room?`, () => handleChangeRoom(p.id), 'danger');
                         } else {
                           notify("Please select a room first before changing a player's room!", 'warning');
                         }
@@ -669,7 +672,7 @@ export default function AdminPage() {
                 onLongPress={openPlayerModal}
                 onApprove={(p) => {
                   if (selectedRoomId) {
-                    openConfirm('Approve', `Approve ${p.username} into the selected room?`, handleApprovePlayer(p.id), 'success');
+                    openConfirm('Approve', `Approve ${p.username} into the selected room?`, () => handleApprovePlayer(p.id), 'success');
                   } else {
                     notify("Please select a room first before changing a player's room!", 'warning');
                   }
