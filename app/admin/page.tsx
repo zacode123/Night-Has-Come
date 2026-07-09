@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { audioEngine } from '@/lib/audioEngine';
 import { getPersonalityBorder } from '@/lib/personalityBorder';
 import FloatingInput from "@/components/FloatingInput";
+import { gameConfig } from '@/config/gameConfig';
+import PlayerCard from '@/components/PlayerCard';
 import {
   loginAdmin,
   logoutAdmin,
@@ -19,9 +21,23 @@ import {
   renameRoom,
   deleteRoom
 } from './actions';
-import { gameConfig } from '@/config/gameConfig';
-import PlayerCard from '@/components/PlayerCard';
-import { AlertTriangle, CheckCircle, Info, XCircle, X, Trash2, Pencil } from 'lucide-react';
+import { 
+  AlertTriangle, 
+  CheckCircle, 
+  Info, 
+  XCircle, 
+  X, 
+  Trash2, 
+  Pencil, 
+  Check, 
+  Plus, 
+  Play, 
+  Square, 
+  LogOut,
+  Loader2,
+  Eye,
+  EyeOff
+} from 'lucide-react';
 
 // --- TYPES FOR NOTIFICATIONS ---
 type NotificationType = 'success' | 'error' | 'warning' | 'info';
@@ -336,11 +352,11 @@ export default function AdminPage() {
          <div className="relative">  
            <FloatingInput label="Password" type={showPassword ? 'text' : 'password'} value={password} color="blue" onChange={e => setPassword(e.target.value)} />
            <button type="button" onClick={() => setShowPassword(prev => !prev)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-400 transition-colors">  
-             {showPassword ? (  
-               <svg xmlns="http://www.w3.org/2000/svg" height="22px" viewBox="0 -960 960 960" width="22px" fill="currentColor"><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/></svg>  
-             ) : (  
-               <svg xmlns="http://www.w3.org/2000/svg" height="22px" viewBox="0 -960 960 960" width="22px" fill="currentColor"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5Z"/></svg>  
-             )}  
+              {showPassword ? (  
+                <EyeOff size={22} />  
+              ) : (  
+                <Eye size={22} />  
+              )}
            </button>  
          </div>  
          <button  
@@ -406,33 +422,48 @@ export default function AdminPage() {
                 setShowRoomModal(true);
               }} 
               disabled={isProcessing}
-              className="px-6 py-2 bg-green-600 hover:bg-green-500 rounded-lg shadow font-medium">
-              {isProcessing ? 'Starting...' : 'Start Game'}
+              className="flex items-center justify-center gap-2 px-6 py-2 bg-green-600 hover:bg-green-500 disabled:opacity-50 rounded-lg shadow font-medium"
+            >
+              {isProcessing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4 fill-current" />
+              )}
+              <span>{isProcessing ? 'Starting...' : 'Start Game'}</span>
             </button>
           )}
 
           { canStopGame && (
             <button
-               onMouseEnter={() => audioEngine.playHover()}
-               onClick={() => {
-                 audioEngine.playClick();
-                 handleStopGame();
+              onMouseEnter={() => audioEngine.playHover()}
+              onClick={() => {
+                audioEngine.playClick();
+                handleStopGame();
               }}
               disabled={isProcessing}
-              className="px-6 py-2 bg-red-600 hover:bg-red-500 rounded-lg shadow font-medium">
-              {isProcessing ? 'Stopping...' : 'Stop Game'}
+              className="flex items-center justify-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 rounded-lg shadow font-medium"
+            >
+              {isProcessing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Square className="w-4 h-4 fill-current" />
+              )}
+              <span>{isProcessing ? 'Stopping...' : 'Stop Game'}</span>
             </button>
           )}
 
           <button
             onMouseEnter={() => audioEngine.playHover()}
-             onClick={() => {
-               audioEngine.playClick();
-               handleLogout();
+            onClick={() => {
+              audioEngine.playClick();
+              handleLogout();
             }}
-            className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium">
-            Logout
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
           </button>
+
         </div>
       </div>
 
@@ -449,12 +480,25 @@ export default function AdminPage() {
                 handleCreateRoom(); 
               }
             }}
-            placeholder="New Room Name..."
+            placeholder="Room Name..."
             className="bg-white/10 px-4 py-2 rounded-lg text-white w-full max-w-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
          />
-         <button onMouseEnter={() => audioEngine.playHover()} onClick={() => { audioEngine.playClick(); handleCreateRoom(); }} disabled={isProcessing} className="bg-blue-600 hover:bg-blue-500 px-6 font-medium rounded-lg transition-colors">
-           Create Room
-         </button>
+          <button
+            onMouseEnter={() => audioEngine.playHover()}
+            onClick={() => {
+              audioEngine.playClick();
+              handleCreateRoom();
+            }}
+            disabled={isProcessing}
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 px-6 py-2 font-medium rounded-lg transition-colors"
+          >
+            {isProcessing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            <span>{isProcessing ? 'Creating...' : 'Create Room'}</span>
+          </button>
        </div>
 
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -793,9 +837,10 @@ export default function AdminPage() {
                 onMouseEnter={() => audioEngine.playHover()}
                 onClick={() => { audioEngine.playClick(); setConfirmModal((prev: any) => ({ ...prev, show: false })); }}
                 disabled={isProcessing}
-                className="px-5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors font-medium"
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors font-medium"
               >
-                Cancel
+                <X className="w-4 h-4" />
+                <span>Cancel</span>
               </button>
               <button
                 onMouseEnter={() => audioEngine.playHover()}
@@ -811,13 +856,18 @@ export default function AdminPage() {
                   }
                 }}
                 disabled={isProcessing}
-                className={`px-5 py-2.5 rounded-lg font-bold transition-colors shadow-lg ${
+                className={`flex items-center justify-center gap-2 disabled:opacity-50 px-5 py-2.5 rounded-lg font-bold transition-colors shadow-lg ${
                   confirmModal.type === 'danger' ? 'bg-red-600 hover:bg-red-500' :
                   confirmModal.type === 'success' ? 'bg-green-600 hover:bg-green-500' :
                   'bg-blue-600 hover:bg-blue-500'
                 }`}
               >
-                {isProcessing ? 'Processing...' : 'Confirm'}
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                <span>{isProcessing ? 'Processing...' : 'Confirm'}</span>
               </button>
             </div>
           </div>
