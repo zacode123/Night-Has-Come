@@ -16,7 +16,6 @@ import {
   startGame,
   stopGame,
   createRoom,
-  changeRoom,
   deleteRoom
 } from './actions';
 import { gameConfig } from '@/config/gameConfig';
@@ -197,7 +196,7 @@ export default function AdminPage() {
   const handleChangeRoom = async (id: string) => {
     setIsProcessing(true);
     try {
-      const res = await changeRoom(id, selectedRoomId);
+      const res = await approvePlayer(id, selectedRoomId);
       if (res.success) {
         notify('Room of the player has been changed successfully', 'success');
         fetchData();
