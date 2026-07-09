@@ -16,6 +16,7 @@ import {
   startGame,
   stopGame,
   createRoom,
+  changeRoom,
   deleteRoom
 } from './actions';
 import { gameConfig } from '@/config/gameConfig';
@@ -129,10 +130,6 @@ export default function AdminPage() {
 
   // ---------------- HANDLERS ----------------
   const handleApprovePlayer = async (id: string) => {
-    if (!selectedRoomId) {
-      notify('Please select a room first before approving a player!', 'warning');
-      return;
-    }
     setIsProcessing(true);
     try {
       const res = await approvePlayer(id, selectedRoomId);
@@ -195,6 +192,22 @@ export default function AdminPage() {
       notify(res.error || 'Failed to create room', 'error');
     }
     setIsProcessing(false);
+  };
+
+  const handleChangeRoom = async (id: string) => {
+    setIsProcessing(true);
+    try {
+      const res = await changeRoom(id, selectedRoomId);
+      if (res.success) {
+        notify('Room of the player has been changed successfully', 'success');
+        fetchData();
+      } else {
+        notify(res.error || 'Failed to change the room of the player', 'error');
+      }
+    } finally {
+      setIsProcessing(false);
+      setConfirmModal((p: any) => ({ ...p, show: false }));
+    }
   };
 
   const handleDeleteRoom = async (roomId: string) => {
@@ -462,7 +475,13 @@ export default function AdminPage() {
               key={player.id}
               player={player}
               onLongPress={openPlayerModal}
-              onApprove={(p) => openConfirm('Approve', `Are you sure you want to approve ${p.username}?`, () => handleApprovePlayer(p.id), 'success')}
+              onApprove={(p) => {
+                if (selectedRoomId) {
+                  openConfirm('Approve', `Approve ${p.username} into the selected room?`, handleApprovePlayer(p.id), 'success');
+                } else {
+                  notify("Please select a room first before changing a player's room!", 'warning');
+                }
+              }}
               onReject={(p) => openConfirm('Reject', `Are you sure you want to reject ${p.username}?`, () => handleRejectPlayer(p.id), 'danger')}
               actionType="pending"
               isProcessing={isProcessing}
@@ -503,7 +522,14 @@ export default function AdminPage() {
                       key={player.id}
                       player={player}
                       onLongPress={openPlayerModal}
-                      onReject={(p) => openConfirm('Remove', `Remove ${p.username} from the game?`, () => handleRejectPlayer(p.id), 'danger')}
+                      onChangeRoom={(p) => {
+                        if (selectedRoomId) {
+                          openConfirm('Change Room', `Change the room of ${p.username} to the selected room?`, handleChangeRoom(p.id), 'danger');
+                        } else {
+                          notify("Please select a room first before changing a player's room!", 'warning');
+                        }
+                      }}
+                      onReject={(p) => openConfirm('Reject', `Are you sure you want to reject ${p.username}?`, () => handleRejectPlayer(p.id), 'danger')}
                       actionType="approved"
                       isProcessing={isProcessing}
                     />
@@ -531,7 +557,14 @@ export default function AdminPage() {
                       key={player.id}
                       player={player}
                       onLongPress={openPlayerModal}
-                      onReject={(p) => openConfirm('Remove', `Remove ${p.username}?`, () => handleRejectPlayer(p.id), 'danger')}
+                      onChangeRoom={(p) => {
+                        if (selectedRoomId) {
+                          openConfirm('Change Room', `Change the room of ${p.username} to the selected room?`, handleChangeRoom(p.id), 'danger');
+                        } else {
+                          notify("Please select a room first before changing a player's room!", 'warning');
+                        }
+                      }}
+                      onReject={(p) => openConfirm('Reject', `Are you sure you want to reject ${p.username}?`, () => handleRejectPlayer(p.id), 'danger')}
                       actionType="approved"
                       isProcessing={isProcessing}
                     />
@@ -553,7 +586,13 @@ export default function AdminPage() {
                 key={player.id}
                 player={player}
                 onLongPress={openPlayerModal}
-                onApprove={(p) => openConfirm('Approve', `Approve ${p.username} into the selected room?`, () => handleApprovePlayer(p.id), 'success')}
+                onApprove={(p) => {
+                  if (selectedRoomId) {
+                    openConfirm('Approve', `Approve ${p.username} into the selected room?`, handleApprovePlayer(p.id), 'success');
+                  } else {
+                    notify("Please select a room first before changing a player's room!", 'warning');
+                  }
+                }}
                 onDelete={(p) => openConfirm('Delete', `Permanently delete ${p.username}? This cannot be undone.`, () => handleDeletePlayer(p.id), 'danger')}
                 actionType="rejected"
                 isProcessing={isProcessing}
