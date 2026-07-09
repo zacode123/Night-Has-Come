@@ -264,7 +264,7 @@ export default function AdminPage() {
   
   const handleStartGame = async () => {
     if (!selectedRoomId) {
-      notify("Please select a room to start the game", 'warning');
+      notify("Please select a waiting room to start the game", 'warning');
       return;
     }
     setIsStarting(true);
@@ -280,16 +280,16 @@ export default function AdminPage() {
   };
 
   const handleStopGame = async () => {
-    const activeRoom = rooms.find(r => r.status === 'in_game');
-    if (!activeRoom) return;
-
+    if (!selectedRoomId) {
+      notify("Please select an in-game room to stop the game", 'warning');
+      return;
+    }
     setIsStopping(true);
-    const res = await stopGame(activeRoom.id);
+    const res = await stopGame(selectedRoomId);
     await fetchData();
     setIsStopping(false);
-    
-    if {
-      (res.success) notify('Game stopped', 'info');
+    if (res.success) {
+      notify('Game stopped successfully!', 'info');
     } else {
       notify(res.error || 'Failed to stop game', 'error');
     }
@@ -304,10 +304,14 @@ export default function AdminPage() {
   const approvedPlayers = players.filter(p => p.status === 'approved');
   const rejectedPlayers = players.filter(p => p.status === 'rejected');
   
-  const canStartGame = rooms.some(room => 
-    room.status === 'waiting' && 
-    players.filter(p => p.room_id === room.id && p.status === 'approved').length >= gameConfig.minPlayers
-  );
+  const canStartGame = rooms.some(room => {
+    const approvedPlayerCount = players.filter(p => p.room_id === room.id && p.status === 'approved').length;
+  
+    return room.status === 'waiting' && 
+      approvedPlayerCount >= gameConfig.minPlayers &&
+      approvedPlayerCount <= gameConfig.maxPlayers;
+  });
+
   
   const canStopGame = rooms.some(r => r.status === 'in_game');
 
