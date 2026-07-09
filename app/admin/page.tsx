@@ -73,6 +73,9 @@ export default function AdminPage() {
   const [players, setPlayers] = useState<any[]>([]);
   const [rooms, setRooms] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
 
   const [confirmModal, setConfirmModal] = useState<any>({
     show: false, title: '', message: '', action: async () => {}, type: 'warning'
@@ -201,7 +204,7 @@ export default function AdminPage() {
       notify('Room name cannot be empty', 'warning');
       return;
     }
-    setIsProcessing(true);
+    setIsCreating(true);
     const res = await createRoom(newRoomName);
     if (res.success) {
       notify(`Room "${newRoomName}" created!`, 'success');
@@ -210,7 +213,7 @@ export default function AdminPage() {
     } else {
       notify(res.error || 'Failed to create room', 'error');
     }
-    setIsProcessing(false);
+    setIsCreating(false);
   };
 
   const handleRenameRoom = async (roomId: string) => {
@@ -264,10 +267,10 @@ export default function AdminPage() {
       notify("Please select a room to start the game", 'warning');
       return;
     }
-    setIsProcessing(true);
+    setIsStarting(true);
     const res = await startGame(selectedRoomId);
     await fetchData();
-    setIsProcessing(false);
+    setIsStarting(false);
     if (res.success) {
       notify('Game started successfully!', 'success');
       router.push(`/game/${selectedRoomId}`);
@@ -280,13 +283,16 @@ export default function AdminPage() {
     const activeRoom = rooms.find(r => r.status === 'in_game');
     if (!activeRoom) return;
 
-    setIsProcessing(true);
+    setIsStopping(true);
     const res = await stopGame(activeRoom.id);
     await fetchData();
-    setIsProcessing(false);
+    setIsStopping(false);
     
-    if (res.success) notify('Game stopped', 'info');
-    else notify(res.error || 'Failed to stop game', 'error');
+    if {
+      (res.success) notify('Game stopped', 'info');
+    } else {
+      notify(res.error || 'Failed to stop game', 'error');
+    }
   };
 
   const openConfirm = (title: string, message: string, action: () => Promise<void>, type: any = 'warning') =>
@@ -433,7 +439,7 @@ export default function AdminPage() {
               ) : (
                 <Play className="w-4 h-4 fill-current" />
               )}
-              <span>{isProcessing ? 'Starting...' : 'Start Game'}</span>
+              <span>{isStarting ? 'Starting...' : 'Start Game'}</span>
             </button>
           )}
 
@@ -452,7 +458,7 @@ export default function AdminPage() {
               ) : (
                 <Square className="w-4 h-4 fill-current" />
               )}
-              <span>{isProcessing ? 'Stopping...' : 'Stop Game'}</span>
+              <span>{isStopping ? 'Stopping...' : 'Stop Game'}</span>
             </button>
           )}
 
@@ -501,7 +507,7 @@ export default function AdminPage() {
             ) : (
               <Plus className="w-4 h-4" />
             )}
-            <span>{isProcessing ? 'Creating...' : 'Create Room'}</span>
+            <span>{isCreating ? 'Creating...' : 'Create Room'}</span>
           </button>
        </div>
 
