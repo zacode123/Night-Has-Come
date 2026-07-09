@@ -2,6 +2,7 @@
 
 import { useLongPress } from '@/hooks/longPress';
 import { Check, X, Trash2, ArrowRightLeft } from 'lucide-react'; 
+import { audioEngine } from '@/lib/audioEngine';
 import { getPersonalityBorder } from '@/lib/personalityBorder';
 
 interface PlayerCardProps {
