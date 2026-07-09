@@ -357,9 +357,9 @@ export default function AdminPage() {
            <FloatingInput label="Password" type={showPassword ? 'text' : 'password'} value={password} color="blue" onChange={e => setPassword(e.target.value)} />
            <button type="button" onClick={() => setShowPassword(prev => !prev)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-400 transition-colors">  
               {showPassword ? (  
-                <EyeOff size={22} />  
-              ) : (  
                 <Eye size={22} />  
+              ) : (  
+                <EyeOff size={22} />  
               )}
            </button>  
          </div>  
