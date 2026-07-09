@@ -20,7 +20,7 @@ import {
 } from './actions';
 import { gameConfig } from '@/config/gameConfig';
 import PlayerCard from '@/components/PlayerCard';
-import { AlertTriangle, CheckCircle, Info, XCircle, X, Trash2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, XCircle, X, Trash2, Pencil } from 'lucide-react';
 
 // --- TYPES FOR NOTIFICATIONS ---
 type NotificationType = 'success' | 'error' | 'warning' | 'info';
@@ -193,6 +193,25 @@ export default function AdminPage() {
     setIsProcessing(false);
   };
 
+  const handleRenameRoom = async (roomId: string) => {
+    if (!editRoomName.trim()) {
+      notify('Room name cannot be empty', 'warning');
+      return;
+    }
+    setIsProcessing(true);
+
+    const res = await createRoom(roomId, editRoomName.trim());
+
+    if (!error) {
+      notify('Room renamed successfully', 'success');
+      setEditingRoomId(null);
+      fetchData();
+    } else {
+      notify(res.error || 'Failed to rename room', 'error');
+    }
+    setIsProcessing(false);
+  };
+  
   const handleChangeRoom = async (id: string) => {
     setIsProcessing(true);
     try {
@@ -438,26 +457,90 @@ export default function AdminPage() {
 
        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
          {rooms.map(room => (
-           <div key={room.id} className={`flex justify-between items-center bg-white/5 p-4 rounded-xl border ${selectedRoomId === room.id ? 'border-green-500 bg-green-900/20' : 'border-white/5'}`}>
-             <div>
-               <p className="font-bold text-lg">{room.name}</p>
+           <div 
+             key={room.id} 
+             onClick={() => {
+               audioEngine.playClick();
+               setSelectedRoomId(room.id);
+               notify(`Selected Room: ${room.name}`, 'info');
+             }}
+             className={`flex justify-between items-center p-4 rounded-xl border cursor-pointer transition-all ${
+               selectedRoomId === room.id 
+                 ? 'border-green-500 bg-green-900/20 shadow-[0_0_15px_rgba(34,197,94,0.15)]' 
+                 : 'border-white/5 bg-white/5 hover:bg-white/10'
+             }`}
+           >
+             <div className="flex-1 mr-4">
+               {editingRoomId === room.id ? (
+                 <input
+                   autoFocus
+                   value={editRoomName}
+                   onChange={(e) => setEditRoomName(e.target.value)}
+                   onClick={(e) => e.stopPropagation()} // Prevent selecting the room when clicking the input
+                   onKeyDown={(e) => {
+                     if (e.key === 'Enter') {
+                       e.stopPropagation();
+                       handleRenameRoom(room.id);
+                     } else if (e.key === 'Escape') {
+                       e.stopPropagation();
+                       setEditingRoomId(null);
+                     }
+                   }}
+                   className="bg-black/50 px-3 py-1.5 rounded-lg text-white w-full border border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 font-bold"
+                 />
+               ) : (
+                 <p className="font-bold text-lg truncate">{room.name}</p>
+               )}
                <p className="text-xs text-gray-400 capitalize bg-gray-800 inline-block px-2 py-0.5 rounded-full mt-1">Status: {room.status}</p>
              </div>
-             <div className="flex gap-2">
-               <button
-                 onMouseEnter={() => audioEngine.playHover()}
-                 onClick={() => {
-                   audioEngine.playClick();
-                   setSelectedRoomId(room.id);
-                   notify(`Selected Room: ${room.name}`, 'info');
-                 }}
-                 className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${selectedRoomId === room.id ? 'bg-green-600' : 'bg-gray-700 hover:bg-gray-600'}`}
-               >
-                 {selectedRoomId === room.id ? 'Selected' : 'Select'}
-               </button>
-               <button onMouseEnter={() => audioEngine.playHover()} onClick={() => { audioEngine.playClick(); handleDeleteRoom(room.id); }} disabled={isProcessing} className="p-1.5 bg-red-900/50 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors">
-                 <Trash2 size={18} />
-               </button>
+             
+             <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+               {editingRoomId === room.id ? (
+                 <>
+                   <button 
+                     onMouseEnter={() => audioEngine.playHover()}
+                     onClick={() => handleRenameRoom(room.id)}
+                     disabled={isProcessing}
+                     className="p-1.5 bg-green-900/50 text-green-400 hover:bg-green-600 hover:text-white rounded-lg transition-colors"
+                     title="Save Name"
+                   >
+                     <Check size={18} />
+                   </button>
+                   <button 
+                     onMouseEnter={() => audioEngine.playHover()}
+                     onClick={() => setEditingRoomId(null)}
+                     className="p-1.5 bg-gray-700 text-gray-300 hover:bg-gray-600 hover:text-white rounded-lg transition-colors"
+                     title="Cancel"
+                   >
+                     <X size={18} />
+                   </button>
+                 </>
+               ) : (
+                 <>
+                   <button 
+                     onMouseEnter={() => audioEngine.playHover()}
+                     onClick={() => {
+                       audioEngine.playClick();
+                       setEditingRoomId(room.id);
+                       setEditRoomName(room.name);
+                     }}
+                     disabled={isProcessing}
+                     className="p-1.5 bg-blue-900/50 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg transition-colors"
+                     title="Rename Room"
+                   >
+                     <Pencil size={18} />
+                   </button>
+                   <button 
+                     onMouseEnter={() => audioEngine.playHover()} 
+                     onClick={() => { audioEngine.playClick(); handleDeleteRoom(room.id); }} 
+                     disabled={isProcessing} 
+                     className="p-1.5 bg-red-900/50 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
+                     title="Delete Room"
+                   >
+                     <Trash2 size={18} />
+                   </button>
+                 </>
+               )}
             </div>
           </div>
         ))}
