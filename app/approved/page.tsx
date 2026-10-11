@@ -88,6 +88,15 @@ export default function ApprovedPage() {
           <p className="text-sm text-emerald-500/70 tracking-widest uppercase font-bold">
             Waiting for admin to start the game...
           </p>
+
+          {player?.room_id && (
+            <button
+              onClick={() => router.push(`/game/${player.room_id}`)}
+              className="mt-4 px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-[0_0_20px_rgba(16,185,129,0.5)] transition-all"
+            >
+              ▶ Enter 3D Game Room
+            </button>
+          )}
         </div>
       </motion.div>
     </div>

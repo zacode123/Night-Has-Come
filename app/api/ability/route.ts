@@ -5,12 +5,12 @@ export async function POST(request: Request) {
   const supabase = getServiceSupabase();
   const { roomId, playerId, abilityType, targetId, night } = await request.json();
 
-  if (!roomId || !playerId || !abilityType || !targetId || night === undefined) {
+  if (!roomId || !playerId || !abilityType || !targetId) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
   // Check cooldowns or restrictions based on abilityType
-  // For now, we'll assume basic validation
+  const currentNight = night ?? 1;
 
   const { data, error } = await supabase
     .from('abilities')
@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       player_id: playerId,
       ability_type: abilityType,
       target_id: targetId,
-      night: night
+      night: currentNight
     })
     .select()
     .single();

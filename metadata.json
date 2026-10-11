@@ -1,5 +1,6 @@
 {
   "name": "Night Has Come",
   "description": "A cinematic multiplayer survival Mafia game where players join rooms and experience episodic storytelling.",
-  "requestFramePermissions": ["microphone"]
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

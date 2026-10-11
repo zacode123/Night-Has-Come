@@ -23,7 +23,7 @@ export interface GameState {
   roomId: string;
   phase: GamePhase;
   dayNumber: number;
-  players: any[]; // Replace with proper Player type
+  players: any[];
   votes: any[];
   kills: any[];
 }
@@ -37,7 +37,7 @@ export const GameEngine = {
       .eq('room_id', roomId);
 
     if (error || !players || players.length < gameConfig.minPlayers) {
-      throw new Error('Not enough players to start game');
+      throw new Error(`Need at least ${gameConfig.minPlayers} players (or AI bots) to start`);
     }
 
     // 2. Assign Roles
@@ -47,7 +47,7 @@ export const GameEngine = {
     for (const player of assignedPlayers) {
       await supabase
         .from('players')
-        .update({ role: player.role })
+        .update({ role: player.role, alive: true })
         .eq('id', player.id);
     }
 
@@ -55,7 +55,7 @@ export const GameEngine = {
     await supabase
       .from('rooms')
       .update({ 
-        status: 'playing',
+        status: 'in_game',
         phase: 'Night',
         day_number: 1 
       })
@@ -68,11 +68,11 @@ export const GameEngine = {
     const shuffled = [...players].sort(() => 0.5 - Math.random());
     const totalPlayers = players.length;
     
-    // Determine number of Mafia
-    const mafiaCount = Math.min(
+    // Determine number of Mafia (at least 1, max based on config)
+    const mafiaCount = Math.max(1, Math.min(
       Math.floor(totalPlayers / 3), 
       gameConfig.maxMafia
-    );
+    ));
 
     // Assign Mafia
     for (let i = 0; i < mafiaCount; i++) {
@@ -98,22 +98,60 @@ export const GameEngine = {
     return shuffled;
   },
 
+  async hireBots(roomId: string, bots: Array<{ username: string; personality: string }>) {
+    const records = bots.map((bot) => ({
+      username: bot.username,
+      room_id: roomId,
+      personality: bot.personality,
+      is_bot: true,
+      status: 'approved',
+      alive: true,
+      connected: true,
+      age: 18,
+    }));
+
+    const { data, error } = await supabase
+      .from('players')
+      .insert(records)
+      .select();
+
+    if (error) {
+      throw error;
+    }
+    return data;
+  },
+
+  async removeBot(botId: string) {
+    const { error } = await supabase
+      .from('players')
+      .delete()
+      .eq('id', botId);
+
+    if (error) throw error;
+    return { success: true };
+  },
+
   async processNightPhase(roomId: string) {
-    // 1. Fetch actions (kills, saves, investigations)
-    // This would be called by a cron job or a timer trigger
-    // For now, we'll assume it's triggered manually or by the last action
-    
-    // Logic to resolve night actions
-    // ...
-    
     // Transition to Morning
     await this.transitionPhase(roomId, 'Morning');
   },
 
   async transitionPhase(roomId: string, nextPhase: GamePhase) {
+    const { data: room } = await supabase
+      .from('rooms')
+      .select('day_number, phase')
+      .eq('id', roomId)
+      .maybeSingle();
+
+    const currentDay = room?.day_number || 1;
+    const nextDay = nextPhase === 'Night' && room?.phase === 'Execution' ? currentDay + 1 : currentDay;
+
     await supabase
       .from('rooms')
-      .update({ phase: nextPhase })
+      .update({
+        phase: nextPhase,
+        day_number: nextDay,
+      })
       .eq('id', roomId);
   },
 
@@ -124,9 +162,9 @@ export const GameEngine = {
       .eq('room_id', roomId)
       .eq('alive', true);
 
-    if (!players) return null;
+    if (!players || players.length === 0) return null;
 
-    const mafiaCount = players.filter(p => p.role === 'Mafia').length;
+    const mafiaCount = players.filter((p) => p.role === 'Mafia').length;
     const citizenCount = players.length - mafiaCount;
 
     if (mafiaCount === 0) {

@@ -39,8 +39,10 @@ const nextConfig = (phase: string): NextConfig => {
     config.experimental = {
       ...config.experimental,
       allowedDevOrigins: [
-        'ais-dev-6mhikckr7w4iqvpmsshelf-656050679822.asia-southeast1.run.app',
-        'ais-pre-6mhikckr7w4iqvpmsshelf-656050679822.asia-southeast1.run.app',
+        'ais-dev-neb6ng3dirqejxkkfbj2hz-656050679822.asia-southeast1.run.app',
+        'ais-pre-neb6ng3dirqejxkkfbj2hz-656050679822.asia-southeast1.run.app',
+        '*.asia-southeast1.run.app',
+        '*.run.app',
         'localhost:3000'
       ]
     };
