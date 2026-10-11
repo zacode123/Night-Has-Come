@@ -1,64 +1,52 @@
-import { GoogleGenAI } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(req: NextRequest) {
   try {
-    const { text, voice = 'Fenrir' } = await req.json();
-
+    const { text, voice = 'Joey' } = await req.json();
     if (!text) {
       return NextResponse.json({ error: 'Text prompt is required' }, { status: 400 });
     }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json({ error: 'GEMINI_API_KEY not configured' }, { status: 500 });
-    }
+    const params = new URLSearchParams();
+    params.append('msg', text);
+    params.append('lang', voice || 'Joey');
+    params.append('source', 'ttsmp3');
 
-    const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
+    const ttsRes = await fetch('https://ttsmp3.com/makemp3_new.php', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
+      body: params.toString(),
     });
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash-lite-tts',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: text.slice(0, 300),
-              speechMetadata: {
-                style: 'Dramatic thriller announcer, ominous and deep',
-              },
-            },
-          ],
-        },
-      ],
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: voice || 'Fenrir' },
-          },
-        },
-      },
-    });
-
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-
-    if (!base64Audio) {
-      return NextResponse.json({ error: 'No audio generated' }, { status: 500 });
+    if (!ttsRes.ok) {
+      throw new Error(`TTSMP3 API failed with status ${ttsRes.status}`);
     }
+
+    const ttsData = await ttsRes.json();
+    if (ttsData.Error !== 0 || !ttsData.URL) {
+      throw new Error(ttsData.Message || 'TTSMP3 generation failed');
+    }
+
+    const audioUrl = ttsData.URL;
+
+    // Fetch the actual audio file from ttsmp3.com so we can return base64
+    const audioRes = await fetch(audioUrl);
+    if (!audioRes.ok) {
+      throw new Error('Failed to fetch generated audio file');
+    }
+
+    const arrayBuffer = await audioRes.arrayBuffer();
+    const base64Audio = Buffer.from(arrayBuffer).toString('base64');
 
     return NextResponse.json({
       audio: base64Audio,
-      mimeType: 'audio/wav',
+      mimeType: 'audio/mpeg',
+      audioUrl: audioUrl,
     });
   } catch (err: any) {
-    console.error('Gemini TTS error:', err);
+    console.error('TTS error:', err);
     return NextResponse.json({ error: err.message || 'TTS generation failed' }, { status: 500 });
   }
 }
