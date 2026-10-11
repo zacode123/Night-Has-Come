@@ -11,7 +11,7 @@ interface VirtualJoystickProps {
   onRoleAction: () => void;
   onToggleCamera: () => void;
   cameraMode: 'thirdPerson' | 'isometric';
-  role?: string;
+  role?: string | null;
   isAlive?: boolean;
   phase?: string;
 }

@@ -25,7 +25,7 @@ export interface ChatMessage {
   sender_avatar?: string | null;
   personality?: string;
   message?: string;
-  message_type?: 'text' | 'voice' | 'system';
+  message_type?: 'text' | 'voice' | 'system' | 'game_event';
   audio_url?: string;
   audio_duration?: number;
   created_at?: string;

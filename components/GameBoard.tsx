@@ -13,7 +13,7 @@ export interface Player3DData {
   username: string;
   avatar_base64?: string | null;
   personality?: string;
-  role?: string;
+  role?: string | null;
   is_bot?: boolean;
   alive?: boolean;
   x?: number;
