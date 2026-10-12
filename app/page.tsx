@@ -35,7 +35,7 @@ export default function Home() {
   const isSignUpInvalid = isSubmitting || name.length < 3 || name.length > 20 || password.length < 6 || password.length > 10 || Number(age) < 10 || Number(age) > 20;
   const isSignInInvalid = SignInName.length < 3 || SignInName.length > 20 || SignInPassword.length < 6 || SignInPassword.length > 10;
   const router = useRouter();
-  const { player, room, isLoading } = useRealtime();
+  const { player, room, isLoading, setPlayer, refreshPlayer } = useRealtime();
 
   const personalities = [
     { id: 'Leader', desc: 'Takes charge, makes decisions.' },
@@ -138,6 +138,9 @@ export default function Home() {
     }
     localStorage.setItem('playerId', data.id);
     Cookies.set('playerId', data.id, {expires:7});
+    Cookies.set('playerStatus', data.status, {expires:7});
+    setPlayer(data);
+    await refreshPlayer(data.id);
     router.replace('/lobby');
   };
   
@@ -291,6 +294,7 @@ export default function Home() {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
+            name: fname,
             fname,
             personality,
             age,
@@ -301,6 +305,8 @@ export default function Home() {
         localStorage.setItem('playerId', data.id);
         Cookies.set('playerId', data.id, { expires: 7 });
         Cookies.set('playerStatus', 'pending', { expires: 7 });
+        setPlayer(data);
+        await refreshPlayer(data.id);
         router.replace('/lobby');
       }
     } catch (error) {

@@ -8,12 +8,18 @@ type RealtimeContextType = {
   player: any | null; 
   room: any | null;   
   isLoading: boolean;
+  setPlayer: (player: any) => void;
+  setRoom: (room: any) => void;
+  refreshPlayer: (id?: string) => Promise<any>;
 };
 
 const RealtimeContext = createContext<RealtimeContextType>({
   player: null,
   room: null,
   isLoading: true,
+  setPlayer: () => {},
+  setRoom: () => {},
+  refreshPlayer: async () => null,
 });
 
 export function useRealtime() {
@@ -24,24 +30,36 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [player, setPlayer] = useState<any | null>(null);
   const [room, setRoom] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
 
+  // 1. Initial read on mount
   useEffect(() => {
+    const initialId = Cookies.get('playerId') || localStorage.getItem('playerId');
+    if (initialId) {
+      setCurrentPlayerId(initialId);
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // 2. Manage subscription and player/room fetching whenever currentPlayerId changes
+  useEffect(() => {
+    if (!currentPlayerId) {
+      setPlayer(null);
+      setRoom(null);
+      setIsLoading(false);
+      return;
+    }
+
     let isMounted = true;
-    const channel = supabase.channel('global-game-state');
+    const channel = supabase.channel(`global-game-state-${currentPlayerId}`);
 
     const initRealtime = async () => {
-      const playerId = Cookies.get('playerId') || localStorage.getItem('playerId');
-
-      if (!playerId) {
-        if (isMounted) setIsLoading(false);
-        return;
-      }
-
-      // 2. Fetch initial player and room state
+      // Fetch initial player and room state
       const { data: initialPlayer } = await supabase
         .from('players')
         .select('*')
-        .eq('id', playerId)
+        .eq('id', currentPlayerId)
         .single();
 
       if (initialPlayer && isMounted) {
@@ -55,16 +73,21 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             .single();
 
           if (isMounted && initialRoom) setRoom(initialRoom);
+        } else {
+          setRoom(null);
         }
+      } else if (isMounted) {
+        setPlayer(null);
+        setRoom(null);
       }
 
       if (isMounted) setIsLoading(false);
 
-      // 3. Set up persistent Realtime Subscriptions
+      // Persistent Realtime Subscriptions
       channel
         .on(
           'postgres_changes',
-          { event: '*', schema: 'public', table: 'players', filter: `id=eq.${playerId}` },
+          { event: '*', schema: 'public', table: 'players', filter: `id=eq.${currentPlayerId}` },
           (payload) => {
             const updatedPlayer = payload.new as any;
             setPlayer(updatedPlayer);
@@ -111,7 +134,45 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, []); // Empty array is completely safe now since supabase is a module import
+  }, [currentPlayerId]);
+
+  const refreshPlayer = async (id?: string) => {
+    const targetId = id || Cookies.get('playerId') || localStorage.getItem('playerId');
+
+    if (!targetId) {
+      setPlayer(null);
+      setRoom(null);
+      setCurrentPlayerId(null);
+      setIsLoading(false);
+      return null;
+    }
+
+    if (currentPlayerId !== targetId) {
+      setCurrentPlayerId(targetId);
+    }
+
+    const { data: fetchedPlayer } = await supabase
+      .from('players')
+      .select('*')
+      .eq('id', targetId)
+      .single();
+
+    if (fetchedPlayer) {
+      setPlayer(fetchedPlayer);
+      if (fetchedPlayer.room_id) {
+        const { data: initialRoom } = await supabase
+          .from('rooms')
+          .select('*')
+          .eq('id', fetchedPlayer.room_id)
+          .single();
+        if (initialRoom) setRoom(initialRoom);
+      } else {
+        setRoom(null);
+      }
+    }
+    setIsLoading(false);
+    return fetchedPlayer;
+  };
 
   if (isLoading) {
     // Keeps your pure white screen overlay active during the initial setup
@@ -119,7 +180,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <RealtimeContext.Provider value={{ player, room, isLoading }}>
+    <RealtimeContext.Provider value={{ player, room, isLoading, setPlayer, setRoom, refreshPlayer }}>
       {children}
     </RealtimeContext.Provider>
   );
