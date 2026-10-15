@@ -54,14 +54,24 @@ export default function Home() {
     if (isLoading) return;
 
     if (!player) {
-      localStorage.removeItem('playerId');
-      Cookies.remove('playerId');
-      Cookies.remove('playerStatus');   
+      // Do not prematurely wipe cookies if playerId is still stored
+      const hasStoredId = Cookies.get('playerId') || (typeof window !== 'undefined' ? localStorage.getItem('playerId') : null);
+      if (!hasStoredId) {
+        localStorage.removeItem('playerId');
+        Cookies.remove('playerId');
+        Cookies.remove('playerStatus');
+      }
       return;
     }
 
     Cookies.set('playerStatus', player.status, { expires: 7 });
     
+    // Priority: If room game has already started and player is assigned/approved, go straight to the game!
+    if (room?.status === 'in_game' && player.room_id) {
+      router.replace(`/game/${player.room_id}`);
+      return;
+    }
+
     // Automatically route them if the admin changes their status
     if (player.status === 'approved') {
       router.replace('/approved');
@@ -77,19 +87,7 @@ export default function Home() {
       router.replace('/lobby');
       return;
     }
-
-    if (!room) return;
-
-    if (room.status === 'in_game') {
-      if (player) {
-        router.replace(`/game/${room.id}`);
-        return;
-      } else {
-        router.replace('/started');
-        return;
-      }
-    }
-  }, [player, isLoading, router]);
+  }, [player, room, isLoading, router]);
 
   useEffect(() => {
     const startAudioOnFirstClick = () => {

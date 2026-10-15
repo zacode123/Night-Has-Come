@@ -123,8 +123,8 @@ export default function BotHireModal({
                     className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/10 text-sm"
                   >
                     <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-cyan-950 border border-cyan-500/50 flex items-center justify-center text-cyan-400 text-xs">
-                        🤖
+                      <div className="w-7 h-7 rounded-full bg-cyan-950 border border-cyan-500/50 flex items-center justify-center text-cyan-400">
+                        <Bot size={14} />
                       </div>
                       <div>
                         <span className="font-semibold text-zinc-200">{bot.username}</span>

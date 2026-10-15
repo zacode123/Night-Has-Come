@@ -232,3 +232,64 @@ export async function stopGame(roomId: string) {
     return { success: false, error: err.message };
   }
 }
+
+/* ---------------- BOT WORKSHOP MANAGEMENT ---------------- */
+
+export async function hireBotAdmin(data: {
+  roomId: string;
+  username: string;
+  age: number;
+  personality: string;
+  systemInstructions?: string;
+}) {
+  await ensureAdmin();
+
+  if (!data.roomId) {
+    return { success: false, error: 'Please select a room for the bot.' };
+  }
+
+  const name = data.username.trim();
+  if (name.length < 2 || name.length > 25) {
+    return { success: false, error: 'Bot name must be between 2 and 25 characters.' };
+  }
+
+  const finalAge = Math.min(20, Math.max(10, Number(data.age) || 18));
+  const finalPersonality = data.personality || 'Strategic Thinker';
+
+  const botRecord: any = {
+    username: name,
+    room_id: data.roomId,
+    age: finalAge,
+    personality: finalPersonality,
+    is_bot: true,
+    status: 'approved',
+    alive: true,
+    connected: true,
+    avatar_base64: data.systemInstructions?.trim() ? `bot_prompt:${data.systemInstructions.trim()}` : null,
+  };
+
+  const { data: createdBot, error } = await supabaseAdmin
+    .from('players')
+    .insert(botRecord)
+    .select()
+    .single();
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, bot: createdBot };
+}
+
+export async function dismissBotAdmin(botId: string) {
+  await ensureAdmin();
+
+  const { error } = await supabaseAdmin
+    .from('players')
+    .delete()
+    .eq('id', botId)
+    .eq('is_bot', true);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}

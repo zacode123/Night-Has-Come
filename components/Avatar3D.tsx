@@ -70,60 +70,87 @@ export default function Avatar3D({
     if (!ctx) return null;
 
     // Background base
-    ctx.fillStyle = isBot ? '#0f172a' : '#18181b';
+    ctx.fillStyle = isBot ? '#090d16' : '#18181b';
     ctx.fillRect(0, 0, 128, 128);
 
     if (avatarBase64) {
+      // 1. Player has profile picture: draw circular cropped photo
       const img = new Image();
       img.src = avatarBase64;
       img.onload = () => {
         ctx.clearRect(0, 0, 128, 128);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(64, 64, 60, 0, Math.PI * 2);
+        ctx.arc(64, 64, 58, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(img, 4, 4, 120, 120);
+        ctx.drawImage(img, 6, 6, 116, 116);
         ctx.restore();
 
-        // Border ring
+        // Personality border ring
         ctx.lineWidth = 6;
         ctx.strokeStyle = personalityColor;
         ctx.beginPath();
-        ctx.arc(64, 64, 60, 0, Math.PI * 2);
+        ctx.arc(64, 64, 58, 0, Math.PI * 2);
         ctx.stroke();
 
         texture.needsUpdate = true;
       };
     } else if (isBot) {
-      // Draw cool robot / cyber face icon
-      ctx.fillStyle = '#06b6d4';
-      ctx.fillRect(34, 40, 60, 48); // robot head
-      ctx.fillStyle = '#020617';
-      ctx.fillRect(44, 52, 14, 14); // eye left
-      ctx.fillRect(70, 52, 14, 14); // eye right
-      ctx.fillStyle = '#f43f5e';
-      ctx.fillRect(48, 74, 32, 6); // mouth bar
-      // Antenna
-      ctx.fillStyle = '#06b6d4';
-      ctx.fillRect(60, 26, 8, 14);
+      // 2. Bot: Draw crisp vector Bot Logo Insignia (Shield with tech circuit core)
+      ctx.clearRect(0, 0, 128, 128);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 0, 128, 128);
+
+      // Outer hexagonal/shield crest
+      ctx.strokeStyle = '#06b6d4';
+      ctx.lineWidth = 4;
       ctx.beginPath();
-      ctx.arc(64, 24, 7, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(64, 20);
+      ctx.lineTo(104, 38);
+      ctx.lineTo(104, 82);
+      ctx.lineTo(64, 108);
+      ctx.lineTo(24, 82);
+      ctx.lineTo(24, 38);
+      ctx.closePath();
+      ctx.stroke();
+
+      // Bot Core Processor Icon / Logo
+      ctx.fillStyle = '#06b6d4';
+      ctx.fillRect(48, 48, 32, 28);
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(54, 54, 8, 8); // left sensor
+      ctx.fillRect(66, 54, 8, 8); // right sensor
+      ctx.fillStyle = '#22d3ee';
+      ctx.fillRect(52, 68, 24, 3); // optical scan line
+
+      // Microchip circuit traces
+      ctx.strokeStyle = '#0891b2';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(64, 20); ctx.lineTo(64, 48); // top trace
+      ctx.moveTo(24, 60); ctx.lineTo(48, 60); // left trace
+      ctx.moveTo(104, 60); ctx.lineTo(80, 60); // right trace
+      ctx.moveTo(64, 76); ctx.lineTo(64, 108); // bottom trace
+      ctx.stroke();
+
+      // Tech nodes
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath(); ctx.arc(64, 34, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(36, 60, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(92, 60, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(64, 92, 4, 0, Math.PI * 2); ctx.fill();
     } else {
-      // Silhouette placeholder
-      ctx.fillStyle = '#3f3f46';
-      ctx.beginPath();
-      ctx.arc(64, 48, 28, 0, Math.PI * 2); // head
-      ctx.fill();
-      ctx.beginPath();
-      ctx.arc(64, 115, 45, Math.PI, Math.PI * 2); // shoulder
-      ctx.fill();
-      // Border ring
-      ctx.lineWidth = 6;
+      // 3. Player with NO profile picture: Do not show any silhouette face!
+      // Keep completely clean faceplate with subtle personality border ring
+      ctx.clearRect(0, 0, 128, 128);
+      ctx.fillStyle = '#1c1917';
+      ctx.fillRect(0, 0, 128, 128);
+
+      ctx.lineWidth = 5;
       ctx.strokeStyle = personalityColor;
       ctx.beginPath();
-      ctx.arc(64, 64, 60, 0, Math.PI * 2);
+      ctx.arc(64, 64, 56, 0, Math.PI * 2);
       ctx.stroke();
     }
 
@@ -316,7 +343,7 @@ export default function Avatar3D({
           anchorX="center"
           anchorY="bottom"
         >
-          {isBot ? `🤖 ${name}` : name}
+          {isBot ? `[BOT] ${name}` : name}
         </Text>
 
         <Text

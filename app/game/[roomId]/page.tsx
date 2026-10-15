@@ -82,14 +82,23 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   }, [router]);
 
   useEffect(() => {
-    if (!loading && !gameState) {
+    if (loading) return;
+
+    if (!gameState) {
       setRoomNotFound(true);
+      return;
     }
-  }, [loading, gameState]);
+
+    // STRICT GAME STATUS GUARD: If admin has not started the game, block access and redirect to approved waiting room
+    if (gameState.status !== 'in_game') {
+      router.replace('/approved');
+      return;
+    }
+  }, [loading, gameState, router]);
 
   // Handle ambient sound by game phase
   useEffect(() => {
-    if (!gameState) return;
+    if (!gameState || gameState.status !== 'in_game') return;
 
     switch (gameState.phase) {
       case 'Night':
@@ -112,7 +121,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         audioEngine.stopAmbient();
         break;
     }
-  }, [gameState?.phase]);
+  }, [gameState?.phase, gameState?.status]);
 
   // Load custom TTS endpoint from engine
   useEffect(() => {
@@ -164,10 +173,16 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
     );
   }
 
-  if (!gameState || !userId) {
+  // Strict guard: Do NOT render anything in the room until the game is officially in_game
+  if (!gameState || !userId || gameState.status !== 'in_game') {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-3">
         <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs text-red-500 font-mono tracking-widest uppercase">
+          {gameState && gameState.status !== 'in_game'
+            ? 'Access Denied: Game has not started. Redirecting...'
+            : 'Entering Night...'}
+        </span>
       </div>
     );
   }

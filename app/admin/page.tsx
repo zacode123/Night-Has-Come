@@ -19,7 +19,9 @@ import {
   stopGame,
   createRoom,
   renameRoom,
-  deleteRoom
+  deleteRoom,
+  hireBotAdmin,
+  dismissBotAdmin,
 } from './actions';
 import { 
   AlertTriangle, 
@@ -36,7 +38,13 @@ import {
   LogOut,
   Loader2,
   Eye,
-  EyeOff
+  EyeOff,
+  Bot,
+  UserPlus,
+  Dices,
+  Sparkles,
+  Sliders,
+  Cpu,
 } from 'lucide-react';
 
 // --- TYPES FOR NOTIFICATIONS ---
@@ -83,6 +91,14 @@ export default function AdminPage() {
 
   const [playerModal, setPlayerModal] = useState<any>({ show: false, player: null });
   const [previewImage, setPreviewImage] = useState<string | null>(null); // State for enlarged image
+
+  // ---------------- BOT WORKSHOP STATE ----------------
+  const [botName, setBotName] = useState('Kim Jun-hee');
+  const [botAge, setBotAge] = useState('18');
+  const [botPersonality, setBotPersonality] = useState('Strategic Thinker');
+  const [botSystemInstructions, setBotSystemInstructions] = useState('');
+  const [botTargetRoomId, setBotTargetRoomId] = useState<string>('');
+  const [isHiringBot, setIsHiringBot] = useState(false);
 
   // ---------------- NOTIFICATION SYSTEM ----------------
   const notify = useCallback((message: string, type: NotificationType = 'info') => {
@@ -262,6 +278,82 @@ export default function AdminPage() {
     setIsProcessing(false);
   };
   
+  // ---------------- BOT WORKSHOP HANDLERS ----------------
+  const handleRandomizeBotName = () => {
+    audioEngine.playSelect();
+    const names = [
+      'Kim Jun-hee',
+      'Lee Yoon-seo',
+      'Shin So-mi',
+      'Ko Kyung-jun',
+      'Oh Jung-won',
+      'Jin Da-bum',
+      'Park Woo-ram',
+      'Kim Dong-hyun',
+      'Choi Mi-na',
+      'Yoo Tae-sik',
+      'Kang Min-jae',
+      'Han Se-eun',
+      'Bae Do-young',
+      'Song Ji-hoo',
+    ];
+    const picked = names[Math.floor(Math.random() * names.length)];
+    setBotName(picked);
+  };
+
+  const handleDeployBot = async () => {
+    const targetRoom = botTargetRoomId || selectedRoomId || rooms[0]?.id;
+    if (!targetRoom) {
+      notify('Please select or create a room before deploying a bot!', 'warning');
+      return;
+    }
+    if (!botName.trim()) {
+      notify('Please provide a name for the bot.', 'warning');
+      return;
+    }
+
+    setIsHiringBot(true);
+    audioEngine.playClick();
+    try {
+      const res = await hireBotAdmin({
+        roomId: targetRoom,
+        username: botName.trim(),
+        age: parseInt(botAge) || 18,
+        personality: botPersonality,
+        systemInstructions: botSystemInstructions.trim(),
+      });
+
+      if (res.success) {
+        notify(`Bot "${botName.trim()}" carved & deployed!`, 'success');
+        fetchData();
+        handleRandomizeBotName();
+      } else {
+        notify(res.error || 'Failed to deploy bot.', 'error');
+      }
+    } catch (e: any) {
+      notify(e.message || 'Failed to deploy bot.', 'error');
+    } finally {
+      setIsHiringBot(false);
+    }
+  };
+
+  const handleDismissBot = async (botId: string, botUsername: string) => {
+    openConfirm(
+      'Dismiss Bot',
+      `Permanently dismiss AI Bot "${botUsername}"?`,
+      async () => {
+        const res = await dismissBotAdmin(botId);
+        if (res.success) {
+          notify(`Bot "${botUsername}" dismissed`, 'info');
+          fetchData();
+        } else {
+          notify(res.error || 'Failed to dismiss bot', 'error');
+        }
+      },
+      'danger'
+    );
+  };
+
   const handleStartGame = async () => {
     if (!selectedRoomId) {
       notify("Please select a waiting room to start the game", 'warning');
@@ -607,6 +699,302 @@ export default function AdminPage() {
         {rooms.length === 0 && <p className="text-gray-500 italic py-2">No rooms created yet.</p>}
       </div>
      </div>
+
+      {/* AI BOT WORKSHOP & HIRING STUDIO */}
+      <div className="bg-gradient-to-br from-zinc-950 via-gray-900 to-black border border-cyan-500/30 shadow-[0_0_35px_rgba(6,182,212,0.12)] rounded-2xl p-6 mb-8 relative overflow-hidden">
+        <div className="flex items-center justify-between flex-wrap gap-4 mb-6 border-b border-white/10 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+              <Bot size={26} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-xl font-bold text-white tracking-wide">AI Bot Workshop</h2>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800">
+                  STUDIO
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400">
+                Carve and deploy autonomous AI bots with custom names, ages, personalities, and behavioral system instructions.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-zinc-400 font-mono">
+              Active Hired Bots:
+            </span>
+            <span className="px-2.5 py-1 rounded-lg bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 font-bold font-mono text-sm">
+              {players.filter((p) => p.is_bot).length}
+            </span>
+          </div>
+        </div>
+
+        {/* Bot Sculpting Form */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Column 1: Identity & Parameters */}
+          <div className="space-y-4 bg-white/5 p-4 rounded-xl border border-white/10">
+            <h3 className="text-sm uppercase tracking-wider font-bold text-cyan-400 flex items-center gap-2">
+              <Cpu size={16} /> 1. Bot Identity & Room Assignment
+            </h3>
+
+            {/* Target Room */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
+                Assigned Game Room
+              </label>
+              <select
+                value={botTargetRoomId || selectedRoomId || (rooms[0]?.id || '')}
+                onChange={(e) => setBotTargetRoomId(e.target.value)}
+                className="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+              >
+                {rooms.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.name} ({r.status})
+                  </option>
+                ))}
+                {rooms.length === 0 && <option value="">No rooms available</option>}
+              </select>
+            </div>
+
+            {/* Bot Name & Randomizer */}
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+                  Bot Name / Alias
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRandomizeBotName}
+                  className="flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  <Dices size={14} /> Randomize
+                </button>
+              </div>
+              <input
+                type="text"
+                value={botName}
+                onChange={(e) => setBotName(e.target.value)}
+                placeholder="e.g. Kim Jun-hee"
+                className="w-full bg-black/60 border border-white/20 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-cyan-500"
+              />
+            </div>
+
+            {/* Bot Age */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
+                  Student Age (10 - 20)
+                </label>
+                <span className="text-cyan-400 font-bold text-sm font-mono">{botAge} yrs</span>
+              </div>
+              <input
+                type="range"
+                min="10"
+                max="20"
+                value={botAge}
+                onChange={(e) => setBotAge(e.target.value)}
+                className="w-full accent-cyan-500 bg-zinc-800 rounded-lg h-2 cursor-pointer"
+              />
+            </div>
+
+            {/* Personality Archetype */}
+            <div>
+              <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
+                Personality Archetype
+              </label>
+              <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                {[
+                  { id: 'Leader', desc: 'Takes charge, directs votes.' },
+                  { id: 'Quiet Observer', desc: 'Watches closely, speaks rarely.' },
+                  { id: 'Funny / Comic', desc: 'Defuses tension with humor.' },
+                  { id: 'Strategic Thinker', desc: 'Plans ahead, analyzes patterns.' },
+                  { id: 'Mysterious', desc: 'Unpredictable, hard to read.' },
+                  { id: 'Aggressive', desc: 'Quick to accuse, loud.' },
+                  { id: 'Friendly', desc: 'Trusts easily, builds alliances.' },
+                  { id: 'Cautious', desc: 'Avoids risks, calculates steps.' },
+                  { id: 'Empathetic', desc: 'Reads emotion, detects panic.' },
+                  { id: 'Rebellious', desc: 'Challenges authority, questions votes.' },
+                ].map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      audioEngine.playSelect();
+                      setBotPersonality(p.id);
+                    }}
+                    className={`p-2 rounded-lg text-left text-xs border transition-all ${
+                      botPersonality === p.id
+                        ? 'bg-cyan-950/60 border-cyan-500 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.3)]'
+                        : 'bg-black/30 border-white/10 text-zinc-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="font-semibold text-zinc-200">{p.id}</div>
+                    <div className="text-[10px] text-zinc-400 truncate">{p.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Column 2: System Instructions & Deployment */}
+          <div className="space-y-4 bg-white/5 p-4 rounded-xl border border-white/10 flex flex-col justify-between">
+            <div>
+              <h3 className="text-sm uppercase tracking-wider font-bold text-cyan-400 flex items-center gap-2 mb-3">
+                <Sparkles size={16} /> 2. System Instructions & Behavior Directives
+              </h3>
+
+              {/* Behavior Prompt Presets */}
+              <div className="mb-2">
+                <label className="text-xs text-zinc-400 block mb-1.5 font-medium">Quick Behavior Presets:</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    {
+                      label: 'Analytical Detective',
+                      text: 'You are an analytical student who carefully monitors vote shifts, asks piercing questions during discussions, and votes with high logical conviction.'
+                    },
+                    {
+                      label: 'Suspicious Accuser',
+                      text: 'You are highly suspicious of quiet players. You challenge people who hesitate to vote and push hard to execute potential Mafia suspects.'
+                    },
+                    {
+                      label: 'Deceptive Chameleon',
+                      text: 'You act innocent, agree with popular opinions to avoid suspicion, and subtly steer blame away from allies during execution debates.'
+                    },
+                    {
+                      label: 'Protective Guardian',
+                      text: 'You prioritize building trust and defending innocent-looking classmates. You try to prevent reckless executions and urge calm.'
+                    }
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        audioEngine.playSelect();
+                        setBotSystemInstructions(preset.text);
+                      }}
+                      className="px-2 py-1 rounded bg-black/40 hover:bg-cyan-950 text-[11px] text-cyan-300 border border-white/10 hover:border-cyan-500 transition-colors"
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Custom Instructions Textarea */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-1.5 uppercase tracking-wider">
+                  Custom AI Behavior Directives / Prompt
+                </label>
+                <textarea
+                  rows={5}
+                  value={botSystemInstructions}
+                  onChange={(e) => setBotSystemInstructions(e.target.value)}
+                  placeholder="Enter custom behavioral guidelines for this bot (e.g. Always defend your neighbor, speak in short nervous sentences, cast decisive votes against quiet suspects)..."
+                  className="w-full bg-black/60 border border-white/20 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-cyan-500 custom-scrollbar resize-none font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Deploy Action */}
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={handleDeployBot}
+                disabled={isHiringBot || rooms.length === 0}
+                className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold text-sm rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] flex items-center justify-center gap-2 transition-all disabled:opacity-50"
+              >
+                {isHiringBot ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Carving & Deploying Bot...</span>
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={16} />
+                    <span>Deploy Bot to Room</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Active Bots Management Roster */}
+        <div>
+          <h3 className="text-sm uppercase tracking-wider font-bold text-zinc-300 mb-3 flex items-center gap-2">
+            <Bot size={16} className="text-cyan-400" /> Active Hired Bots Roster ({players.filter((p) => p.is_bot).length})
+          </h3>
+
+          {players.filter((p) => p.is_bot).length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {players
+                .filter((p) => p.is_bot)
+                .map((bot) => {
+                  const assignedRoom = rooms.find((r) => r.id === bot.room_id);
+                  const hasCustomInstructions = bot.avatar_base64 && bot.avatar_base64.startsWith('bot_prompt:');
+                  const instructionsText = hasCustomInstructions
+                    ? bot.avatar_base64.replace('bot_prompt:', '')
+                    : null;
+
+                  return (
+                    <div
+                      key={bot.id}
+                      className="p-3.5 rounded-xl bg-white/5 border border-white/10 hover:border-cyan-500/50 transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-500/60 flex items-center justify-center text-cyan-400">
+                              <Bot size={16} />
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-white text-sm">{bot.username}</span>
+                                <span className="px-1.5 py-0.2 rounded bg-cyan-950 border border-cyan-800 text-[10px] text-cyan-300 font-mono">
+                                  BOT
+                                </span>
+                              </div>
+                              <span className="text-xs text-zinc-400">
+                                {bot.age} yrs • {bot.personality}
+                              </span>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleDismissBot(bot.id, bot.username)}
+                            className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-950/50 rounded-lg transition-colors"
+                            title="Dismiss Bot"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+
+                        <div className="text-[11px] text-zinc-400 flex items-center gap-1.5 mb-2">
+                          <span className="font-semibold text-zinc-300">Room:</span>
+                          <span className="font-mono text-cyan-300">
+                            {assignedRoom ? assignedRoom.name : bot.room_id ? bot.room_id.substring(0, 8) : 'None'}
+                          </span>
+                        </div>
+
+                        {instructionsText && (
+                          <div className="p-2 rounded bg-black/40 border border-white/5 text-[11px] text-zinc-300 font-mono line-clamp-2" title={instructionsText}>
+                            &quot;{instructionsText}&quot;
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <p className="text-zinc-500 italic text-xs py-2">
+              No AI bots currently deployed. Use the workshop above to carve and hire bots for your rooms.
+            </p>
+          )}
+        </div>
+      </div>
 
       {/* Pending */}
       <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 mb-8">

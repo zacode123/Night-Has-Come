@@ -34,7 +34,13 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   // 1. Initial read on mount
   useEffect(() => {
-    const initialId = Cookies.get('playerId') || localStorage.getItem('playerId');
+    let initialId: string | null = null;
+    try {
+      initialId = Cookies.get('playerId') || localStorage.getItem('playerId') || null;
+    } catch {
+      initialId = null;
+    }
+
     if (initialId) {
       setCurrentPlayerId(initialId);
     } else {
@@ -44,6 +50,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
 
   // 2. Manage subscription and player/room fetching whenever currentPlayerId changes
   useEffect(() => {
+    if (currentPlayerId === null) {
+      return;
+    }
+
     if (!currentPlayerId) {
       setPlayer(null);
       setRoom(null);
@@ -55,33 +65,38 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
     const channel = supabase.channel(`global-game-state-${currentPlayerId}`);
 
     const initRealtime = async () => {
-      // Fetch initial player and room state
-      const { data: initialPlayer } = await supabase
-        .from('players')
-        .select('*')
-        .eq('id', currentPlayerId)
-        .single();
+      try {
+        // Fetch initial player and room state
+        const { data: initialPlayer, error: pError } = await supabase
+          .from('players')
+          .select('*')
+          .eq('id', currentPlayerId)
+          .maybeSingle();
 
-      if (initialPlayer && isMounted) {
-        setPlayer(initialPlayer);
+        if (initialPlayer && isMounted) {
+          setPlayer(initialPlayer);
 
-        if (initialPlayer.room_id) {
-          const { data: initialRoom } = await supabase
-            .from('rooms')
-            .select('*')
-            .eq('id', initialPlayer.room_id)
-            .single();
+          if (initialPlayer.room_id) {
+            const { data: initialRoom } = await supabase
+              .from('rooms')
+              .select('*')
+              .eq('id', initialPlayer.room_id)
+              .maybeSingle();
 
-          if (isMounted && initialRoom) setRoom(initialRoom);
-        } else {
+            if (isMounted && initialRoom) setRoom(initialRoom);
+          } else {
+            if (isMounted) setRoom(null);
+          }
+        } else if (isMounted) {
+          // If query returned null (player deleted or invalid ID), clean up
+          setPlayer(null);
           setRoom(null);
         }
-      } else if (isMounted) {
-        setPlayer(null);
-        setRoom(null);
+      } catch (err) {
+        console.error('Error in initRealtime:', err);
+      } finally {
+        if (isMounted) setIsLoading(false);
       }
-
-      if (isMounted) setIsLoading(false);
 
       // Persistent Realtime Subscriptions
       channel
@@ -90,6 +105,11 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           { event: '*', schema: 'public', table: 'players', filter: `id=eq.${currentPlayerId}` },
           (payload) => {
             const updatedPlayer = payload.new as any;
+            if (payload.eventType === 'DELETE') {
+              setPlayer(null);
+              setRoom(null);
+              return;
+            }
             setPlayer(updatedPlayer);
 
             // Handle moving between rooms or leaving a room dynamically
@@ -100,7 +120,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
                     .from('rooms')
                     .select('*')
                     .eq('id', updatedPlayer.room_id)
-                    .single()
+                    .maybeSingle()
                     .then(({ data }) => {
                       if (data && isMounted) setRoom(data);
                     });
@@ -151,32 +171,41 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       setCurrentPlayerId(targetId);
     }
 
-    const { data: fetchedPlayer } = await supabase
-      .from('players')
-      .select('*')
-      .eq('id', targetId)
-      .single();
+    try {
+      const { data: fetchedPlayer } = await supabase
+        .from('players')
+        .select('*')
+        .eq('id', targetId)
+        .maybeSingle();
 
-    if (fetchedPlayer) {
-      setPlayer(fetchedPlayer);
-      if (fetchedPlayer.room_id) {
-        const { data: initialRoom } = await supabase
-          .from('rooms')
-          .select('*')
-          .eq('id', fetchedPlayer.room_id)
-          .single();
-        if (initialRoom) setRoom(initialRoom);
-      } else {
-        setRoom(null);
+      if (fetchedPlayer) {
+        setPlayer(fetchedPlayer);
+        if (fetchedPlayer.room_id) {
+          const { data: initialRoom } = await supabase
+            .from('rooms')
+            .select('*')
+            .eq('id', fetchedPlayer.room_id)
+            .maybeSingle();
+          if (initialRoom) setRoom(initialRoom);
+        } else {
+          setRoom(null);
+        }
       }
+      return fetchedPlayer;
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-    return fetchedPlayer;
   };
 
   if (isLoading) {
-    // Keeps your pure white screen overlay active during the initial setup
-    return <div className="fixed inset-0 bg-white z-[9999]" />;
+    return (
+      <div className="fixed inset-0 bg-black flex items-center justify-center z-[9999]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-red-500/80 font-mono tracking-widest uppercase">Connecting to Night...</span>
+        </div>
+      </div>
+    );
   }
 
   return (

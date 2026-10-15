@@ -13,7 +13,9 @@ import {
   Trash2,
   Check,
   X,
-  Radio
+  Radio,
+  User,
+  Bot
 } from 'lucide-react';
 import { audioEngine } from '@/lib/audioEngine';
 import { getPersonalityBorder } from '@/lib/personalityBorder';
@@ -319,11 +321,15 @@ export default function ChatTab({
                       msg.personality || 'Leader'
                     )}`}
                   >
-                    {msg.sender_avatar ? (
+                    {msg.sender_avatar && !msg.sender_avatar.startsWith('bot_prompt:') ? (
                       <img src={msg.sender_avatar} className="w-full h-full object-cover" />
+                    ) : msg.sender_name?.toLowerCase().includes('bot') || msg.sender_name?.startsWith('[BOT]') ? (
+                      <span className="flex items-center justify-center h-full text-cyan-400">
+                        <Bot size={11} />
+                      </span>
                     ) : (
-                      <span className="text-[10px] flex items-center justify-center h-full">
-                        👤
+                      <span className="flex items-center justify-center h-full text-zinc-400">
+                        <User size={11} />
                       </span>
                     )}
                   </div>

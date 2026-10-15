@@ -321,12 +321,30 @@ export default function GameBoard({
     };
   }, [triggerJump]);
 
-  // Main Simulation & Movement Loop (60 FPS)
+  // Physics state refs for smooth momentum and inertia
+  const velocityRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
+  const playerRotRef = useRef<number>(0);
+  const playerPosRef = useRef<[number, number, number]>([0, 0, 0]);
+
+  // Keep refs in sync with state for zero-latency physics ticks
+  useEffect(() => {
+    playerPosRef.current = playerPos;
+  }, [playerPos]);
+
+  useEffect(() => {
+    playerRotRef.current = playerRot;
+  }, [playerRot]);
+
+  // Main Simulation & Movement Loop (Smooth Realistic Physics with Inertia)
   useEffect(() => {
     let animationFrameId: number;
+    let lastTime = performance.now();
     let lastBroadcastTime = 0;
 
-    const gameLoop = () => {
+    const gameLoop = (currentTime: number) => {
+      const dt = Math.min(0.05, Math.max(0.001, (currentTime - lastTime) / 1000));
+      lastTime = currentTime;
+
       // 1. Gather movement inputs from keyboard or virtual joystick
       let inputX = joystickVector.current.x;
       let inputZ = joystickVector.current.y;
@@ -336,41 +354,108 @@ export default function GameBoard({
       if (keysDown.current['a'] || keysDown.current['arrowleft']) inputX -= 1;
       if (keysDown.current['d'] || keysDown.current['arrowright']) inputX += 1;
 
-      const hasInput = Math.abs(inputX) > 0.05 || Math.abs(inputZ) > 0.05;
+      // Normalize input vector if needed
+      const inputLength = Math.hypot(inputX, inputZ);
+      let normInputX = 0;
+      let normInputZ = 0;
+      if (inputLength > 0.05) {
+        normInputX = inputX / (inputLength > 1 ? inputLength : 1);
+        normInputZ = inputZ / (inputLength > 1 ? inputLength : 1);
+      }
 
-      if (hasInput && (currentPlayer?.alive ?? true)) {
-        // Calculate move angle
-        const targetAngle = Math.atan2(inputX, inputZ);
-        setPlayerRot(targetAngle);
+      const hasInput = inputLength > 0.05 && (currentPlayer?.alive ?? true);
 
-        const speed = isSprinting ? 0.18 : 0.09;
-        const nextX = THREE.MathUtils.clamp(playerPos[0] + Math.sin(targetAngle) * speed, -halfW, halfW);
-        const nextZ = THREE.MathUtils.clamp(playerPos[2] + Math.cos(targetAngle) * speed, -halfD, halfD);
+      // Realistic Kinematics (Acceleration, Friction, Terminal Velocity)
+      const maxSpeed = isSprinting ? 5.8 : 3.2;
+      const acceleration = isSprinting ? 22.0 : 16.0;
+      const friction = hasInput ? 0.94 : 0.85;
 
-        // Simple furniture collision check
-        let isColliding = false;
-        for (const item of roomLayout.furniture) {
-          const [fx, _, fz] = item.position;
-          const [fw, __, fd] = item.size;
-          if (
-            Math.abs(nextX - fx) < fw / 2 + 0.4 &&
-            Math.abs(nextZ - fz) < fd / 2 + 0.4
-          ) {
-            isColliding = true;
-            break;
-          }
-        }
+      const currentVx = velocityRef.current.x;
+      const currentVz = velocityRef.current.z;
 
-        if (!isColliding) {
-          setPlayerPos([nextX, playerPos[1], nextZ]);
-        }
+      let targetVx = 0;
+      let targetVz = 0;
 
-        setPlayerGesture(isSprinting ? 'run' : 'walk');
+      if (hasInput) {
+        targetVx = normInputX * maxSpeed;
+        targetVz = normInputZ * maxSpeed;
+
+        velocityRef.current.x += (targetVx - currentVx) * Math.min(1, acceleration * dt);
+        velocityRef.current.z += (targetVz - currentVz) * Math.min(1, acceleration * dt);
+
+        // Calculate smooth turning towards movement direction
+        const targetAngle = Math.atan2(normInputX, normInputZ);
+        let angleDiff = targetAngle - playerRotRef.current;
+        // Normalize angle difference to [-PI, PI] for shortest rotation path
+        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        playerRotRef.current += angleDiff * Math.min(1, dt * 14);
+        setPlayerRot(playerRotRef.current);
+      } else {
+        // Natural friction deceleration to rest
+        velocityRef.current.x *= Math.pow(friction, dt * 60);
+        velocityRef.current.z *= Math.pow(friction, dt * 60);
+
+        if (Math.abs(velocityRef.current.x) < 0.01) velocityRef.current.x = 0;
+        if (Math.abs(velocityRef.current.z) < 0.01) velocityRef.current.z = 0;
+      }
+
+      const currentSpeed = Math.hypot(velocityRef.current.x, velocityRef.current.z);
+
+      // Update gesture based on actual physical velocity
+      if (currentSpeed > 3.4) {
+        setPlayerGesture('run');
+      } else if (currentSpeed > 0.15) {
+        setPlayerGesture('walk');
       } else {
         setPlayerGesture('idle');
       }
 
-      // 2. Realistic NPC Bot wandering logic
+      // 2. Sliding collision resolution with furniture
+      const prevX = playerPosRef.current[0];
+      const prevZ = playerPosRef.current[2];
+      let candidateX = THREE.MathUtils.clamp(prevX + velocityRef.current.x * dt, -halfW, halfW);
+      let candidateZ = THREE.MathUtils.clamp(prevZ + velocityRef.current.z * dt, -halfD, halfD);
+
+      const playerRadius = 0.38;
+
+      // Check collision on X axis
+      for (const item of roomLayout.furniture) {
+        const [fx, _, fz] = item.position;
+        const [fw, __, fd] = item.size;
+        const boxMinX = fx - fw / 2 - playerRadius;
+        const boxMaxX = fx + fw / 2 + playerRadius;
+        const boxMinZ = fz - fd / 2 - playerRadius;
+        const boxMaxZ = fz + fd / 2 + playerRadius;
+
+        if (candidateX >= boxMinX && candidateX <= boxMaxX && prevZ >= boxMinZ && prevZ <= boxMaxZ) {
+          candidateX = prevX;
+          velocityRef.current.x = 0;
+          break;
+        }
+      }
+
+      // Check collision on Z axis (allows smooth sliding along furniture edges)
+      for (const item of roomLayout.furniture) {
+        const [fx, _, fz] = item.position;
+        const [fw, __, fd] = item.size;
+        const boxMinX = fx - fw / 2 - playerRadius;
+        const boxMaxX = fx + fw / 2 + playerRadius;
+        const boxMinZ = fz - fd / 2 - playerRadius;
+        const boxMaxZ = fz + fd / 2 + playerRadius;
+
+        if (candidateX >= boxMinX && candidateX <= boxMaxX && candidateZ >= boxMinZ && candidateZ <= boxMaxZ) {
+          candidateZ = prevZ;
+          velocityRef.current.z = 0;
+          break;
+        }
+      }
+
+      if (candidateX !== prevX || candidateZ !== prevZ) {
+        playerPosRef.current = [candidateX, playerPosRef.current[1], candidateZ];
+        setPlayerPos([candidateX, playerPosRef.current[1], candidateZ]);
+      }
+
+      // 3. Realistic NPC Bot smooth wandering kinematics
       setBotStates((prev) => {
         const updated = { ...prev };
         Object.keys(updated).forEach((botId) => {
@@ -379,11 +464,10 @@ export default function GameBoard({
 
           if (distToTarget < 0.4) {
             // Reached target -> pause or pick new furniture/spot waypoint
-            bot.idleTimer -= 0.016;
+            bot.idleTimer -= dt;
             bot.gesture = 'idle';
 
             if (bot.idleTimer <= 0) {
-              // Pick random furniture or random room coordinate
               const randomFurniture =
                 roomLayout.furniture[Math.floor(Math.random() * roomLayout.furniture.length)];
               const targetX = THREE.MathUtils.clamp(
@@ -402,27 +486,30 @@ export default function GameBoard({
               bot.idleTimer = Math.random() * 4 + 2;
             }
           } else {
-            // Move toward waypoint
-            const angle = Math.atan2(bot.targetX - bot.x, bot.targetZ - bot.z);
-            bot.rotation = angle;
-            const botSpeed = 0.045; // realistic leisurely walking pace
-            bot.x += Math.sin(angle) * botSpeed;
-            bot.z += Math.cos(angle) * botSpeed;
+            // Move smoothly toward waypoint with angular slerp
+            const targetAngle = Math.atan2(bot.targetX - bot.x, bot.targetZ - bot.z);
+            let angleDiff = targetAngle - bot.rotation;
+            angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+            bot.rotation += angleDiff * Math.min(1, dt * 8);
+
+            const botSpeed = 1.4; // smooth physical walking velocity
+            bot.x += Math.sin(bot.rotation) * botSpeed * dt;
+            bot.z += Math.cos(bot.rotation) * botSpeed * dt;
             bot.gesture = 'walk';
           }
         });
         return updated;
       });
 
-      // 3. Periodic broadcast to room participants (every 100ms)
+      // 4. Periodic broadcast to room participants (every 100ms)
       const now = Date.now();
       if (now - lastBroadcastTime > 100 && onUpdatePosition) {
         lastBroadcastTime = now;
         onUpdatePosition({
-          x: playerPos[0],
-          z: playerPos[2],
-          rotation: playerRot,
-          gesture: playerGesture,
+          x: playerPosRef.current[0],
+          z: playerPosRef.current[2],
+          rotation: playerRotRef.current,
+          gesture: currentSpeed > 3.4 ? 'run' : currentSpeed > 0.15 ? 'walk' : 'idle',
         });
       }
 
@@ -431,17 +518,7 @@ export default function GameBoard({
 
     animationFrameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [
-    playerPos,
-    playerRot,
-    playerGesture,
-    isSprinting,
-    currentPlayer?.alive,
-    halfW,
-    halfD,
-    roomLayout,
-    onUpdatePosition,
-  ]);
+  }, [currentPlayer?.alive, halfD, halfW, isSprinting, onUpdatePosition, roomLayout.furniture]);
 
   // Handle Role Action (Attack / Heal / Investigate)
   const handleRoleAction = () => {
