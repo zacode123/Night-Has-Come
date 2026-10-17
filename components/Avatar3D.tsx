@@ -3,7 +3,7 @@
 import { useRef, useMemo, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
+import { Text, Billboard } from '@react-three/drei';
 
 interface Avatar3DProps {
   id: string;
@@ -37,6 +37,7 @@ export default function Avatar3D({
   actionTrigger = 0,
 }: Avatar3DProps) {
   const groupRef = useRef<THREE.Group>(null);
+  const bodyGroupRef = useRef<THREE.Group>(null);
   const leftLegRef = useRef<THREE.Mesh>(null);
   const rightLegRef = useRef<THREE.Mesh>(null);
   const leftArmRef = useRef<THREE.Mesh>(null);
@@ -182,9 +183,11 @@ export default function Avatar3D({
     }
     groupRef.current.position.y = position[1] + jumpY;
 
-    // Smooth rotation interpolation
-    const currentRot = groupRef.current.rotation.y;
-    groupRef.current.rotation.y = THREE.MathUtils.lerp(currentRot, rotation, delta * 15);
+    // Smooth rotation interpolation on character body only
+    if (bodyGroupRef.current) {
+      const currentRot = bodyGroupRef.current.rotation.y;
+      bodyGroupRef.current.rotation.y = THREE.MathUtils.lerp(currentRot, rotation, delta * 15);
+    }
 
     // Limb animations for walk / run
     const time = state.clock.getElapsedTime();
@@ -250,91 +253,93 @@ export default function Avatar3D({
         />
       </mesh>
 
-      {/* Dead State Marker or Standing Body */}
-      {!isAlive ? (
-        // Fallen skull or red chalk outline marker
-        <group position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <mesh>
-            <circleGeometry args={[0.7, 32]} />
-            <meshBasicMaterial color="#450a0a" transparent opacity={0.7} />
-          </mesh>
-          <Text
-            position={[0, 0, 0.02]}
-            fontSize={0.3}
-            color="#ef4444"
-            font="bold"
-            anchorX="center"
-            anchorY="middle"
-          >
-            ☠ ELIMINATED
-          </Text>
-        </group>
-      ) : (
-        <group>
-          {/* Torso */}
-          <mesh ref={torsoRef} position={[0, 1.05, 0]}>
-            <boxGeometry args={[0.55, 0.7, 0.35]} />
-            <meshStandardMaterial
-              color={isBot ? '#1e293b' : isCurrentPlayer ? '#991b1b' : '#27272a'}
-              roughness={0.5}
-            />
-          </mesh>
-
-          {/* Head with Avatar Profile Picture Texture */}
-          <group position={[0, 1.65, 0]}>
+      {/* Rotating Body Group: character turns towards travel direction */}
+      <group ref={bodyGroupRef}>
+        {!isAlive ? (
+          // Fallen skull or red chalk outline marker
+          <group position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <mesh>
-              <boxGeometry args={[0.48, 0.48, 0.48]} />
+              <circleGeometry args={[0.7, 32]} />
+              <meshBasicMaterial color="#450a0a" transparent opacity={0.7} />
+            </mesh>
+            <Text
+              position={[0, 0, 0.02]}
+              fontSize={0.3}
+              color="#ef4444"
+              font="bold"
+              anchorX="center"
+              anchorY="middle"
+            >
+              ☠ ELIMINATED
+            </Text>
+          </group>
+        ) : (
+          <group>
+            {/* Torso */}
+            <mesh ref={torsoRef} position={[0, 1.05, 0]}>
+              <boxGeometry args={[0.55, 0.7, 0.35]} />
               <meshStandardMaterial
-                color={isBot ? '#0f172a' : '#18181b'}
-                roughness={0.4}
+                color={isBot ? '#1e293b' : isCurrentPlayer ? '#991b1b' : '#27272a'}
+                roughness={0.5}
               />
             </mesh>
 
-            {/* Front Face Plate with Photo Texture */}
-            <mesh position={[0, 0, 0.25]}>
-              <planeGeometry args={[0.44, 0.44]} />
-              {headTexture ? (
-                <meshBasicMaterial map={headTexture} transparent />
-              ) : (
+            {/* Head with Avatar Profile Picture Texture */}
+            <group position={[0, 1.65, 0]}>
+              <mesh>
+                <boxGeometry args={[0.48, 0.48, 0.48]} />
+                <meshStandardMaterial
+                  color={isBot ? '#0f172a' : '#18181b'}
+                  roughness={0.4}
+                />
+              </mesh>
+
+              {/* Front Face Plate with Photo Texture */}
+              <mesh position={[0, 0, 0.25]}>
+                <planeGeometry args={[0.44, 0.44]} />
+                {headTexture ? (
+                  <meshBasicMaterial map={headTexture} transparent />
+                ) : (
+                  <meshBasicMaterial color={personalityColor} />
+                )}
+              </mesh>
+
+              {/* Back Head Color Indicator */}
+              <mesh position={[0, 0, -0.25]} rotation={[0, Math.PI, 0]}>
+                <planeGeometry args={[0.4, 0.4]} />
                 <meshBasicMaterial color={personalityColor} />
-              )}
+              </mesh>
+            </group>
+
+            {/* Left Arm */}
+            <mesh ref={leftArmRef} position={[-0.38, 1.05, 0]}>
+              <boxGeometry args={[0.16, 0.65, 0.18]} />
+              <meshStandardMaterial color={isBot ? '#334155' : '#3f3f46'} />
             </mesh>
 
-            {/* Back Head Color Indicator */}
-            <mesh position={[0, 0, -0.25]} rotation={[0, Math.PI, 0]}>
-              <planeGeometry args={[0.4, 0.4]} />
-              <meshBasicMaterial color={personalityColor} />
+            {/* Right Arm */}
+            <mesh ref={rightArmRef} position={[0.38, 1.05, 0]}>
+              <boxGeometry args={[0.16, 0.65, 0.18]} />
+              <meshStandardMaterial color={isBot ? '#334155' : '#3f3f46'} />
+            </mesh>
+
+            {/* Left Leg */}
+            <mesh ref={leftLegRef} position={[-0.16, 0.4, 0]}>
+              <boxGeometry args={[0.2, 0.75, 0.22]} />
+              <meshStandardMaterial color="#09090b" roughness={0.7} />
+            </mesh>
+
+            {/* Right Leg */}
+            <mesh ref={rightLegRef} position={[0.16, 0.4, 0]}>
+              <boxGeometry args={[0.2, 0.75, 0.22]} />
+              <meshStandardMaterial color="#09090b" roughness={0.7} />
             </mesh>
           </group>
+        )}
+      </group>
 
-          {/* Left Arm */}
-          <mesh ref={leftArmRef} position={[-0.38, 1.05, 0]}>
-            <boxGeometry args={[0.16, 0.65, 0.18]} />
-            <meshStandardMaterial color={isBot ? '#334155' : '#3f3f46'} />
-          </mesh>
-
-          {/* Right Arm */}
-          <mesh ref={rightArmRef} position={[0.38, 1.05, 0]}>
-            <boxGeometry args={[0.16, 0.65, 0.18]} />
-            <meshStandardMaterial color={isBot ? '#334155' : '#3f3f46'} />
-          </mesh>
-
-          {/* Left Leg */}
-          <mesh ref={leftLegRef} position={[-0.16, 0.4, 0]}>
-            <boxGeometry args={[0.2, 0.75, 0.22]} />
-            <meshStandardMaterial color="#09090b" roughness={0.7} />
-          </mesh>
-
-          {/* Right Leg */}
-          <mesh ref={rightLegRef} position={[0.16, 0.4, 0]}>
-            <boxGeometry args={[0.2, 0.75, 0.22]} />
-            <meshStandardMaterial color="#09090b" roughness={0.7} />
-          </mesh>
-        </group>
-      )}
-
-      {/* 3D Floating Nameplate above Head */}
-      <group position={[0, 2.25, 0]}>
+      {/* 3D Floating Nameplate above Head - Always face camera without mirroring */}
+      <Billboard position={[0, 2.25, 0]} follow={true}>
         <Text
           fontSize={0.25}
           color={isCurrentPlayer ? '#f87171' : '#f4f4f5'}
@@ -357,7 +362,7 @@ export default function Avatar3D({
         >
           {personality} {isCurrentPlayer ? '(YOU)' : ''}
         </Text>
-      </group>
+      </Billboard>
     </group>
   );
 }

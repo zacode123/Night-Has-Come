@@ -11,6 +11,7 @@ type RealtimeContextType = {
   setPlayer: (player: any) => void;
   setRoom: (room: any) => void;
   refreshPlayer: (id?: string) => Promise<any>;
+  refreshRoom: (id?: string) => Promise<any>;
 };
 
 const RealtimeContext = createContext<RealtimeContextType>({
@@ -20,6 +21,7 @@ const RealtimeContext = createContext<RealtimeContextType>({
   setPlayer: () => {},
   setRoom: () => {},
   refreshPlayer: async () => null,
+  refreshRoom: async () => null,
 });
 
 export function useRealtime() {
@@ -136,9 +138,10 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'rooms' },
           (payload: any) => {
+            const targetId = payload.new?.id || payload.old?.id;
             setRoom((currentRoom: any) => {
-              const targetId = payload.new?.id || payload.old?.id;
-              if (currentRoom?.id === targetId) {
+              // Only update if this room matches the current player's assigned room
+              if (currentRoom && currentRoom.id === targetId) {
                 return payload.eventType === 'DELETE' ? null : payload.new;
               }
               return currentRoom;
@@ -155,6 +158,52 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
       supabase.removeChannel(channel);
     };
   }, [currentPlayerId]);
+
+  // 3. Dedicated real-time listener specifically for player's assigned room
+  useEffect(() => {
+    const targetRoomId = player?.room_id;
+    if (!targetRoomId) return;
+
+    let isMounted = true;
+    const roomChannel = supabase
+      .channel(`room-live-listener-${targetRoomId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rooms', filter: `id=eq.${targetRoomId}` },
+        (payload: any) => {
+          if (!isMounted) return;
+          if (payload.eventType === 'DELETE') {
+            setRoom(null);
+          } else if (payload.new) {
+            setRoom(payload.new);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(roomChannel);
+    };
+  }, [player?.room_id]);
+
+  const refreshRoom = async (id?: string) => {
+    const targetRoomId = id || player?.room_id;
+    if (!targetRoomId) {
+      setRoom(null);
+      return null;
+    }
+    const { data: freshRoom } = await supabase
+      .from('rooms')
+      .select('*')
+      .eq('id', targetRoomId)
+      .maybeSingle();
+
+    if (freshRoom) {
+      setRoom(freshRoom);
+    }
+    return freshRoom;
+  };
 
   const refreshPlayer = async (id?: string) => {
     const targetId = id || Cookies.get('playerId') || localStorage.getItem('playerId');
@@ -186,7 +235,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
             .select('*')
             .eq('id', fetchedPlayer.room_id)
             .maybeSingle();
-          if (initialRoom) setRoom(initialRoom);
+          setRoom(initialRoom || null);
         } else {
           setRoom(null);
         }
@@ -209,7 +258,7 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <RealtimeContext.Provider value={{ player, room, isLoading, setPlayer, setRoom, refreshPlayer }}>
+    <RealtimeContext.Provider value={{ player, room, isLoading, setPlayer, setRoom, refreshPlayer, refreshRoom }}>
       {children}
     </RealtimeContext.Provider>
   );

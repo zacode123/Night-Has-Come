@@ -104,11 +104,7 @@ export default function VirtualJoystick({
         icon: <Search size={20} className="text-white" />,
       };
     }
-    return {
-      label: 'GESTURE',
-      color: 'from-zinc-700 to-zinc-900 border-zinc-600 shadow-black/50',
-      icon: <Eye size={20} className="text-zinc-200" />,
-    };
+    return null;
   };
 
   const roleAction = getRoleActionButton();

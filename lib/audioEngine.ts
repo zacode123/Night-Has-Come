@@ -39,9 +39,9 @@ class AudioEngine {
         });
       }
 
-      // Preload ambient sounds
+      // Preload ambient sounds (completely voice-free suspenseful ambiances)
       this.preloadAmbient('nightAmbient', 'https://actions.google.com/sounds/v1/weather/thunderstorm.ogg');
-      this.preloadAmbient('discussionAmbient', 'https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg');
+      this.preloadAmbient('discussionAmbient', 'https://actions.google.com/sounds/v1/science_fiction/low_frequency_drones.ogg');
       this.preloadAmbient('mainMenuAmbient', 'https://actions.google.com/sounds/v1/science_fiction/ringing_ambient_background.ogg');
     }
   }

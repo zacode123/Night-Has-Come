@@ -65,13 +65,13 @@ function CameraController({
       const lookTarget = new THREE.Vector3(tx, ty + 1.2, tz);
       camera.lookAt(lookTarget);
     } else {
-      // Tactical Isometric Cam
-      const isoOffset = 9;
+      // Tactical Isometric Cam (Direct South-elevated angle aligned with screen axes)
       const isoHeight = 11;
-      const targetCamPos = new THREE.Vector3(tx + isoOffset, isoHeight, tz + isoOffset);
+      const isoBack = 9;
+      const targetCamPos = new THREE.Vector3(tx, isoHeight, tz + isoBack);
 
       camera.position.lerp(targetCamPos, delta * 5);
-      camera.lookAt(tx, 1, tz);
+      camera.lookAt(tx, 0.8, tz);
     }
   });
 
@@ -346,13 +346,21 @@ export default function GameBoard({
       lastTime = currentTime;
 
       // 1. Gather movement inputs from keyboard or virtual joystick
-      let inputX = joystickVector.current.x;
-      let inputZ = joystickVector.current.y;
+      let stickX = joystickVector.current.x;
+      let stickY = joystickVector.current.y;
 
-      if (keysDown.current['w'] || keysDown.current['arrowup']) inputZ += 1;
-      if (keysDown.current['s'] || keysDown.current['arrowdown']) inputZ -= 1;
-      if (keysDown.current['a'] || keysDown.current['arrowleft']) inputX -= 1;
-      if (keysDown.current['d'] || keysDown.current['arrowright']) inputX += 1;
+      if (keysDown.current['w'] || keysDown.current['arrowup']) stickY += 1;
+      if (keysDown.current['s'] || keysDown.current['arrowdown']) stickY -= 1;
+      if (keysDown.current['a'] || keysDown.current['arrowleft']) stickX -= 1;
+      if (keysDown.current['d'] || keysDown.current['arrowright']) stickX += 1;
+
+      // In Three.js with camera on South looking North:
+      // UP on screen = -Z (Forward into screen)
+      // DOWN on screen = +Z (Back towards camera)
+      // RIGHT on screen = +X (East)
+      // LEFT on screen = -X (West)
+      const inputX = stickX;
+      const inputZ = -stickY;
 
       // Normalize input vector if needed
       const inputLength = Math.hypot(inputX, inputZ);
@@ -547,7 +555,7 @@ export default function GameBoard({
         onRoleAction('attack', closestTarget.id);
       } else if (currentPlayer.role === 'Doctor') {
         onRoleAction('heal', closestTarget.id);
-      } else {
+      } else if (currentPlayer.role === 'Police' || currentPlayer.role === 'Detective') {
         onRoleAction('investigate', closestTarget.id);
       }
     }

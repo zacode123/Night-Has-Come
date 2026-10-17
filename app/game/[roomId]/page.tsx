@@ -7,11 +7,8 @@ import {
   Maximize2,
   Minimize2,
   SplitSquareVertical,
-  Bot,
-  Sliders,
-  Play,
-  RotateCcw,
   LogOut,
+  Clock,
   Shield,
   HelpCircle
 } from 'lucide-react';
@@ -23,10 +20,10 @@ import { narrationEngine } from '@/lib/narrationEngine';
 import GameBoard from '@/components/GameBoard';
 import ChatTab from '@/components/ChatTab';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
-import BotHireModal from '@/components/BotHireModal';
 import VotingPanel from '@/components/VotingPanel';
 import Timer from '@/components/Timer';
 import DrippingText from '@/components/DrippingText';
+import { useRealtime } from '@/components/RealtimeProvider';
 
 type ViewportMode = 'split' | 'gameOnly' | 'chatOnly';
 
@@ -34,12 +31,10 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const resolvedParams = use(params);
   const roomId = resolvedParams.roomId;
   const router = useRouter();
+  const { setRoom } = useRealtime();
 
   const [userId, setUserId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewportMode>('split');
-  const [showBotModal, setShowBotModal] = useState(false);
-  const [showTtsModal, setShowTtsModal] = useState(false);
-  const [ttsInput, setTtsInput] = useState('');
   const [customAlert, setCustomAlert] = useState<string | null>(null);
   const [roomNotFound, setRoomNotFound] = useState(false);
 
@@ -91,10 +86,11 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
 
     // STRICT GAME STATUS GUARD: If admin has not started the game, block access and redirect to approved waiting room
     if (gameState.status !== 'in_game') {
+      setRoom(gameState);
       router.replace('/approved');
       return;
     }
-  }, [loading, gameState, router]);
+  }, [loading, gameState, router, setRoom]);
 
   // Handle ambient sound by game phase
   useEffect(() => {
@@ -123,18 +119,6 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
     }
   }, [gameState?.phase, gameState?.status]);
 
-  // Load custom TTS endpoint from engine
-  useEffect(() => {
-    setTtsInput(narrationEngine.getCustomTtsEndpoint() || '');
-  }, []);
-
-  const handleSaveTtsEndpoint = (e: React.FormEvent) => {
-    e.preventDefault();
-    narrationEngine.setCustomTtsEndpoint(ttsInput.trim() || null);
-    setShowTtsModal(false);
-    audioEngine.playSelect();
-  };
-
   const currentPlayer = useMemo(
     () => players.find((p) => p.id === userId),
     [players, userId]
@@ -142,10 +126,27 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const isAlive = currentPlayer?.alive ?? true;
   const canChat = isAlive && (gameState?.phase === 'Discussion' || gameState?.phase === 'Lobby');
 
-  // Next phase advance logic
-  const handleNextPhase = () => {
+  // Automated phase duration configuration (in seconds)
+  const getPhaseDuration = (phase?: string) => {
+    switch (phase) {
+      case 'Night':
+        return 30;
+      case 'Morning':
+        return 8;
+      case 'Discussion':
+        return 60;
+      case 'Voting':
+        return 30;
+      case 'Execution':
+        return 8;
+      default:
+        return 30;
+    }
+  };
+
+  // App intelligence automatically advances phase and day
+  const handleAutoAdvance = () => {
     if (!gameState) return;
-    audioEngine.playClick();
     const cycle: Record<string, any> = {
       Lobby: 'Night',
       Night: 'Morning',
@@ -201,39 +202,20 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           </span>
         </div>
 
-        {/* Action Controls in Header */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          {/* Hire Bots Button */}
-          <button
-            onClick={() => setShowBotModal(true)}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-white/15 hover:border-cyan-500 text-xs text-cyan-300 transition-colors shadow"
-            title="Hire AI Bots"
-          >
-            <Bot size={14} />
-            <span className="hidden sm:inline">Hire Bots</span>
-            <span className="font-mono text-[10px]">
-              ({players.filter((p) => p.is_bot).length})
+        {/* Automated Phase Progress & Exit in Header */}
+        <div className="flex items-center gap-2">
+          {/* Automated Phase Countdown Timer */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-950/60 border border-red-500/30 text-xs font-mono shadow">
+            <Clock size={13} className="text-red-400 animate-pulse" />
+            <span className="text-[10px] uppercase font-bold text-zinc-300">
+              {gameState.phase}:
             </span>
-          </button>
-
-          {/* TTS Endpoint Settings Button */}
-          <button
-            onClick={() => setShowTtsModal(true)}
-            className="p-1.5 rounded-lg bg-zinc-900 border border-white/15 hover:border-red-500 text-zinc-300 hover:text-white transition-colors"
-            title="Configure TTS Endpoint"
-          >
-            <Sliders size={15} />
-          </button>
-
-          {/* Advance Phase Button (For host or progression) */}
-          <button
-            onClick={handleNextPhase}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-900/60 hover:bg-red-800 border border-red-500/50 text-xs font-bold text-red-200 transition-colors shadow"
-            title="Advance Phase"
-          >
-            <Play size={12} className="fill-current" />
-            <span className="hidden sm:inline">Next Phase</span>
-          </button>
+            <Timer
+              duration={getPhaseDuration(gameState.phase)}
+              onExpire={handleAutoAdvance}
+              isActive={true}
+            />
+          </div>
 
           {/* Exit Button */}
           <button
@@ -382,58 +364,6 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           />
         </div>
       </main>
-
-      {/* Bot Hiring Modal */}
-      <BotHireModal
-        isOpen={showBotModal}
-        onClose={() => setShowBotModal(false)}
-        onHireBots={hireBots}
-        onRemoveBot={removeBot}
-        currentBots={players.filter((p) => p.is_bot)}
-        maxSlots={12}
-      />
-
-      {/* TTS Endpoint Configuration Modal */}
-      {showTtsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="bg-zinc-950 border border-red-900 rounded-2xl p-6 w-full max-w-md shadow-2xl"
-          >
-            <h3 className="text-lg font-bold text-white mb-2">Custom TTS Narration Endpoint</h3>
-            <p className="text-xs text-zinc-400 mb-4 leading-relaxed">
-              Paste your custom Text-To-Speech endpoint URL below. All in-game narration and announcements will stream through your endpoint. Leave empty to use default Web Speech.
-            </p>
-
-            <form onSubmit={handleSaveTtsEndpoint} className="space-y-4">
-              <input
-                type="url"
-                value={ttsInput}
-                onChange={(e) => setTtsInput(e.target.value)}
-                placeholder="https://your-tts-api.com/synthesize"
-                className="w-full bg-black/80 border border-white/20 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-red-500 font-mono"
-              />
-
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowTtsModal(false)}
-                  className="flex-1 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 py-2 rounded-xl bg-red-700 hover:bg-red-600 text-white text-xs font-bold shadow-lg"
-                >
-                  Save Endpoint
-                </button>
-              </div>
-            </form>
-          </motion.div>
-        </div>
-      )}
     </div>
   );
 }

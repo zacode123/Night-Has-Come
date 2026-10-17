@@ -1,23 +1,75 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { useRealtime } from '@/components/RealtimeProvider';
 import { audioEngine } from '@/lib/audioEngine';
+import { supabase } from '@/lib/supabaseClient';
 import DrippingText from '@/components/DrippingText';
 
 export default function ApprovedPage() {
   const router = useRouter();
 
   // 1. Get live state directly from your global provider
-  const { player, room, isLoading } = useRealtime(); 
+  const { player, room, isLoading, refreshPlayer, setRoom } = useRealtime(); 
+  const [isVerifyingRoom, setIsVerifyingRoom] = useState(true);
+  const [currentRoomStatus, setCurrentRoomStatus] = useState<string | null>(null);
+
+  // Verify fresh ground-truth room status directly from Supabase upon mounting
+  useEffect(() => {
+    let isMounted = true;
+    const verifyRoom = async () => {
+      try {
+        const activePlayer = player || (await refreshPlayer());
+        if (activePlayer?.room_id) {
+          const { data: freshRoom } = await supabase
+            .from('rooms')
+            .select('*')
+            .eq('id', activePlayer.room_id)
+            .maybeSingle();
+
+          if (isMounted) {
+            if (freshRoom) {
+              setRoom(freshRoom);
+              setCurrentRoomStatus(freshRoom.status);
+              // If the room is already in_game, redirect directly
+              if (freshRoom.status === 'in_game') {
+                router.replace(`/game/${activePlayer.room_id}`);
+                return;
+              }
+            } else {
+              setCurrentRoomStatus(null);
+            }
+            setIsVerifyingRoom(false);
+          }
+        } else {
+          if (isMounted) setIsVerifyingRoom(false);
+        }
+      } catch {
+        if (isMounted) setIsVerifyingRoom(false);
+      }
+    };
+
+    verifyRoom();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [player?.room_id, router, setRoom, refreshPlayer]);
+
+  // Keep currentRoomStatus in sync with realtime room changes
+  useEffect(() => {
+    if (room && room.id === player?.room_id) {
+      setCurrentRoomStatus(room.status);
+    }
+  }, [room, player?.room_id]);
 
   // Handle routing based on live state changes
   useEffect(() => {
-    // Do nothing while the provider is initially fetching data
-    if (isLoading) return;
+    // Wait until both global loading and room verification are completed
+    if (isLoading || isVerifyingRoom) return;
 
     // If player doesn't exist at all, send to root sign-in
     if (!player) {
@@ -37,12 +89,12 @@ export default function ApprovedPage() {
       return;
     }
 
-    // If the admin started the game, automatically redirect to game room
-    if (room?.status === 'in_game' && player.room_id) {
+    // STRICT GAME START GUARD: Only redirect to game if room status is verified as in_game
+    if (currentRoomStatus === 'in_game' && player.room_id) {
       router.replace(`/game/${player.room_id}`);
       return;
     }
-  }, [player, room, isLoading, router]); // Re-runs instantly whenever provider state updates
+  }, [player, currentRoomStatus, isLoading, isVerifyingRoom, router]);
 
   // Handle ambient audio
   useEffect(() => {
