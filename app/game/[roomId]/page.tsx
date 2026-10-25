@@ -24,6 +24,9 @@ import VotingPanel from '@/components/VotingPanel';
 import Timer from '@/components/Timer';
 import DrippingText from '@/components/DrippingText';
 import { useRealtime } from '@/components/RealtimeProvider';
+import { useLiveCall } from '@/hooks/useLiveCall';
+import FloatingCallOverlay from '@/components/FloatingCallOverlay';
+import LiveCallModal from '@/components/LiveCallModal';
 
 type ViewportMode = 'split' | 'gameOnly' | 'chatOnly';
 
@@ -37,6 +40,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const [viewMode, setViewMode] = useState<ViewportMode>('split');
   const [customAlert, setCustomAlert] = useState<string | null>(null);
   const [roomNotFound, setRoomNotFound] = useState(false);
+  const [showCallModal, setShowCallModal] = useState(false);
 
   const {
     gameState,
@@ -52,11 +56,33 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
 
   const {
     messages,
+    typingUsers,
+    recordingUsers,
+    broadcastTyping,
+    broadcastRecording,
     sendMessage,
     sendVoiceMessage,
+    sendMediaMessage,
     editMessage,
-    deleteMessage,
+    deleteMessages,
+    purgeDateMessages,
   } = useChat(roomId, userId || '');
+
+  const {
+    callId,
+    callStatus,
+    incomingCall,
+    participants: callParticipants,
+    isMicMuted,
+    isSpeakerMuted,
+    isCurfewMuted,
+    startCall,
+    acceptCall,
+    declineCall,
+    leaveCall,
+    toggleMic,
+    toggleSpeaker,
+  } = useLiveCall(roomId, userId || '', gameState?.phase);
 
   // Initialize Auth & Player ID
   useEffect(() => {
@@ -356,14 +382,50 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           <ChatTab
             messages={messages}
             currentUserId={userId}
+            isHostOrAdmin={Boolean(gameState?.host_id === userId || currentPlayer?.role === 'Host')}
+            typingUsers={typingUsers}
+            recordingUsers={recordingUsers}
             onSendMessage={sendMessage}
             onSendVoiceMessage={sendVoiceMessage}
+            onSendMediaMessage={sendMediaMessage}
             onEditMessage={editMessage}
-            onDeleteMessage={deleteMessage}
+            onDeleteMessages={deleteMessages}
+            onPurgeDateMessages={purgeDateMessages}
+            onBroadcastTyping={broadcastTyping}
+            onBroadcastRecording={broadcastRecording}
+            onOpenCallModal={() => setShowCallModal(true)}
             disabled={!canChat}
           />
         </div>
       </main>
+
+      {/* Floating Independent Live Group Audio Call Overlay */}
+      <FloatingCallOverlay
+        callId={callId}
+        callStatus={callStatus}
+        incomingCall={incomingCall}
+        participants={callParticipants}
+        isMicMuted={isMicMuted}
+        isSpeakerMuted={isSpeakerMuted}
+        isCurfewMuted={isCurfewMuted}
+        onAcceptCall={acceptCall}
+        onDeclineCall={declineCall}
+        onLeaveCall={leaveCall}
+        onToggleMic={toggleMic}
+        onToggleSpeaker={toggleSpeaker}
+        onOpenInviteModal={() => setShowCallModal(true)}
+      />
+
+      {/* Live Call Player Selection Modal */}
+      <LiveCallModal
+        isOpen={showCallModal}
+        onClose={() => setShowCallModal(false)}
+        players={players}
+        currentUserId={userId}
+        onStartCall={(selectedIds, selectedData) => {
+          startCall(selectedIds, selectedData);
+        }}
+      />
     </div>
   );
 }

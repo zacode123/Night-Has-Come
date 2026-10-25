@@ -12,9 +12,10 @@ export async function POST(request: Request) {
       messageType = 'text',
       audioUrl,
       audioDuration,
+      mediaUrl,
     } = await request.json();
 
-    if (!roomId || !senderId || !message) {
+    if (!roomId || !senderId || (!message && !audioUrl && !mediaUrl)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -22,13 +23,18 @@ export async function POST(request: Request) {
       room_id: roomId,
       sender_id: senderId,
       sender_name: senderName || 'Student',
-      message: message,
+      message: message || '',
       message_type: messageType,
+      read_by: [senderId],
     };
 
     if (audioUrl) {
       payload.audio_url = audioUrl;
       payload.audio_duration = audioDuration || 3;
+    }
+
+    if (mediaUrl) {
+      payload.media_url = mediaUrl;
     }
 
     const { data, error } = await supabase
@@ -38,16 +44,19 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (error) {
-      // If table lacks audio_url column, retry with basic fields
+      // Fallback in case table has basic columns
+      const fallbackPayload: any = {
+        room_id: roomId,
+        sender_id: senderId,
+        sender_name: senderName || 'Student',
+        message: message || (mediaUrl ? '[Image/GIF]' : '🎤 Voice Note'),
+        message_type: messageType,
+      };
+      if (audioUrl) fallbackPayload.audio_url = audioUrl;
+
       const { data: fallbackData } = await supabase
         .from('messages')
-        .insert({
-          room_id: roomId,
-          sender_id: senderId,
-          sender_name: senderName || 'Student',
-          message: message,
-          message_type: 'text',
-        })
+        .insert(fallbackPayload)
         .select()
         .maybeSingle();
 
