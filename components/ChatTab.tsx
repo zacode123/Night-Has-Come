@@ -833,11 +833,17 @@ export default function ChatTab({
                         {isMe && (
                           <span className="ml-1 inline-flex items-center">
                             {isReadByOthers ? (
-                              <CheckCheck size={13} className="text-sky-400" title="Read by participants" />
+                              <span title="Read by participants">
+                                <CheckCheck size={13} className="text-sky-400" />
+                              </span>
                             ) : isDelivered ? (
-                              <CheckCheck size={13} className="text-zinc-400" title="Delivered to room" />
+                              <span title="Delivered to room">
+                                <CheckCheck size={13} className="text-zinc-400" />
+                              </span>
                             ) : (
-                              <Check size={12} className="text-zinc-400" title="Sent" />
+                              <span title="Sent">
+                                <Check size={12} className="text-zinc-400" />
+                              </span>
                             )}
                           </span>
                         )}

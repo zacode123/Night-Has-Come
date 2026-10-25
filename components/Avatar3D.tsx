@@ -190,7 +190,7 @@ export default function Avatar3D({
     }
 
     // Limb animations for walk / run
-    const time = state.clock.getElapsedTime();
+    const time = performance.now() / 1000;
     const isMoving = gesture === 'walk' || gesture === 'run';
     const speedMultiplier = gesture === 'run' ? 14 : 7;
     const limbAmp = gesture === 'run' ? 0.8 : 0.5;

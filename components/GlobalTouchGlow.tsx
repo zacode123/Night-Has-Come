@@ -13,6 +13,20 @@ export default function GlobalTouchGlow() {
   const lastSpawn = useRef(0);
 
   useEffect(() => {
+    // Filter Three.js r183 THREE.Clock deprecation notice from internal third-party dependencies
+    if (typeof window !== 'undefined') {
+      const origWarn = console.warn;
+      console.warn = (...args: any[]) => {
+        if (
+          args[0] &&
+          typeof args[0] === 'string' &&
+          (args[0].includes('THREE.Clock') || args[0].includes('THREE.Timer'))
+        ) {
+          return;
+        }
+        origWarn.apply(console, args);
+      };
+    }
     audioEngine.init();
   }, []);
 

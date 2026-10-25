@@ -46,6 +46,8 @@ class AudioEngine {
     }
   }
 
+  private synthNodes: { oscs: OscillatorNode[]; gain: GainNode } | null = null;
+
   private getAudioContext() {
     if (!this.audioCtx && typeof window !== 'undefined') {
       this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -55,13 +57,11 @@ class AudioEngine {
     }
     if (this.audioCtx?.state === 'suspended') {
       this.audioCtx.resume().then(() => {
-        console.log("AudioContext resumed successfully");
-        // If an ambient was supposed to be playing, try to play it again
         if (this.currentAmbientName) {
           this.playAmbient(this.currentAmbientName);
         }
-      }).catch(err => {
-        console.error("Failed to resume AudioContext:", err);
+      }).catch(() => {
+        // Ignored until user gesture
       });
     }
     return this.audioCtx;
@@ -78,14 +78,13 @@ class AudioEngine {
     
     this.loadingAmbients.add(name);
     const audio = new Audio();
+    // Do not set crossOrigin = 'anonymous' to prevent CORS blockages on external CDNs
     audio.src = url;
     audio.preload = 'auto';
     audio.loop = true;
-    audio.crossOrigin = 'anonymous';
     
     const checkReady = () => {
-      if (audio.readyState >= 3) { // HAVE_FUTURE_DATA or better
-        console.log(`Ambient ${name} is ready to play (readyState: ${audio.readyState})`);
+      if (audio.readyState >= 2) {
         this.ambientSounds[name] = audio;
         this.loadingAmbients.delete(name);
         if (this.currentAmbientName === name) {
@@ -99,115 +98,171 @@ class AudioEngine {
     audio.addEventListener('canplaythrough', checkReady);
     audio.addEventListener('canplay', checkReady);
 
-    audio.onerror = (e) => {
-      console.error(`Failed to load ambient: ${name}`, e);
+    audio.onerror = () => {
+      // Gracefully fall back to procedural synthesis without throwing or logging console.error
       this.loadingAmbients.delete(name);
+      if (this.currentAmbientName === name) {
+        this.playProceduralDrone(name);
+      }
     };
 
     // Force load
     audio.load();
-    
-    // Fallback check in case events don't fire
     setTimeout(checkReady, 2000);
+  }
+
+  private playProceduralDrone(name: string) {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+    this.stopProceduralDrone();
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.setValueAtTime(0.001, ctx.currentTime);
+    masterGain.connect(ctx.destination);
+
+    const oscs: OscillatorNode[] = [];
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.connect(masterGain);
+
+    if (name === 'discussionAmbient') {
+      // Suspenseful dual low-frequency beat drone
+      filter.frequency.setValueAtTime(140, ctx.currentTime);
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(55, ctx.currentTime); // A1
+      osc1.connect(filter);
+      osc1.start();
+      oscs.push(osc1);
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(57.5, ctx.currentTime); // Detuned tension beat
+      osc2.connect(filter);
+      osc2.start();
+      oscs.push(osc2);
+
+      const osc3 = ctx.createOscillator();
+      osc3.type = 'triangle';
+      osc3.frequency.setValueAtTime(110, ctx.currentTime);
+      osc3.connect(filter);
+      osc3.start();
+      oscs.push(osc3);
+
+      masterGain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 2);
+    } else if (name === 'nightAmbient') {
+      // Deep sub-bass dark rumble
+      filter.frequency.setValueAtTime(90, ctx.currentTime);
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(40, ctx.currentTime);
+      osc1.connect(filter);
+      osc1.start();
+      oscs.push(osc1);
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(42.5, ctx.currentTime);
+      osc2.connect(filter);
+      osc2.start();
+      oscs.push(osc2);
+
+      masterGain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + 2);
+    } else {
+      // Ethereal fifth chord background
+      filter.frequency.setValueAtTime(280, ctx.currentTime);
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(110, ctx.currentTime);
+      osc1.connect(filter);
+      osc1.start();
+      oscs.push(osc1);
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(165, ctx.currentTime); // E
+      osc2.connect(filter);
+      osc2.start();
+      oscs.push(osc2);
+
+      masterGain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 2);
+    }
+
+    this.synthNodes = { oscs, gain: masterGain };
+  }
+
+  private stopProceduralDrone() {
+    if (this.synthNodes && this.audioCtx) {
+      const { oscs, gain } = this.synthNodes;
+      try {
+        gain.gain.linearRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.8);
+        setTimeout(() => {
+          oscs.forEach((osc) => {
+            try {
+              osc.stop();
+              osc.disconnect();
+            } catch (_) {}
+          });
+        }, 850);
+      } catch (_) {}
+      this.synthNodes = null;
+    }
   }
 
   private playAmbient(name: string) {
     this.currentAmbientName = name;
     const audio = this.ambientSounds[name];
-    const ctx = this.getAudioContext();
-    
-    if (!audio || !ctx) {
-      console.log(`Ambient ${name} or AudioContext not ready yet, will play when loaded`);
-      return;
-    }
 
-    // If it's already playing, don't restart it
-    if (!audio.paused && this.currentAmbientName === name) return;
-    
-    this.stopAmbient();
-    this.currentAmbientName = name;
+    // If audio element is available and ready, use it
+    if (audio && audio.readyState >= 2) {
+      if (!audio.paused && this.currentAmbientName === name) return;
+      this.stopAmbient();
+      this.currentAmbientName = name;
 
-    // Connect to AudioContext if not already connected
-    if (!this.ambientNodes[name]) {
-      try {
-        const source = ctx.createMediaElementSource(audio);
-        source.connect(this.gainNode!);
-        this.ambientNodes[name] = source;
-      } catch (e) {
-        console.warn(`Source already connected for ${name}, skipping connection.`);
+      audio.volume = 0.5;
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((e) => {
+          if (e.name === 'NotAllowedError') {
+            console.log(`Autoplay waiting for user gesture for ${name}`);
+          } else {
+            // Fall back to Web Audio API drone
+            this.playProceduralDrone(name);
+          }
+        });
       }
+    } else {
+      // Use built-in procedural synthesizer drone
+      this.playProceduralDrone(name);
     }
 
     // Update Media Session metadata
-    if ('mediaSession' in navigator) {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: name === 'mainMenuAmbient' ? 'Night Has Come - Main Menu' : 
-               name === 'nightAmbient' ? 'Night Has Come - Night Phase' : 
-               'Night Has Come - Discussion',
-        artist: 'Zahid Arman',
-        album: ' Night Has Come Soundtrack',
-        artwork: [
-          { src: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=512&q=80', sizes: '512x512', type: 'image/jpeg' }
-        ]
-      });
-      navigator.mediaSession.playbackState = 'playing';
-      
-      // Update playback position for notification bar
-      if ('setPositionState' in navigator.mediaSession) {
-        navigator.mediaSession.setPositionState({
-          duration: audio.duration || 0,
-          playbackRate: audio.playbackRate,
-          position: audio.currentTime
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+      try {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: name === 'mainMenuAmbient' ? 'Night Has Come - Main Menu' : 
+                 name === 'nightAmbient' ? 'Night Has Come - Night Phase' : 
+                 'Night Has Come - Discussion',
+          artist: 'Night Has Come',
+          album: 'Original Soundtrack',
         });
-      }
-    }
-
-    audio.volume = 1.0; // Control volume via GainNode instead
-    this.gainNode!.gain.cancelScheduledValues(ctx.currentTime);
-    this.gainNode!.gain.setValueAtTime(0, ctx.currentTime);
-    
-    const playPromise = audio.play();
-    
-    if (playPromise !== undefined) {
-      playPromise.then(() => {
-        console.log(`Successfully playing ambient: ${name}`);
-        // Fade in using GainNode
-        this.gainNode!.gain.linearRampToValueAtTime(0.8, ctx.currentTime + 2);
-      }).catch(e => {
-        if (e.name === 'NotAllowedError') {
-          console.log(`Autoplay blocked for ${name}, waiting for user interaction.`);
-        } else {
-          console.error(`Error playing ${name}:`, e);
-        }
-        // If play failed, try to resume context and play again on next interaction
-        this.getAudioContext();
-      });
+        navigator.mediaSession.playbackState = 'playing';
+      } catch (_) {}
     }
   }
 
   stopAmbient() {
-    if (this.fadeInterval) {
-      clearInterval(this.fadeInterval);
-      this.fadeInterval = null;
-    }
-
-    const ctx = this.getAudioContext();
-    if (this.currentAmbientName && this.ambientSounds[this.currentAmbientName] && ctx && this.gainNode) {
+    if (this.currentAmbientName && this.ambientSounds[this.currentAmbientName]) {
       const audio = this.ambientSounds[this.currentAmbientName];
-      
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'paused';
-      }
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch (_) {}
+    }
+    this.stopProceduralDrone();
 
-      // Fade out using GainNode
-      this.gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
-      
-      setTimeout(() => {
-        if (this.currentAmbientName === null) {
-          audio.pause();
-          audio.currentTime = 0;
-        }
-      }, 1100);
+    if (typeof navigator !== 'undefined' && 'mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = 'paused';
     }
     
     this.currentAmbientName = null;
