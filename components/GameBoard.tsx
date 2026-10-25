@@ -2,11 +2,20 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Html } from '@react-three/drei';
 import * as THREE from 'three';
+import { Eye, Lock, Unlock, ShieldAlert } from 'lucide-react';
 import Avatar3D from '@/components/Avatar3D';
 import VirtualJoystick from '@/components/VirtualJoystick';
-import { generateRoomLayout, RoomLayout, FurnitureItem } from '@/lib/roomGenerator';
+import {
+  generateRoomLayout,
+  RoomLayout,
+  FurnitureItem,
+  WallSegment,
+  DoorData,
+} from '@/lib/roomGenerator';
 import { audioEngine } from '@/lib/audioEngine';
+import { supabase } from '@/lib/supabaseClient';
 
 export interface Player3DData {
   id: string;
@@ -28,12 +37,13 @@ interface GameBoardProps {
   dayNumber: number;
   players: Player3DData[];
   currentUserId: string;
+  isAdmin?: boolean;
   onUpdatePosition?: (pos: { x: number; z: number; rotation: number; gesture: string }) => void;
   onRoleAction?: (action: 'attack' | 'heal' | 'investigate', targetId: string) => void;
 }
 
 // -------------------------------------------------------------
-// CAMERA CONTROLLER COMPONENT
+// CAMERA CONTROLLER: FIRST PERSON (EYE-LEVEL) VS THIRD PERSON (ENLARGED)
 // -------------------------------------------------------------
 function CameraController({
   targetPos,
@@ -42,40 +52,174 @@ function CameraController({
 }: {
   targetPos: [number, number, number];
   targetRot: number;
-  cameraMode: 'thirdPerson' | 'isometric';
+  cameraMode: 'firstPerson' | 'thirdPerson';
 }) {
   const { camera } = useThree();
 
   useFrame((_, delta) => {
     const [tx, ty, tz] = targetPos;
 
-    if (cameraMode === 'thirdPerson') {
-      // GTA Follow Cam: placed behind player based on rotation
-      const distance = 4.8;
-      const height = 2.4;
+    if (cameraMode === 'firstPerson') {
+      // True Eye-Level View (1.65m height, horizontal forward look vector)
+      const eyeHeight = 1.65;
+      camera.position.x = tx;
+      camera.position.y = ty + eyeHeight;
+      camera.position.z = tz;
+
+      // Look straight ahead in the player facing direction (horizontal sightline)
+      const lookDist = 15;
+      const targetLookX = tx + Math.sin(targetRot) * lookDist;
+      const targetLookY = ty + eyeHeight; // strictly horizontal, not upper side
+      const targetLookZ = tz + Math.cos(targetRot) * lookDist;
+
+      camera.lookAt(targetLookX, targetLookY, targetLookZ);
+    } else {
+      // Enlarged Third Person Tactical View (Pulled back, elevated, sees over walls & rooms)
+      const distance = 7.5;
+      const height = 5.8;
       const camX = tx - Math.sin(targetRot) * distance;
       const camZ = tz - Math.cos(targetRot) * distance;
       const camY = ty + height;
 
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, camX, delta * 6);
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, camY, delta * 6);
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, delta * 6);
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, camX, Math.min(1, delta * 7));
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, camY, Math.min(1, delta * 7));
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, Math.min(1, delta * 7));
 
-      // Look slightly above target
+      // Look at player center-of-mass
       const lookTarget = new THREE.Vector3(tx, ty + 1.2, tz);
       camera.lookAt(lookTarget);
-    } else {
-      // Tactical Isometric Cam (Direct South-elevated angle aligned with screen axes)
-      const isoHeight = 11;
-      const isoBack = 9;
-      const targetCamPos = new THREE.Vector3(tx, isoHeight, tz + isoBack);
-
-      camera.position.lerp(targetCamPos, delta * 5);
-      camera.lookAt(tx, 0.8, tz);
     }
   });
 
   return null;
+}
+
+// -------------------------------------------------------------
+// REALISTIC 3D PHYSICAL DOOR COMPONENT
+// -------------------------------------------------------------
+function PhysicalDoorMesh({
+  door,
+  playerPos,
+  onToggleLock,
+}: {
+  door: DoorData;
+  playerPos: [number, number, number];
+  onToggleLock: (doorId: string) => void;
+}) {
+  const [dx, dy, dz] = door.position;
+  const isXDoor = door.wallNormal === 'x'; // door opening crosses X axis
+  const doorWidth = door.width;
+  const doorHeight = door.height;
+  const thickness = 0.12;
+
+  // Determine which side of the door the player is currently standing on
+  // For door at X = -3 (or 3):
+  const playerSide = isXDoor
+    ? playerPos[0] > dx
+      ? 'roomA' // Central Corridor side
+      : 'roomB' // Inside Room side
+    : playerPos[2] > dz
+    ? 'roomA'
+    : 'roomB';
+
+  const distToDoor = Math.hypot(playerPos[0] - dx, playerPos[2] - dz);
+  const showHandlePrompt = distToDoor < 2.0;
+
+  const canUnlock = !door.isLocked || door.lockedSide === playerSide;
+  const isLockedFromOtherSide = door.isLocked && door.lockedSide !== playerSide;
+
+  return (
+    <group position={[dx, 0, dz]}>
+      {/* Heavy Steel Door Frame */}
+      {/* Left Frame Post */}
+      <mesh position={isXDoor ? [0, doorHeight / 2, -doorWidth / 2 - 0.08] : [-doorWidth / 2 - 0.08, doorHeight / 2, 0]} castShadow>
+        <boxGeometry args={isXDoor ? [0.45, doorHeight, 0.16] : [0.16, doorHeight, 0.45]} />
+        <meshStandardMaterial color="#18181b" roughness={0.4} metalness={0.8} />
+      </mesh>
+      {/* Right Frame Post */}
+      <mesh position={isXDoor ? [0, doorHeight / 2, doorWidth / 2 + 0.08] : [doorWidth / 2 + 0.08, doorHeight / 2, 0]} castShadow>
+        <boxGeometry args={isXDoor ? [0.45, doorHeight, 0.16] : [0.16, doorHeight, 0.45]} />
+        <meshStandardMaterial color="#18181b" roughness={0.4} metalness={0.8} />
+      </mesh>
+      {/* Frame Top Header */}
+      <mesh position={[0, doorHeight + 0.08, 0]} castShadow>
+        <boxGeometry args={isXDoor ? [0.45, 0.16, doorWidth + 0.32] : [doorWidth + 0.32, 0.16, 0.45]} />
+        <meshStandardMaterial color="#18181b" roughness={0.4} metalness={0.8} />
+      </mesh>
+
+      {/* Door Leaf (Swinging on Hinge at corner) */}
+      <group
+        position={isXDoor ? [0, 0, -doorWidth / 2] : [-doorWidth / 2, 0, 0]}
+        rotation={[0, door.angle, 0]}
+      >
+        {/* Main Door Panel */}
+        <mesh
+          position={isXDoor ? [0, doorHeight / 2, doorWidth / 2] : [doorWidth / 2, doorHeight / 2, 0]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={isXDoor ? [thickness, doorHeight, doorWidth] : [doorWidth, doorHeight, thickness]} />
+          <meshStandardMaterial
+            color={door.isLocked ? '#450a0a' : '#27272a'}
+            roughness={0.6}
+            metalness={0.3}
+          />
+        </mesh>
+
+        {/* Steel Cross Brace Panel Detail */}
+        <mesh position={isXDoor ? [0, doorHeight / 2, doorWidth / 2] : [doorWidth / 2, doorHeight / 2, 0]}>
+          <boxGeometry args={isXDoor ? [thickness + 0.02, doorHeight * 0.88, doorWidth * 0.88] : [doorWidth * 0.88, doorHeight * 0.88, thickness + 0.02]} />
+          <meshStandardMaterial color="#18181b" roughness={0.7} metalness={0.5} />
+        </mesh>
+
+        {/* Door Brass Handle & Lock Bolt at Z = doorWidth * 0.85 */}
+        <mesh position={isXDoor ? [0.1, 1.2, doorWidth * 0.85] : [doorWidth * 0.85, 1.2, 0.1]}>
+          <boxGeometry args={[0.08, 0.22, 0.18]} />
+          <meshStandardMaterial color={door.isLocked ? '#ef4444' : '#eab308'} metalness={0.9} roughness={0.2} />
+        </mesh>
+
+        {/* Lock Status Indicator Glow on Handle */}
+        <pointLight
+          position={isXDoor ? [0.15, 1.2, doorWidth * 0.85] : [doorWidth * 0.85, 1.2, 0.15]}
+          color={door.isLocked ? '#ef4444' : '#22c55e'}
+          intensity={0.8}
+          distance={1.5}
+        />
+      </group>
+
+      {/* Floating 3D Contextual Handle Lock/Unlock Button */}
+      {showHandlePrompt && (
+        <Html position={[0, 1.45, 0]} center distanceFactor={14}>
+          <div className="pointer-events-auto transform -translate-y-4">
+            {isLockedFromOtherSide ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/95 border border-red-500 rounded-xl text-red-300 text-xs font-bold shadow-2xl backdrop-blur-md animate-pulse">
+                <ShieldAlert size={14} className="text-red-400" />
+                <span>Locked from other side</span>
+              </div>
+            ) : door.isLocked ? (
+              <button
+                type="button"
+                onClick={() => onToggleLock(door.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-black font-extrabold text-xs rounded-xl shadow-2xl transition-all cursor-pointer border border-yellow-300 active:scale-95"
+              >
+                <Unlock size={14} />
+                <span>Unlock Door</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onToggleLock(door.id)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white font-extrabold text-xs rounded-xl shadow-2xl transition-all cursor-pointer border border-red-400 active:scale-95"
+              >
+                <Lock size={14} />
+                <span>Lock Door</span>
+              </button>
+            )}
+          </div>
+        </Html>
+      )}
+    </group>
+  );
 }
 
 // -------------------------------------------------------------
@@ -91,15 +235,15 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
         <boxGeometry args={[w, h, d]} />
         <meshStandardMaterial
           color={item.color || '#3f3f46'}
-          roughness={0.7}
-          metalness={0.2}
+          roughness={0.65}
+          metalness={0.25}
         />
       </mesh>
 
       {/* Accent Detail */}
       {item.accentColor && (
         <mesh position={[0, h + 0.02, 0]}>
-          <boxGeometry args={[w * 0.9, 0.05, d * 0.9]} />
+          <boxGeometry args={[w * 0.9, 0.04, d * 0.9]} />
           <meshBasicMaterial color={item.accentColor} />
         </mesh>
       )}
@@ -108,78 +252,87 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
 }
 
 // -------------------------------------------------------------
-// ROOM ENVIRONMENT COMPONENT
+// HYPER-REALISTIC MULTI-ROOM ENVIRONMENT
 // -------------------------------------------------------------
-function RoomEnvironment({ layout, phase }: { layout: RoomLayout; phase: string }) {
-  const halfW = layout.dimensions.width / 2;
-  const halfD = layout.dimensions.depth / 2;
+function RoomEnvironment({
+  layout,
+  phase,
+  doors,
+  playerPos,
+  onToggleLock,
+}: {
+  layout: RoomLayout;
+  phase: string;
+  doors: DoorData[];
+  playerPos: [number, number, number];
+  onToggleLock: (doorId: string) => void;
+}) {
   const isNight = phase === 'Night';
 
   return (
     <group>
-      {/* Lighting */}
+      {/* Ambient & Directional Lighting */}
       <ambientLight intensity={isNight ? 0.35 : 0.85} color={isNight ? '#1e3a8a' : '#ffffff'} />
       <directionalLight
-        position={[12, 18, 10]}
-        intensity={isNight ? 0.4 : 1.2}
-        color={isNight ? '#3b82f6' : '#fff1f2'}
+        position={[15, 24, 15]}
+        intensity={isNight ? 0.5 : 1.3}
+        color={isNight ? '#60a5fa' : '#fffbeb'}
         castShadow
-      />
-      {/* Red Emergency Warning Light */}
-      <pointLight
-        position={[0, 6, 0]}
-        color={isNight ? '#ef4444' : '#f87171'}
-        intensity={isNight ? 2.5 : 1}
-        distance={25}
+        shadow-mapSize={[2048, 2048]}
       />
 
-      {/* Floor with grid tiles */}
+      {/* Emergency Hallway Beacons */}
+      <pointLight position={[0, 4.2, -10]} color="#ef4444" intensity={1.5} distance={15} />
+      <pointLight position={[0, 4.2, 0]} color="#ef4444" intensity={1.5} distance={15} />
+      <pointLight position={[0, 4.2, 10]} color="#ef4444" intensity={1.5} distance={15} />
+
+      {/* Main Facility Concrete Floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[layout.dimensions.width, layout.dimensions.depth]} />
         <meshStandardMaterial
           color={layout.floorColor}
-          roughness={0.8}
-          metalness={0.1}
+          roughness={0.7}
+          metalness={0.2}
         />
       </mesh>
 
-      {/* Grid lines helper */}
+      {/* Floor Grid Guidelines */}
       <gridHelper
-        args={[Math.max(layout.dimensions.width, layout.dimensions.depth), 24, '#7f1d1d', '#27272a']}
+        args={[36, 36, '#991b1b', '#27272a']}
         position={[0, 0.02, 0]}
       />
 
-      {/* Perimeter White Line (Rules boundary from the drama!) */}
+      {/* Red Rule Execution Boundaries along Corridor */}
       <lineSegments position={[0, 0.04, 0]}>
         <edgesGeometry
-          args={[new THREE.BoxGeometry(layout.dimensions.width - 1.5, 0.1, layout.dimensions.depth - 1.5)]}
+          args={[new THREE.BoxGeometry(6, 0.05, 36)]}
         />
-        <lineBasicMaterial color="#ef4444" linewidth={2} />
+        <lineBasicMaterial color="#dc2626" linewidth={2} />
       </lineSegments>
 
-      {/* Walls */}
-      {/* Back Wall (Z-) */}
-      <mesh position={[0, 4, -halfD]}>
-        <boxGeometry args={[layout.dimensions.width, 8, 0.8]} />
-        <meshStandardMaterial color={layout.wallColor} roughness={0.9} />
-      </mesh>
-      {/* Front Wall (Z+) */}
-      <mesh position={[0, 4, halfD]}>
-        <boxGeometry args={[layout.dimensions.width, 8, 0.8]} />
-        <meshStandardMaterial color={layout.wallColor} roughness={0.9} />
-      </mesh>
-      {/* Left Wall (X-) */}
-      <mesh position={[-halfW, 4, 0]}>
-        <boxGeometry args={[0.8, 8, layout.dimensions.depth]} />
-        <meshStandardMaterial color={layout.wallColor} roughness={0.9} />
-      </mesh>
-      {/* Right Wall (X+) */}
-      <mesh position={[halfW, 4, 0]}>
-        <boxGeometry args={[0.8, 8, layout.dimensions.depth]} />
-        <meshStandardMaterial color={layout.wallColor} roughness={0.9} />
-      </mesh>
+      {/* All 4.5m Ceiling-Height Partition Walls (Strict full occlusion) */}
+      {layout.walls.map((wall) => (
+        <mesh key={wall.id} position={wall.position} castShadow receiveShadow>
+          <boxGeometry args={wall.size} />
+          <meshStandardMaterial
+            color={wall.color || layout.wallColor}
+            roughness={0.85}
+            metalness={0.15}
+          />
+        </mesh>
+      ))}
 
-      {/* Render All Furniture Items */}
+      {/* 4 Physical Doors with Push Swing & 1-Sided Lock */}
+      {doors.map((door) => (
+        <PhysicalDoorMesh
+          key={door.id}
+          door={door}
+          playerPos={playerPos}
+          onToggleLock={onToggleLock}
+        />
+      ))}
+
+      {/* Fixed Realistic Furniture Items */}
       {layout.furniture.map((item) => (
         <FurnitureMesh key={item.id} item={item} />
       ))}
@@ -196,10 +349,11 @@ export default function GameBoard({
   dayNumber,
   players,
   currentUserId,
+  isAdmin = false,
   onUpdatePosition,
   onRoleAction,
 }: GameBoardProps) {
-  const [cameraMode, setCameraMode] = useState<'thirdPerson' | 'isometric'>('thirdPerson');
+  const [cameraMode, setCameraMode] = useState<'thirdPerson' | 'firstPerson'>('thirdPerson');
   const [actionBurstTime, setActionBurstTime] = useState<number>(0);
 
   // Local state for Current Player Physics & Movement
@@ -209,12 +363,20 @@ export default function GameBoard({
     'idle' | 'walk' | 'run' | 'jump' | 'attack' | 'heal' | 'investigate'
   >('idle');
   const [isSprinting, setIsSprinting] = useState<boolean>(false);
-  const [jumpTimer, setJumpTimer] = useState<number>(0); // 0 to 1
+  const [jumpTimer, setJumpTimer] = useState<number>(0);
 
   // Virtual joystick movement vector from touch controls
   const joystickVector = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // NPC Bot Simulated Positions & Routines
+  // Procedural Room Layout with Fixed Multi-room architecture
+  const roomLayout = useMemo(() => generateRoomLayout(roomId), [roomId]);
+  const halfW = roomLayout.dimensions.width / 2 - 0.8;
+  const halfD = roomLayout.dimensions.depth / 2 - 0.8;
+
+  // Doors State (Physical doors with one-sided locking)
+  const [doors, setDoors] = useState<DoorData[]>(roomLayout.doors);
+
+  // Only simulate NPC Bots for true AI bots
   const [botStates, setBotStates] = useState<
     Record<
       string,
@@ -230,10 +392,24 @@ export default function GameBoard({
     >
   >({});
 
-  // Procedural Room Layout
-  const roomLayout = useMemo(() => generateRoomLayout(roomId), [roomId]);
-  const halfW = roomLayout.dimensions.width / 2 - 1.5;
-  const halfD = roomLayout.dimensions.depth / 2 - 1.5;
+  // Real human players interpolation targets
+  const remotePlayerPositions = useRef<
+    Record<string, { x: number; z: number; rotation: number; gesture: string }>
+  >({});
+
+  // Sync incoming real player positions
+  useEffect(() => {
+    players.forEach((p) => {
+      if (p.id !== currentUserId && !p.is_bot && p.x !== undefined && p.z !== undefined) {
+        remotePlayerPositions.current[p.id] = {
+          x: p.x,
+          z: p.z,
+          rotation: p.rotation || 0,
+          gesture: p.gesture || 'idle',
+        };
+      }
+    });
+  }, [players, currentUserId]);
 
   // Find Current Player Details
   const currentPlayer = useMemo(
@@ -248,15 +424,97 @@ export default function GameBoard({
     setPlayerPos([sx, 0, sz]);
   }, [currentUserId, roomLayout]);
 
-  // Initialize / maintain NPC Bots
+  // Realtime channel for Door state updates
+  useEffect(() => {
+    const channel = supabase
+      .channel(`game-doors:${roomId}`)
+      .on('broadcast', { event: 'door_update' }, ({ payload }) => {
+        if (payload?.doorId) {
+          setDoors((prev) =>
+            prev.map((d) =>
+              d.id === payload.doorId
+                ? {
+                    ...d,
+                    angle: payload.angle ?? d.angle,
+                    isLocked: payload.isLocked ?? d.isLocked,
+                    lockedSide: payload.lockedSide ?? d.lockedSide,
+                  }
+                : d
+            )
+          );
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [roomId]);
+
+  // Broadcast Door Update
+  const broadcastDoorUpdate = useCallback(
+    (doorId: string, updates: Partial<DoorData>) => {
+      const channel = supabase.channel(`game-doors:${roomId}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'door_update',
+        payload: { doorId, ...updates },
+      });
+    },
+    [roomId]
+  );
+
+  // Toggle Door Lock (With 1-sided lock enforcement)
+  const handleToggleDoorLock = useCallback(
+    (doorId: string) => {
+      const door = doors.find((d) => d.id === doorId);
+      if (!door) return;
+
+      const [dx, _, dz] = door.position;
+      const isXDoor = door.wallNormal === 'x';
+      const playerSide = isXDoor
+        ? playerPos[0] > dx
+          ? 'roomA' // Central Corridor side
+          : 'roomB' // Inside Room side
+        : playerPos[2] > dz
+        ? 'roomA'
+        : 'roomB';
+
+      if (door.isLocked) {
+        // Only allow unlocking if player is on the side that locked it!
+        if (door.lockedSide === playerSide) {
+          audioEngine.playDoorUnlock();
+          const updated = { isLocked: false, lockedSide: null };
+          setDoors((prev) =>
+            prev.map((d) => (d.id === doorId ? { ...d, ...updated } : d))
+          );
+          broadcastDoorUpdate(doorId, updated);
+        } else {
+          audioEngine.playHover();
+        }
+      } else {
+        // Lock the door from player's current side
+        audioEngine.playDoorLock();
+        const updated: Partial<DoorData> = { isLocked: true, lockedSide: playerSide };
+        setDoors((prev) =>
+          prev.map((d) => (d.id === doorId ? { ...d, ...updated } : d))
+        );
+        broadcastDoorUpdate(doorId, updated);
+      }
+    },
+    [broadcastDoorUpdate, doors, playerPos]
+  );
+
+  // Initialize NPC Bots ONLY for true bots (player.is_bot === true)
   useEffect(() => {
     setBotStates((prev) => {
       const next = { ...prev };
       players
-        .filter((p) => p.is_bot || p.id !== currentUserId)
+        .filter((p) => Boolean(p.is_bot))
         .forEach((p, idx) => {
           if (!next[p.id]) {
-            const spawn = roomLayout.spawnPoints[(idx + 1) % roomLayout.spawnPoints.length] || [idx * 2 - 4, idx * 2 - 4];
+            const spawn =
+              roomLayout.spawnPoints[(idx + 4) % roomLayout.spawnPoints.length] || [0, 0];
             next[p.id] = {
               x: spawn[0],
               z: spawn[1],
@@ -270,14 +528,17 @@ export default function GameBoard({
         });
       return next;
     });
-  }, [players, currentUserId, roomLayout]);
+  }, [players, roomLayout]);
 
   // Jump animation ticker
   useEffect(() => {
     if (jumpTimer <= 0) return;
     const interval = setInterval(() => {
       setJumpTimer((prev) => {
-        if (prev >= 1) return 0;
+        if (prev >= 1) {
+          audioEngine.playLand();
+          return 0;
+        }
         return prev + 0.1;
       });
     }, 40);
@@ -287,10 +548,10 @@ export default function GameBoard({
   const triggerJump = useCallback(() => {
     if (jumpTimer > 0) return;
     setJumpTimer(0.01);
-    audioEngine.playHover();
+    audioEngine.playJump();
   }, [jumpTimer]);
 
-  // Keyboard controls listener (WASD, Arrows, Shift, Space, E)
+  // Keyboard controls listener
   const keysDown = useRef<Record<string, boolean>>({});
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -321,31 +582,22 @@ export default function GameBoard({
     };
   }, [triggerJump]);
 
-  // Physics state refs for smooth momentum and inertia
-  const velocityRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
-  const playerRotRef = useRef<number>(0);
+  // Physics & Kinematics Game Loop
   const playerPosRef = useRef<[number, number, number]>([0, 0, 0]);
-
-  // Keep refs in sync with state for zero-latency physics ticks
-  useEffect(() => {
-    playerPosRef.current = playerPos;
-  }, [playerPos]);
+  const playerRotRef = useRef<number>(0);
+  const velocityRef = useRef<{ x: number; z: number }>({ x: 0, y: 0, z: 0 });
+  const stepCadenceTimer = useRef<number>(0);
 
   useEffect(() => {
-    playerRotRef.current = playerRot;
-  }, [playerRot]);
-
-  // Main Simulation & Movement Loop (Smooth Realistic Physics with Inertia)
-  useEffect(() => {
-    let animationFrameId: number;
     let lastTime = performance.now();
+    let animationFrameId: number;
     let lastBroadcastTime = 0;
 
     const gameLoop = (currentTime: number) => {
-      const dt = Math.min(0.05, Math.max(0.001, (currentTime - lastTime) / 1000));
+      const dt = Math.min((currentTime - lastTime) / 1000, 0.05);
       lastTime = currentTime;
 
-      // 1. Gather movement inputs from keyboard or virtual joystick
+      // 1. Gather Directional Input Vector
       let stickX = joystickVector.current.x;
       let stickY = joystickVector.current.y;
 
@@ -354,15 +606,9 @@ export default function GameBoard({
       if (keysDown.current['a'] || keysDown.current['arrowleft']) stickX -= 1;
       if (keysDown.current['d'] || keysDown.current['arrowright']) stickX += 1;
 
-      // In Three.js with camera on South looking North:
-      // UP on screen = -Z (Forward into screen)
-      // DOWN on screen = +Z (Back towards camera)
-      // RIGHT on screen = +X (East)
-      // LEFT on screen = -X (West)
       const inputX = stickX;
       const inputZ = -stickY;
 
-      // Normalize input vector if needed
       const inputLength = Math.hypot(inputX, inputZ);
       let normInputX = 0;
       let normInputZ = 0;
@@ -373,9 +619,9 @@ export default function GameBoard({
 
       const hasInput = inputLength > 0.05 && (currentPlayer?.alive ?? true);
 
-      // Realistic Kinematics (Acceleration, Friction, Terminal Velocity)
-      const maxSpeed = isSprinting ? 5.8 : 3.2;
-      const acceleration = isSprinting ? 22.0 : 16.0;
+      // Speeds & Accelerations
+      const maxSpeed = isSprinting ? 6.0 : 3.4;
+      const acceleration = isSprinting ? 24.0 : 18.0;
       const friction = hasInput ? 0.94 : 0.85;
 
       const currentVx = velocityRef.current.x;
@@ -391,15 +637,12 @@ export default function GameBoard({
         velocityRef.current.x += (targetVx - currentVx) * Math.min(1, acceleration * dt);
         velocityRef.current.z += (targetVz - currentVz) * Math.min(1, acceleration * dt);
 
-        // Calculate smooth turning towards movement direction
         const targetAngle = Math.atan2(normInputX, normInputZ);
         let angleDiff = targetAngle - playerRotRef.current;
-        // Normalize angle difference to [-PI, PI] for shortest rotation path
         angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-        playerRotRef.current += angleDiff * Math.min(1, dt * 14);
+        playerRotRef.current += angleDiff * Math.min(1, dt * 15);
         setPlayerRot(playerRotRef.current);
       } else {
-        // Natural friction deceleration to rest
         velocityRef.current.x *= Math.pow(friction, dt * 60);
         velocityRef.current.z *= Math.pow(friction, dt * 60);
 
@@ -409,16 +652,31 @@ export default function GameBoard({
 
       const currentSpeed = Math.hypot(velocityRef.current.x, velocityRef.current.z);
 
-      // Update gesture based on actual physical velocity
-      if (currentSpeed > 3.4) {
+      // Update gesture based on velocity
+      let currentGesture: 'idle' | 'walk' | 'run' = 'idle';
+      if (currentSpeed > 3.6) {
+        currentGesture = 'run';
         setPlayerGesture('run');
       } else if (currentSpeed > 0.15) {
+        currentGesture = 'walk';
         setPlayerGesture('walk');
       } else {
         setPlayerGesture('idle');
       }
 
-      // 2. Sliding collision resolution with furniture
+      // Synced Footstep Audio Cadence
+      if (currentGesture !== 'idle') {
+        stepCadenceTimer.current += dt;
+        const interval = currentGesture === 'run' ? 0.27 : 0.46;
+        if (stepCadenceTimer.current >= interval) {
+          stepCadenceTimer.current = 0;
+          audioEngine.playFootstep(currentGesture === 'run');
+        }
+      } else {
+        stepCadenceTimer.current = 0;
+      }
+
+      // 2. Candidate Position & Wall Collision Resolution
       const prevX = playerPosRef.current[0];
       const prevZ = playerPosRef.current[2];
       let candidateX = THREE.MathUtils.clamp(prevX + velocityRef.current.x * dt, -halfW, halfW);
@@ -426,81 +684,101 @@ export default function GameBoard({
 
       const playerRadius = 0.38;
 
-      // Check collision on X axis
-      for (const item of roomLayout.furniture) {
-        const [fx, _, fz] = item.position;
-        const [fw, __, fd] = item.size;
-        const boxMinX = fx - fw / 2 - playerRadius;
-        const boxMaxX = fx + fw / 2 + playerRadius;
-        const boxMinZ = fz - fd / 2 - playerRadius;
-        const boxMaxZ = fz + fd / 2 + playerRadius;
+      // Wall & Furniture Collisions
+      const obstacleBoxes = [
+        ...roomLayout.walls.map((w) => ({ position: w.position, size: w.size })),
+        ...roomLayout.furniture.map((f) => ({ position: f.position, size: f.size })),
+      ];
+
+      for (const box of obstacleBoxes) {
+        const [bx, _, bz] = box.position;
+        const [bw, __, bd] = box.size;
+        const boxMinX = bx - bw / 2 - playerRadius;
+        const boxMaxX = bx + bw / 2 + playerRadius;
+        const boxMinZ = bz - bd / 2 - playerRadius;
+        const boxMaxZ = bz + bd / 2 + playerRadius;
 
         if (candidateX >= boxMinX && candidateX <= boxMaxX && prevZ >= boxMinZ && prevZ <= boxMaxZ) {
           candidateX = prevX;
           velocityRef.current.x = 0;
-          break;
         }
-      }
-
-      // Check collision on Z axis (allows smooth sliding along furniture edges)
-      for (const item of roomLayout.furniture) {
-        const [fx, _, fz] = item.position;
-        const [fw, __, fd] = item.size;
-        const boxMinX = fx - fw / 2 - playerRadius;
-        const boxMaxX = fx + fw / 2 + playerRadius;
-        const boxMinZ = fz - fd / 2 - playerRadius;
-        const boxMaxZ = fz + fd / 2 + playerRadius;
-
         if (candidateX >= boxMinX && candidateX <= boxMaxX && candidateZ >= boxMinZ && candidateZ <= boxMaxZ) {
           candidateZ = prevZ;
           velocityRef.current.z = 0;
-          break;
         }
       }
+
+      // 3. Physical Door Push Kinematics
+      doors.forEach((door) => {
+        const [dx, _, dz] = door.position;
+        const dist = Math.hypot(candidateX - dx, candidateZ - dz);
+
+        // When player walks into a door
+        if (dist < 1.4) {
+          if (door.isLocked) {
+            // Locked door blocks movement like a solid wall
+            candidateX = prevX;
+            candidateZ = prevZ;
+            velocityRef.current.x = 0;
+            velocityRef.current.z = 0;
+          } else {
+            // Unlocked door swings open in direction of player push
+            const pushDir = candidateX - dx > 0 ? 1 : -1;
+            const targetAngle = pushDir * 1.45;
+
+            if (Math.abs(door.angle - targetAngle) > 0.1) {
+              audioEngine.playDoorPush();
+              setDoors((prevDoors) =>
+                prevDoors.map((d) =>
+                  d.id === door.id
+                    ? { ...d, angle: THREE.MathUtils.lerp(d.angle, targetAngle, 0.2) }
+                    : d
+                )
+              );
+              broadcastDoorUpdate(door.id, { angle: targetAngle });
+            }
+          }
+        }
+      });
 
       if (candidateX !== prevX || candidateZ !== prevZ) {
         playerPosRef.current = [candidateX, playerPosRef.current[1], candidateZ];
         setPlayerPos([candidateX, playerPosRef.current[1], candidateZ]);
       }
 
-      // 3. Realistic NPC Bot smooth wandering kinematics
+      // 4. Smooth AI Bot Movement
       setBotStates((prev) => {
         const updated = { ...prev };
         Object.keys(updated).forEach((botId) => {
           const bot = updated[botId];
           const distToTarget = Math.hypot(bot.targetX - bot.x, bot.targetZ - bot.z);
 
-          if (distToTarget < 0.4) {
-            // Reached target -> pause or pick new furniture/spot waypoint
+          if (distToTarget < 0.5) {
             bot.idleTimer -= dt;
             bot.gesture = 'idle';
 
             if (bot.idleTimer <= 0) {
               const randomFurniture =
                 roomLayout.furniture[Math.floor(Math.random() * roomLayout.furniture.length)];
-              const targetX = THREE.MathUtils.clamp(
+              bot.targetX = THREE.MathUtils.clamp(
                 randomFurniture.position[0] + (Math.random() * 3 - 1.5),
                 -halfW,
                 halfW
               );
-              const targetZ = THREE.MathUtils.clamp(
+              bot.targetZ = THREE.MathUtils.clamp(
                 randomFurniture.position[2] + (Math.random() * 3 - 1.5),
                 -halfD,
                 halfD
               );
-
-              bot.targetX = targetX;
-              bot.targetZ = targetZ;
               bot.idleTimer = Math.random() * 4 + 2;
             }
           } else {
-            // Move smoothly toward waypoint with angular slerp
             const targetAngle = Math.atan2(bot.targetX - bot.x, bot.targetZ - bot.z);
             let angleDiff = targetAngle - bot.rotation;
             angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
             bot.rotation += angleDiff * Math.min(1, dt * 8);
 
-            const botSpeed = 1.4; // smooth physical walking velocity
+            const botSpeed = 1.6;
             bot.x += Math.sin(bot.rotation) * botSpeed * dt;
             bot.z += Math.cos(bot.rotation) * botSpeed * dt;
             bot.gesture = 'walk';
@@ -509,15 +787,15 @@ export default function GameBoard({
         return updated;
       });
 
-      // 4. Periodic broadcast to room participants (every 100ms)
+      // 5. High-Frequency Realtime Broadcast (every 60ms)
       const now = Date.now();
-      if (now - lastBroadcastTime > 100 && onUpdatePosition) {
+      if (now - lastBroadcastTime > 60 && onUpdatePosition) {
         lastBroadcastTime = now;
         onUpdatePosition({
           x: playerPosRef.current[0],
           z: playerPosRef.current[2],
           rotation: playerRotRef.current,
-          gesture: currentSpeed > 3.4 ? 'run' : currentSpeed > 0.15 ? 'walk' : 'idle',
+          gesture: currentSpeed > 3.6 ? 'run' : currentSpeed > 0.15 ? 'walk' : 'idle',
         });
       }
 
@@ -526,23 +804,33 @@ export default function GameBoard({
 
     animationFrameId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animationFrameId);
-  }, [currentPlayer?.alive, halfD, halfW, isSprinting, onUpdatePosition, roomLayout.furniture]);
+  }, [
+    broadcastDoorUpdate,
+    currentPlayer?.alive,
+    doors,
+    halfD,
+    halfW,
+    isSprinting,
+    onUpdatePosition,
+    roomLayout.furniture,
+    roomLayout.walls,
+  ]);
 
-  // Handle Role Action (Attack / Heal / Investigate)
+  // Handle Role Action
   const handleRoleAction = () => {
     if (!currentPlayer?.alive) return;
     setActionBurstTime(Date.now());
     audioEngine.playRoleReveal();
 
-    // Find closest player in range
     const targets = players.filter((p) => p.id !== currentUserId && (p.alive ?? true));
     let closestTarget = targets[0];
     let minDistance = Infinity;
 
     targets.forEach((t) => {
       const bState = botStates[t.id];
-      const tx = bState ? bState.x : (t.x || 0);
-      const tz = bState ? bState.z : (t.z || 0);
+      const rState = remotePlayerPositions.current[t.id];
+      const tx = bState ? bState.x : rState ? rState.x : (t.x || 0);
+      const tz = bState ? bState.z : rState ? rState.z : (t.z || 0);
       const dist = Math.hypot(tx - playerPos[0], tz - playerPos[2]);
       if (dist < minDistance) {
         minDistance = dist;
@@ -566,7 +854,7 @@ export default function GameBoard({
       {/* Three.js Canvas */}
       <Canvas
         shadows
-        camera={{ position: [0, 10, 10], fov: 50 }}
+        camera={{ position: [0, 8, 10], fov: 50, near: 0.08 }}
         className="w-full h-full"
       >
         <CameraController
@@ -575,9 +863,15 @@ export default function GameBoard({
           cameraMode={cameraMode}
         />
 
-        <RoomEnvironment layout={roomLayout} phase={phase} />
+        <RoomEnvironment
+          layout={roomLayout}
+          phase={phase}
+          doors={doors}
+          playerPos={playerPos}
+          onToggleLock={handleToggleDoorLock}
+        />
 
-        {/* Current User Avatar */}
+        {/* Current User Avatar (Hidden in First Person so player sees strictly from eye level) */}
         <Avatar3D
           id={currentUserId}
           name={currentPlayer?.username || 'You'}
@@ -585,6 +879,8 @@ export default function GameBoard({
           personality={currentPlayer?.personality || 'Leader'}
           role={currentPlayer?.role || 'Citizen'}
           isBot={false}
+          isAdmin={isAdmin}
+          visible={cameraMode !== 'firstPerson'}
           isAlive={currentPlayer?.alive ?? true}
           position={playerPos}
           rotation={playerRot}
@@ -594,15 +890,20 @@ export default function GameBoard({
           actionTrigger={actionBurstTime}
         />
 
-        {/* Render Other Players & AI Bots */}
+        {/* Render Other Players: Real Human Players + AI Bots */}
         {players
           .filter((p) => p.id !== currentUserId)
           .map((player) => {
-            const botState = botStates[player.id];
-            const posX = botState ? botState.x : (player.x || 0);
-            const posZ = botState ? botState.z : (player.z || 0);
-            const rot = botState ? botState.rotation : (player.rotation || 0);
-            const gest = botState ? botState.gesture : (player.gesture || 'idle');
+            const isBot = Boolean(player.is_bot);
+            const bState = botStates[player.id];
+            const rState = remotePlayerPositions.current[player.id];
+
+            const posX = isBot ? bState?.x || 0 : rState ? rState.x : (player.x || 0);
+            const posZ = isBot ? bState?.z || 0 : rState ? rState.z : (player.z || 0);
+            const rot = isBot ? bState?.rotation || 0 : rState ? rState.rotation : (player.rotation || 0);
+            const gest = isBot
+              ? bState?.gesture || 'idle'
+              : (rState?.gesture || player.gesture || 'idle') as any;
 
             return (
               <Avatar3D
@@ -612,7 +913,8 @@ export default function GameBoard({
                 avatarBase64={player.avatar_base64}
                 personality={player.personality || 'Quiet Observer'}
                 role={player.role || 'Citizen'}
-                isBot={player.is_bot ?? true}
+                isBot={isBot}
+                visible={true}
                 isAlive={player.alive ?? true}
                 position={[posX, 0, posZ]}
                 rotation={rot}
@@ -623,28 +925,70 @@ export default function GameBoard({
           })}
       </Canvas>
 
-      {/* Floating Virtual Joystick HUD on top of 3D Canvas */}
+      {/* Top Left: Perspective Buttons: (eye icon) Third Person / (eye icon) First Person */}
+      <div className="absolute top-3 left-3 z-20 flex gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            audioEngine.playClick();
+            setCameraMode('thirdPerson');
+          }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-lg backdrop-blur-md cursor-pointer ${
+            cameraMode === 'thirdPerson'
+              ? 'bg-red-700 text-white shadow-red-900/50 border border-red-500 scale-105'
+              : 'bg-black/60 text-zinc-400 hover:text-white border border-white/10'
+          }`}
+        >
+          <Eye size={14} />
+          <span>Third Person</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            audioEngine.playClick();
+            setCameraMode('firstPerson');
+          }}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-lg backdrop-blur-md cursor-pointer ${
+            cameraMode === 'firstPerson'
+              ? 'bg-red-700 text-white shadow-red-900/50 border border-red-500 scale-105'
+              : 'bg-black/60 text-zinc-400 hover:text-white border border-white/10'
+          }`}
+        >
+          <Eye size={14} />
+          <span>First Person</span>
+        </button>
+      </div>
+
+      {/* Top Right: Current Room Location HUD */}
+      <div className="absolute top-3 right-3 z-20 px-3 py-1 bg-black/70 border border-white/15 rounded-xl text-[11px] font-mono text-zinc-300 backdrop-blur-md shadow flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+        <span>
+          {playerPos[0] > -3 && playerPos[0] < 3
+            ? 'Central Corridor'
+            : playerPos[0] <= -3 && playerPos[2] < 0
+            ? 'Dormitory'
+            : playerPos[0] >= 3 && playerPos[2] < 0
+            ? 'Security CCTV'
+            : playerPos[0] <= -3 && playerPos[2] >= 0
+            ? 'Cafeteria'
+            : 'Infirmary'}
+        </span>
+      </div>
+
+      {/* Virtual Joystick for Mobile Touch Controls */}
       <VirtualJoystick
-        onMove={(v) => {
-          joystickVector.current = v;
+        onMove={(vec) => {
+          joystickVector.current = vec;
         }}
-        onSprintToggle={(s) => setIsSprinting(s)}
+        onSprintToggle={(sprinting) => {
+          setIsSprinting(sprinting);
+        }}
         onJump={triggerJump}
-        onRoleAction={handleRoleAction}
-        onToggleCamera={() =>
-          setCameraMode((prev) => (prev === 'thirdPerson' ? 'isometric' : 'thirdPerson'))
-        }
-        cameraMode={cameraMode}
+        onAction={handleRoleAction}
         role={currentPlayer?.role}
         isAlive={currentPlayer?.alive ?? true}
-        phase={phase}
       />
-
-      {/* Room Badge in corner */}
-      <div className="absolute top-2 left-2 pointer-events-none z-10 bg-black/60 backdrop-blur-md px-3 py-1 rounded-lg border border-white/10 text-xs">
-        <span className="font-bold text-red-500">{roomLayout.title}</span>
-        <span className="text-zinc-400 ml-2">Phase: {phase}</span>
-      </div>
     </div>
   );
 }

@@ -84,14 +84,26 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
     toggleSpeaker,
   } = useLiveCall(roomId, userId || '', gameState?.phase);
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
   // Initialize Auth & Player ID
   useEffect(() => {
     const checkUser = async () => {
+      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const hasAdminParam = params?.get('admin') === 'true';
+      const hasAdminSession = typeof window !== 'undefined' && (sessionStorage.getItem('isAdmin') === 'true' || localStorage.getItem('isAdmin') === 'true');
+      const userIsAdmin = Boolean(hasAdminParam || hasAdminSession);
+      if (userIsAdmin) {
+        setIsAdmin(true);
+      }
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         const localId = localStorage.getItem('playerId');
         if (localId) {
           setUserId(localId);
+        } else if (userIsAdmin) {
+          setUserId('admin-master');
         } else {
           router.push('/');
         }
@@ -333,6 +345,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
             dayNumber={gameState.day_number}
             players={players}
             currentUserId={userId}
+            isAdmin={isAdmin}
             onUpdatePosition={broadcastPosition}
             onRoleAction={(action, targetId) => {
               performRoleAction(action, targetId);
@@ -382,7 +395,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           <ChatTab
             messages={messages}
             currentUserId={userId}
-            isHostOrAdmin={Boolean(gameState?.host_id === userId || currentPlayer?.role === 'Host')}
+            isHostOrAdmin={Boolean(isAdmin || gameState?.host_id === userId || currentPlayer?.role === 'Host')}
             typingUsers={typingUsers}
             recordingUsers={recordingUsers}
             onSendMessage={sendMessage}

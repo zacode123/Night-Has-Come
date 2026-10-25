@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { GamePhase, GameEngine } from '@/lib/gameEngine';
 
@@ -60,6 +60,8 @@ export function useGameState(roomId: string) {
     }
   }, [roomId]);
 
+  const channelRef = useRef<any>(null);
+
   useEffect(() => {
     fetchState();
 
@@ -106,8 +108,11 @@ export function useGameState(roomId: string) {
       })
       .subscribe();
 
+    channelRef.current = channel;
+
     return () => {
       supabase.removeChannel(channel);
+      channelRef.current = null;
     };
   }, [roomId, fetchState]);
 
@@ -198,12 +203,20 @@ export function useGameState(roomId: string) {
     const localId = localStorage.getItem('playerId');
     if (!localId) return;
 
-    const channel = supabase.channel(`game:${roomId}`);
-    channel.send({
-      type: 'broadcast',
-      event: 'player_position',
-      payload: { id: localId, ...pos },
-    });
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'player_position',
+        payload: { id: localId, ...pos },
+      });
+    } else {
+      const channel = supabase.channel(`game:${roomId}`);
+      channel.send({
+        type: 'broadcast',
+        event: 'player_position',
+        payload: { id: localId, ...pos },
+      });
+    }
   };
 
   return {

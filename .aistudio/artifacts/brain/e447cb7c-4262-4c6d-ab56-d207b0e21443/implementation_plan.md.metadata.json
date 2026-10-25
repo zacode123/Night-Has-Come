@@ -1,6 +1,6 @@
 {
-  "summary":  "Comprehensive multi-stage implementation plan for WhatsApp-grade realtime chat (typing/recording indicators, date-jump dropdown, date clearing, markdown, blue read ticks, multi-select deletion, silent delete-for-everyone, keyboard GIF/sticker support) and floating WebRTC live group audio calling with Night curfew pause.",
-  "updatedAt":  "2026-10-24T16:42:38.436038072Z",
+  "summary":  "Comprehensive architectural specification and implementation plan for:\n1. Admin Dashboard room status display ('Running' in red) and deletion confirmation modal.\n2. Fix for real player vs [BOT] tag and multiplayer synchronization.\n3. Procedural multi-room facility layout with central corridor, realistic walls, and automatic fixed furniture.\n4. Physical doors with push kinematics, one-sided lock/unlock handle interaction, and real-time state sync.\n5. First Person (eye-level, full wall occlusion, hidden self) and Third Person (enlarged view, visible self) camera systems.\n6. Synced sound effects for walking, running, jumping, door push, and door locks.\n7. WhatsApp-style chat improvements: long-press activation only, icon-based top selection bar, smart delete-for-me vs delete-for-everyone modal flow, inline edit icon, dynamic date dropdown header, and admin-only date chat purge.\n8. Admin session propagation into the game arena.",
+  "updatedAt":  "2026-10-25T08:00:27.035175296Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

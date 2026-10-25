@@ -25,6 +25,7 @@ import {
   ChevronDown,
   Paperclip,
   Radio,
+  Globe,
 } from 'lucide-react';
 import { audioEngine } from '@/lib/audioEngine';
 import { getPersonalityBorder } from '@/lib/personalityBorder';
@@ -197,6 +198,13 @@ export default function ChatTab({
   // Multi-Select Mode State
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
+  const [deleteChoiceModal, setDeleteChoiceModal] = useState(false);
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    show: boolean;
+    forEveryone: boolean;
+    count: number;
+  }>({ show: false, forEveryone: false, count: 0 });
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Date Jump Dropdown State
   const [showDateDropdown, setShowDateDropdown] = useState(false);
@@ -416,11 +424,38 @@ export default function ChatTab({
     setSelectedMessageIds(messages.map((m) => m.id));
   };
 
-  const handleDeleteSelected = () => {
-    if (selectedMessageIds.length === 0 || !onDeleteMessages) return;
-    onDeleteMessages(selectedMessageIds, true, isHostOrAdmin);
-    setIsSelectMode(false);
-    setSelectedMessageIds([]);
+  const startLongPress = (msgId: string) => {
+    if (isSelectMode) return;
+    longPressTimerRef.current = setTimeout(() => {
+      setIsSelectMode(true);
+      setSelectedMessageIds([msgId]);
+      audioEngine.playSelect();
+    }, 450);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleInitiateDelete = () => {
+    if (selectedMessageIds.length === 0) return;
+    const selectedMsgs = messages.filter((m) => selectedMessageIds.includes(m.id));
+    const containsOthers = selectedMsgs.some((m) => m.sender_id !== currentUserId);
+
+    if (containsOthers) {
+      // Deleting others messages: ONLY single direct confirmation for "delete for me", no choice
+      setDeleteConfirmModal({
+        show: true,
+        forEveryone: false,
+        count: selectedMessageIds.length,
+      });
+    } else {
+      // Deleting ONLY own message(s): Show choice between Delete for Me and Delete for Everyone
+      setDeleteChoiceModal(true);
+    }
   };
 
   const handleCopySelected = () => {
@@ -469,27 +504,64 @@ export default function ChatTab({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Select All / Deselect All Icon Button */}
             <button
-              onClick={handleSelectAll}
-              className="px-2 py-1 rounded bg-black/40 hover:bg-black/60 text-[11px] font-semibold border border-white/10"
+              onClick={() => {
+                audioEngine.playClick();
+                const allSelected = selectedMessageIds.length === messages.length && messages.length > 0;
+                if (allSelected) {
+                  setSelectedMessageIds([]);
+                } else {
+                  setSelectedMessageIds(messages.map((m) => m.id));
+                }
+              }}
+              className="p-1.5 rounded-lg bg-black/40 hover:bg-black/60 text-zinc-300 hover:text-white border border-white/10"
+              title={selectedMessageIds.length === messages.length && messages.length > 0 ? "Deselect All" : "Select All"}
             >
-              Select All
+              {selectedMessageIds.length === messages.length && messages.length > 0 ? (
+                <CheckSquare size={16} className="text-red-400" />
+              ) : (
+                <Square size={16} />
+              )}
             </button>
+
+            {/* Copy Text Icon Button Only */}
             <button
               onClick={handleCopySelected}
               disabled={selectedMessageIds.length === 0}
-              className="p-1.5 rounded bg-black/40 hover:bg-black/60 disabled:opacity-40"
-              title="Copy Selected"
+              className="p-1.5 rounded-lg bg-black/40 hover:bg-black/60 disabled:opacity-40 text-zinc-300 hover:text-white border border-white/10"
+              title="Copy text"
             >
-              <Copy size={15} />
+              <Copy size={16} />
             </button>
+
+            {/* Edit Icon Button (only if 1 own message selected) */}
+            {selectedMessageIds.length === 1 && messages.find((m) => m.id === selectedMessageIds[0])?.sender_id === currentUserId && (
+              <button
+                onClick={() => {
+                  const targetMsg = messages.find((m) => m.id === selectedMessageIds[0]);
+                  if (targetMsg) {
+                    audioEngine.playClick();
+                    handleStartEdit(targetMsg);
+                    setIsSelectMode(false);
+                    setSelectedMessageIds([]);
+                  }
+                }}
+                className="p-1.5 rounded-lg bg-black/40 hover:bg-black/60 text-blue-400 hover:text-white border border-white/10"
+                title="Edit message"
+              >
+                <Pencil size={16} />
+              </button>
+            )}
+
+            {/* Delete Icon Button */}
             <button
-              onClick={handleDeleteSelected}
+              onClick={handleInitiateDelete}
               disabled={selectedMessageIds.length === 0}
-              className="px-3 py-1 rounded bg-red-700 hover:bg-red-600 disabled:opacity-40 text-xs font-bold flex items-center gap-1 shadow-md shadow-red-950"
+              className="p-1.5 rounded-lg bg-red-700 hover:bg-red-600 disabled:opacity-40 text-white shadow shadow-red-950"
+              title="Delete"
             >
-              <Trash2 size={13} />
-              <span>Delete</span>
+              <Trash2 size={16} />
             </button>
           </div>
         </div>
@@ -514,7 +586,7 @@ export default function ChatTab({
                 title="Jump to date in chat"
               >
                 <Calendar size={12} className="text-red-400" />
-                <span>Dates</span>
+                <span>{distinctDates.length > 0 ? getRelativeDateLabel(distinctDates[distinctDates.length - 1]) : "Today"}</span>
                 <ChevronDown size={11} className="text-zinc-400" />
               </button>
 
@@ -548,6 +620,20 @@ export default function ChatTab({
                               if (isHostOrAdmin) {
                                 e.preventDefault();
                                 setDateToDelete(dateKey);
+                              }
+                            }}
+                            onTouchStart={() => {
+                              if (isHostOrAdmin) {
+                                longPressTimerRef.current = setTimeout(() => {
+                                  setDateToDelete(dateKey);
+                                  audioEngine.playSelect();
+                                }, 450);
+                              }
+                            }}
+                            onTouchEnd={() => {
+                              if (longPressTimerRef.current) {
+                                clearTimeout(longPressTimerRef.current);
+                                longPressTimerRef.current = null;
                               }
                             }}
                             className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-zinc-200 hover:bg-red-950/50 hover:text-white cursor-pointer transition-colors group"
@@ -596,18 +682,117 @@ export default function ChatTab({
               </button>
             )}
 
-            {/* Multi-Select Trigger */}
-            <button
-              type="button"
-              onClick={() => setIsSelectMode(true)}
-              className="p-1 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white"
-              title="Select Messages"
-            >
-              <CheckSquare size={13} />
-            </button>
+
           </div>
         </div>
       )}
+
+      {/* Message Deletion Scope Choice Modal (For User's Own Messages) */}
+      <AnimatePresence>
+        {deleteChoiceModal && (
+          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-zinc-950 border border-red-600/60 rounded-2xl p-5 max-w-xs w-full shadow-2xl text-center"
+            >
+              <h4 className="text-sm font-bold text-white mb-2">Delete Message?</h4>
+              <p className="text-xs text-zinc-400 mb-4">Choose deletion option for selected message(s):</p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteChoiceModal(false);
+                    setDeleteConfirmModal({
+                      show: true,
+                      forEveryone: false,
+                      count: selectedMessageIds.length,
+                    });
+                  }}
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all border border-white/10 cursor-pointer"
+                >
+                  <Trash2 size={15} className="text-zinc-400" />
+                  <span>Delete for Me</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDeleteChoiceModal(false);
+                    setDeleteConfirmModal({
+                      show: true,
+                      forEveryone: true,
+                      count: selectedMessageIds.length,
+                    });
+                  }}
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-red-800 hover:bg-red-700 text-white text-xs font-bold transition-all border border-red-500/50 shadow-lg shadow-red-950 cursor-pointer"
+                >
+                  <Globe size={15} className="text-red-300" />
+                  <span>Delete for Everyone</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setDeleteChoiceModal(false)}
+                  className="mt-1 py-1 text-xs text-zinc-400 hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Message Deletion Confirmation Modal */}
+      <AnimatePresence>
+        {deleteConfirmModal.show && (
+          <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-zinc-950 border border-red-600 rounded-2xl p-5 max-w-xs w-full shadow-2xl text-center"
+            >
+              <div className="w-10 h-10 rounded-full bg-red-950/80 border border-red-600/60 flex items-center justify-center mx-auto mb-3 text-red-500">
+                <Trash2 size={20} />
+              </div>
+              <h4 className="text-sm font-bold text-white mb-2">
+                {deleteConfirmModal.forEveryone ? 'Delete for Everyone?' : 'Delete for Me?'}
+              </h4>
+              <p className="text-xs text-zinc-300 mb-5 leading-relaxed">
+                {deleteConfirmModal.forEveryone
+                  ? `Are you sure you want to permanently delete ${deleteConfirmModal.count} message(s) for everyone in this room? This cannot be undone.`
+                  : `Are you sure you want to delete ${deleteConfirmModal.count} message(s) for yourself? Others will still see them.`}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeleteConfirmModal({ show: false, forEveryone: false, count: 0 })}
+                  className="flex-1 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-semibold hover:bg-zinc-700 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onDeleteMessages) {
+                      onDeleteMessages(selectedMessageIds, deleteConfirmModal.forEveryone, isHostOrAdmin);
+                    }
+                    setDeleteConfirmModal({ show: false, forEveryone: false, count: 0 });
+                    setIsSelectMode(false);
+                    setSelectedMessageIds([]);
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-red-700 text-white text-xs font-bold hover:bg-red-600 shadow cursor-pointer"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Date Purge Confirmation Modal */}
       <AnimatePresence>
@@ -736,7 +921,14 @@ export default function ChatTab({
                     </div>
                   )}
 
-                  <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] sm:max-w-[75%]`}>
+                  <div
+                    onMouseDown={() => startLongPress(msg.id)}
+                    onMouseUp={cancelLongPress}
+                    onMouseLeave={cancelLongPress}
+                    onTouchStart={() => startLongPress(msg.id)}
+                    onTouchEnd={cancelLongPress}
+                    onTouchCancel={cancelLongPress}
+                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%] sm:max-w-[75%]`}>
                     {/* Sender Name & Avatar */}
                     {!isMe && (
                       <div className="flex items-center gap-1.5 mb-1 ml-1">
@@ -990,7 +1182,7 @@ export default function ChatTab({
                 placeholder={
                   disabled
                     ? 'Curfew active. Shh...'
-                    : 'Type a message (Markdown supported) or paste GIF...'
+                    : 'Type your message'
                 }
                 className="flex-1 bg-black/60 border border-white/15 rounded-full px-4 py-2 text-xs sm:text-sm text-white focus:outline-none focus:border-red-500 disabled:opacity-40"
                 maxLength={600}

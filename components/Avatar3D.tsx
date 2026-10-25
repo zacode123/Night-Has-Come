@@ -13,6 +13,8 @@ interface Avatar3DProps {
   role?: string;
   isBot?: boolean;
   isAlive?: boolean;
+  isAdmin?: boolean;
+  visible?: boolean;
   position: [number, number, number];
   rotation: number;
   gesture: 'idle' | 'walk' | 'run' | 'jump' | 'attack' | 'heal' | 'investigate';
@@ -28,6 +30,8 @@ export default function Avatar3D({
   personality = 'Leader',
   role = 'Citizen',
   isBot = false,
+  isAdmin = false,
+  visible = true,
   isAlive = true,
   position,
   rotation,
@@ -36,6 +40,8 @@ export default function Avatar3D({
   jumpProgress = 0,
   actionTrigger = 0,
 }: Avatar3DProps) {
+  if (!visible) return null;
+
   const groupRef = useRef<THREE.Group>(null);
   const bodyGroupRef = useRef<THREE.Group>(null);
   const leftLegRef = useRef<THREE.Mesh>(null);
@@ -342,13 +348,13 @@ export default function Avatar3D({
       <Billboard position={[0, 2.25, 0]} follow={true}>
         <Text
           fontSize={0.25}
-          color={isCurrentPlayer ? '#f87171' : '#f4f4f5'}
+          color={isAdmin ? '#ef4444' : isCurrentPlayer ? '#f87171' : '#f4f4f5'}
           outlineWidth={0.03}
           outlineColor="#000000"
           anchorX="center"
           anchorY="bottom"
         >
-          {isBot ? `[BOT] ${name}` : name}
+          {isAdmin ? `👑 [ADMIN] ${name}` : isBot ? `🤖 [BOT] ${name}` : name}
         </Text>
 
         <Text

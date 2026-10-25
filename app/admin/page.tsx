@@ -365,7 +365,11 @@ export default function AdminPage() {
     setIsStarting(false);
     if (res.success) {
       notify('Game started successfully!', 'success');
-      router.push(`/game/${selectedRoomId}`);
+      try {
+        sessionStorage.setItem('isAdmin', 'true');
+        localStorage.setItem('isAdmin', 'true');
+      } catch (_) {}
+      router.push(`/game/${selectedRoomId}?admin=true`);
     } else {
       notify(res.error || 'Failed to start game', 'error');
     }
@@ -643,7 +647,15 @@ export default function AdminPage() {
                ) : (
                  <p className="font-bold text-lg truncate">{room.name}</p>
                )}
-               <p className="text-xs text-gray-400 capitalize bg-gray-800 inline-block px-2 py-0.5 rounded-full mt-1">Status: {room.status}</p>
+               {room.status === "in_game" ? (
+                  <span className="text-xs font-bold text-red-400 bg-red-950/80 border border-red-600/50 inline-block px-2.5 py-0.5 rounded-full mt-1 animate-pulse">
+                    Status: Running
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400 capitalize bg-gray-800 inline-block px-2 py-0.5 rounded-full mt-1">
+                    Status: {room.status}
+                  </span>
+                )}
              </div>
              
              <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
@@ -684,7 +696,15 @@ export default function AdminPage() {
                    </button>
                    <button 
                      onMouseEnter={() => audioEngine.playHover()} 
-                     onClick={() => { audioEngine.playClick(); handleDeleteRoom(room.id); }} 
+                     onClick={() => {
+                        audioEngine.playClick();
+                        openConfirm(
+                          "Delete Room",
+                          `Are you sure you want to permanently delete room "${room.name}"? All assigned players will be unassigned.`,
+                          () => handleDeleteRoom(room.id),
+                          "danger"
+                        );
+                      }} 
                      disabled={isProcessing} 
                      className="p-1.5 bg-red-900/50 text-red-400 hover:bg-red-600 hover:text-white rounded-lg transition-colors"
                      title="Delete Room"

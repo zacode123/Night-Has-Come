@@ -382,6 +382,167 @@ class AudioEngine {
     }
   }
 
+  playFootstep(isRunning: boolean = false) {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      // Procedural synthetic footstep impact
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const filter = ctx.createFilter ? ctx.createFilter() : ctx.createBiquadFilter();
+
+      osc.type = 'triangle';
+      const baseFreq = isRunning ? 95 : 75;
+      osc.frequency.setValueAtTime(baseFreq + Math.random() * 20, now);
+      osc.frequency.exponentialRampToValueAtTime(30, now + 0.08);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(isRunning ? 400 : 300, now);
+
+      gain.gain.setValueAtTime(isRunning ? 0.16 : 0.09, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + (isRunning ? 0.07 : 0.09));
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } catch (_) {}
+  }
+
+  playJump() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(280, now + 0.18);
+
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.linearRampToValueAtTime(0.001, now + 0.2);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.21);
+    } catch (_) {}
+  }
+
+  playLand() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
+
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch (_) {}
+  }
+
+  playDoorPush() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      // Door creak / wood glide sound
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(160, now);
+      osc.frequency.linearRampToValueAtTime(220, now + 0.15);
+      osc.frequency.linearRampToValueAtTime(140, now + 0.35);
+
+      gain.gain.setValueAtTime(0.06, now);
+      gain.gain.linearRampToValueAtTime(0.09, now + 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.setValueAtTime(350, now);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.42);
+    } catch (_) {}
+  }
+
+  playDoorLock() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      // Heavy mechanical bolt latch click
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(450, now);
+      osc.frequency.setValueAtTime(220, now + 0.04);
+
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.13);
+    } catch (_) {}
+  }
+
+  playDoorUnlock() {
+    const ctx = this.getAudioContext();
+    if (!ctx) return;
+
+    try {
+      // Mechanical unlock double click
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(240, now);
+      osc.frequency.setValueAtTime(520, now + 0.05);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.15);
+    } catch (_) {}
+  }
+
   playHover() {
     this.playCinematicSound('hover');
   }
