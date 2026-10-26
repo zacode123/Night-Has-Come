@@ -8,9 +8,10 @@ interface VirtualJoystickProps {
   onMove: (vector: { x: number; y: number }) => void;
   onSprintToggle: (isSprinting: boolean) => void;
   onJump: () => void;
-  onRoleAction: () => void;
-  onToggleCamera: () => void;
-  cameraMode: 'thirdPerson' | 'isometric';
+  onRoleAction?: () => void;
+  onAction?: () => void;
+  onToggleCamera?: () => void;
+  cameraMode?: 'thirdPerson' | 'isometric';
   role?: string | null;
   isAlive?: boolean;
   phase?: string;
@@ -21,8 +22,9 @@ export default function VirtualJoystick({
   onSprintToggle,
   onJump,
   onRoleAction,
+  onAction,
   onToggleCamera,
-  cameraMode,
+  cameraMode = 'thirdPerson',
   role = 'Citizen',
   isAlive = true,
   phase = 'Discussion',
@@ -113,13 +115,15 @@ export default function VirtualJoystick({
     <div className="absolute inset-0 pointer-events-none select-none z-20 flex flex-col justify-between p-3 sm:p-4">
       {/* Top Floating Mini Bar: Camera Switch */}
       <div className="flex justify-between items-center w-full pointer-events-auto">
-        <button
-          onClick={onToggleCamera}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-xs font-semibold text-zinc-200 hover:text-white shadow-lg active:scale-95 transition-transform"
-        >
-          <Camera size={14} className="text-red-400" />
-          <span>{cameraMode === 'thirdPerson' ? 'GTA Follow' : 'Isometric'}</span>
-        </button>
+        {onToggleCamera ? (
+          <button
+            onClick={onToggleCamera}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-xs font-semibold text-zinc-200 hover:text-white shadow-lg active:scale-95 transition-transform"
+          >
+            <Camera size={14} className="text-red-400" />
+            <span>{cameraMode === 'thirdPerson' ? 'GTA Follow' : 'Isometric'}</span>
+          </button>
+        ) : <div />}
 
         <div className="text-[11px] font-mono tracking-wider bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/10 text-zinc-400 hidden sm:block">
           WASD + Shift: Sprint | Space: Jump
@@ -186,7 +190,7 @@ export default function VirtualJoystick({
           {/* Role Action Button (Attack / Heal / Investigate / Gesture) */}
           {roleAction && (
             <button
-              onClick={onRoleAction}
+              onClick={onRoleAction || onAction}
               aria-label={roleAction.label}
               className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${roleAction.color} border-2 flex flex-col items-center justify-center shadow-xl active:scale-95 transition-transform`}
             >

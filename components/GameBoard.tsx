@@ -585,7 +585,7 @@ export default function GameBoard({
   // Physics & Kinematics Game Loop
   const playerPosRef = useRef<[number, number, number]>([0, 0, 0]);
   const playerRotRef = useRef<number>(0);
-  const velocityRef = useRef<{ x: number; z: number }>({ x: 0, y: 0, z: 0 });
+  const velocityRef = useRef<{ x: number; z: number }>({ x: 0, z: 0 });
   const stepCadenceTimer = useRef<number>(0);
 
   useEffect(() => {

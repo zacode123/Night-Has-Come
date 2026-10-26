@@ -391,7 +391,7 @@ class AudioEngine {
       const now = ctx.currentTime;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      const filter = ctx.createFilter ? ctx.createFilter() : ctx.createBiquadFilter();
+      const filter = ctx.createBiquadFilter();
 
       osc.type = 'triangle';
       const baseFreq = isRunning ? 95 : 75;
