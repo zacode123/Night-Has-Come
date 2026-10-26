@@ -27,6 +27,7 @@ import { useRealtime } from '@/components/RealtimeProvider';
 import { useLiveCall } from '@/hooks/useLiveCall';
 import FloatingCallOverlay from '@/components/FloatingCallOverlay';
 import LiveCallModal from '@/components/LiveCallModal';
+import RulesBanner from '@/components/RulesBanner';
 
 type ViewportMode = 'split' | 'gameOnly' | 'chatOnly';
 
@@ -41,6 +42,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const [customAlert, setCustomAlert] = useState<string | null>(null);
   const [roomNotFound, setRoomNotFound] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
 
   const {
     gameState,
@@ -135,6 +137,9 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
     if (!gameState || gameState.status !== 'in_game') return;
 
     switch (gameState.phase) {
+      case 'Warmup':
+        audioEngine.startDiscussionMusic();
+        break;
       case 'Night':
         audioEngine.startNightAmbient();
         break;
@@ -155,18 +160,20 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         audioEngine.stopAmbient();
         break;
     }
-  }, [gameState?.phase, gameState?.status]);
+  }, [gameState]);
 
   const currentPlayer = useMemo(
     () => players.find((p) => p.id === userId),
     [players, userId]
   );
   const isAlive = currentPlayer?.alive ?? true;
-  const canChat = isAlive && (gameState?.phase === 'Discussion' || gameState?.phase === 'Lobby');
+  const canChat = isAlive && (gameState?.phase === 'Warmup' || gameState?.phase === 'Discussion' || gameState?.phase === 'Lobby');
 
   // Automated phase duration configuration (in seconds)
   const getPhaseDuration = (phase?: string) => {
     switch (phase) {
+      case 'Warmup':
+        return 30;
       case 'Night':
         return 30;
       case 'Morning':
@@ -185,6 +192,17 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   // App intelligence automatically advances phase and day
   const handleAutoAdvance = () => {
     if (!gameState) return;
+
+    // When 30s Warmup completes: announce game start, explain rules, and begin Night phase
+    if (gameState.phase === 'Warmup') {
+      audioEngine.stopAmbient();
+      audioEngine.playRoleReveal();
+      narrationEngine.narrateRulesExplanation();
+      setShowRulesModal(true);
+      advancePhase('Night');
+      return;
+    }
+
     const cycle: Record<string, any> = {
       Lobby: 'Night',
       Night: 'Morning',
@@ -246,7 +264,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-950/60 border border-red-500/30 text-xs font-mono shadow">
             <Clock size={13} className="text-red-400 animate-pulse" />
             <span className="text-[10px] uppercase font-bold text-zinc-300">
-              {gameState.phase}:
+              {gameState.phase === 'Warmup' ? 'WARMUP' : gameState.phase}:
             </span>
             <Timer
               duration={getPhaseDuration(gameState.phase)}
@@ -254,6 +272,16 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
               isActive={true}
             />
           </div>
+
+          {/* Rules Explanation Button */}
+          <button
+            onClick={() => setShowRulesModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-900/60 transition-colors text-xs font-semibold cursor-pointer"
+            title="Read Rules"
+          >
+            <HelpCircle size={13} />
+            <span className="hidden sm:inline">Rules</span>
+          </button>
 
           {/* Exit Button */}
           <button
@@ -438,6 +466,13 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         onStartCall={(selectedIds, selectedData) => {
           startCall(selectedIds, selectedData);
         }}
+      />
+
+      {/* Rules Explanation Modal Banner */}
+      <RulesBanner
+        isOpen={showRulesModal}
+        onClose={() => setShowRulesModal(false)}
+        onReplayAudio={() => narrationEngine.narrateRulesExplanation()}
       />
     </div>
   );

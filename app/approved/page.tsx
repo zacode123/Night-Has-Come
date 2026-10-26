@@ -57,7 +57,7 @@ export default function ApprovedPage() {
     return () => {
       isMounted = false;
     };
-  }, [player?.room_id, router, setRoom, refreshPlayer]);
+  }, [player, router, setRoom, refreshPlayer]);
 
   // Keep currentRoomStatus in sync with realtime room changes
   useEffect(() => {

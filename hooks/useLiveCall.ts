@@ -20,6 +20,14 @@ export interface IncomingCallData {
   participantIds: string[];
 }
 
+// WebRTC ICE Servers static configuration
+const DEFAULT_ICE_SERVERS: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+};
+
 export function useLiveCall(roomId: string, currentUserId: string, gamePhase?: string) {
   const [callId, setCallId] = useState<string | null>(null);
   const [callStatus, setCallStatus] = useState<'idle' | 'outgoing' | 'incoming' | 'connected'>('idle');
@@ -113,14 +121,6 @@ export function useLiveCall(roomId: string, currentUserId: string, gamePhase?: s
     animationFrameRef.current = requestAnimationFrame(checkVolume);
   }, []);
 
-  // WebRTC ICE Servers
-  const iceServers: RTCConfiguration = {
-    iceServers: [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-    ],
-  };
-
   // Setup peer connection for a specific remote participant
   const createPeerConnection = useCallback(
     (remoteUserId: string, isInitiator: boolean) => {
@@ -128,7 +128,7 @@ export function useLiveCall(roomId: string, currentUserId: string, gamePhase?: s
         return peerConnections.current[remoteUserId];
       }
 
-      const pc = new RTCPeerConnection(iceServers);
+      const pc = new RTCPeerConnection(DEFAULT_ICE_SERVERS);
       peerConnections.current[remoteUserId] = pc;
 
       // Add local tracks to peer connection
@@ -205,7 +205,7 @@ export function useLiveCall(roomId: string, currentUserId: string, gamePhase?: s
   );
 
   // Initialize Local Media Stream
-  const initLocalAudio = async () => {
+  const initLocalAudio = useCallback(async () => {
     if (localStreamRef.current) return localStreamRef.current;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -234,7 +234,7 @@ export function useLiveCall(roomId: string, currentUserId: string, gamePhase?: s
       console.warn('Mic access failed or permission denied:', err);
       return null;
     }
-  };
+  }, [currentUserId, startVolumeAnalysis]);
 
   // Supabase Realtime Signaling Listener
   useEffect(() => {
@@ -330,7 +330,7 @@ export function useLiveCall(roomId: string, currentUserId: string, gamePhase?: s
       supabase.removeChannel(channel);
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     };
-  }, [roomId, currentUserId, callId, createPeerConnection]);
+  }, [roomId, currentUserId, callId, createPeerConnection, initLocalAudio]);
 
   // Start outgoing call
   const startCall = async (targetPlayerIds: string[], targetPlayersData: CallParticipant[]) => {

@@ -141,8 +141,18 @@ class NarrationEngine {
     }
   }
 
+  public narrateRulesExplanation() {
+    const speech = "The warmup is complete. Yooil Manor curfew is now in effect, and the game is starting. Here are the rules: Citizens must work together to find and vote out the Mafia. Each night, the Mafia secretly eliminates a player. The Doctor can heal one person to save their life, and the Police investigates suspects. In the morning, casualties are revealed. During discussion, explore the manor, talk in chat, and cross-examine alibis. During voting, everyone votes to eliminate the most suspicious player. Citizens win when all Mafia are eliminated. Good luck!";
+    this.speak(speech);
+  }
+
   public getPhaseNarration(phase: string, dayNumber = 1): { title: string; subtitle: string } {
     switch (phase) {
+      case 'Warmup':
+        return {
+          title: 'PRE-GAME ARENA WARMUP',
+          subtitle: 'Explore the manor, control your player, and chat with others before curfew begins in 30 seconds.',
+        };
       case 'Night':
         return {
           title: `NIGHT ${dayNumber} CURFEW`,

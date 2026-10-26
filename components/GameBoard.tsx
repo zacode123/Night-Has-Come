@@ -11,8 +11,9 @@ import {
   generateRoomLayout,
   RoomLayout,
   FurnitureItem,
-  WallSegment,
   DoorData,
+  WallLightFixture,
+  getSafeOpenSpawnPoint,
 } from '@/lib/roomGenerator';
 import { audioEngine } from '@/lib/audioEngine';
 import { supabase } from '@/lib/supabaseClient';
@@ -43,7 +44,7 @@ interface GameBoardProps {
 }
 
 // -------------------------------------------------------------
-// CAMERA CONTROLLER: FIRST PERSON (EYE-LEVEL) VS THIRD PERSON (ENLARGED)
+// CAMERA CONTROLLER: FIRST PERSON (EYE-LEVEL) VS THIRD PERSON (TACTICAL GTA FOLLOW)
 // -------------------------------------------------------------
 function CameraController({
   targetPos,
@@ -60,38 +61,91 @@ function CameraController({
     const [tx, ty, tz] = targetPos;
 
     if (cameraMode === 'firstPerson') {
-      // True Eye-Level View (1.65m height, horizontal forward look vector)
       const eyeHeight = 1.65;
       camera.position.x = tx;
       camera.position.y = ty + eyeHeight;
       camera.position.z = tz;
 
-      // Look straight ahead in the player facing direction (horizontal sightline)
       const lookDist = 15;
       const targetLookX = tx + Math.sin(targetRot) * lookDist;
-      const targetLookY = ty + eyeHeight; // strictly horizontal, not upper side
+      const targetLookY = ty + eyeHeight;
       const targetLookZ = tz + Math.cos(targetRot) * lookDist;
 
       camera.lookAt(targetLookX, targetLookY, targetLookZ);
     } else {
-      // Enlarged Third Person Tactical View (Pulled back, elevated, sees over walls & rooms)
       const distance = 7.5;
-      const height = 5.8;
+      const height = 5.6;
       const camX = tx - Math.sin(targetRot) * distance;
       const camZ = tz - Math.cos(targetRot) * distance;
       const camY = ty + height;
 
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, camX, Math.min(1, delta * 7));
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, camY, Math.min(1, delta * 7));
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, Math.min(1, delta * 7));
+      camera.position.x = THREE.MathUtils.lerp(camera.position.x, camX, Math.min(1, delta * 8));
+      camera.position.y = THREE.MathUtils.lerp(camera.position.y, camY, Math.min(1, delta * 8));
+      camera.position.z = THREE.MathUtils.lerp(camera.position.z, camZ, Math.min(1, delta * 8));
 
-      // Look at player center-of-mass
       const lookTarget = new THREE.Vector3(tx, ty + 1.2, tz);
       camera.lookAt(lookTarget);
     }
   });
 
   return null;
+}
+
+// -------------------------------------------------------------
+// WALL SCONCE & BULB LIGHT FIXTURE
+// -------------------------------------------------------------
+function WallSconceBulb({ fixture, isNight }: { fixture: WallLightFixture; isNight: boolean }) {
+  const [fx, fy, fz] = fixture.position;
+  const bulbColor = fixture.color || '#fef3c7';
+  const intensity = isNight ? (fixture.intensity || 2.2) * 0.75 : fixture.intensity || 2.2;
+
+  return (
+    <group position={[fx, fy, fz]} rotation={[0, fixture.rotationY, 0]}>
+      {/* Brass Wall Mount Plate */}
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={[0.24, 0.36, 0.05]} />
+        <meshStandardMaterial color="#78350f" metalness={0.85} roughness={0.3} />
+      </mesh>
+
+      {/* Curved Brass Sconce Stem */}
+      <mesh position={[0, -0.06, 0.14]} castShadow>
+        <cylinderGeometry args={[0.025, 0.025, 0.24, 8]} />
+        <meshStandardMaterial color="#b45309" metalness={0.9} roughness={0.25} />
+      </mesh>
+
+      {/* Brass Socket Cup */}
+      <mesh position={[0, 0.08, 0.22]} castShadow>
+        <cylinderGeometry args={[0.07, 0.05, 0.08, 12]} />
+        <meshStandardMaterial color="#92400e" metalness={0.85} roughness={0.3} />
+      </mesh>
+
+      {/* Glowing Glass Light Bulb */}
+      <mesh position={[0, 0.17, 0.22]}>
+        <sphereGeometry args={[0.11, 16, 16]} />
+        <meshStandardMaterial
+          color={bulbColor}
+          emissive={bulbColor}
+          emissiveIntensity={3.0}
+          roughness={0.1}
+        />
+      </mesh>
+
+      {/* Internal Filament Core */}
+      <mesh position={[0, 0.17, 0.22]}>
+        <sphereGeometry args={[0.04, 8, 8]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+
+      {/* Atmospheric Point Light with Smooth Decay */}
+      <pointLight
+        position={[0, 0.2, 0.26]}
+        color={bulbColor}
+        intensity={intensity}
+        distance={14}
+        decay={2}
+      />
+    </group>
+  );
 }
 
 // -------------------------------------------------------------
@@ -106,45 +160,38 @@ function PhysicalDoorMesh({
   playerPos: [number, number, number];
   onToggleLock: (doorId: string) => void;
 }) {
-  const [dx, dy, dz] = door.position;
-  const isXDoor = door.wallNormal === 'x'; // door opening crosses X axis
+  const [dx, , dz] = door.position;
+  const isXDoor = door.wallNormal === 'x';
   const doorWidth = door.width;
   const doorHeight = door.height;
   const thickness = 0.12;
 
-  // Determine which side of the door the player is currently standing on
-  // For door at X = -3 (or 3):
   const playerSide = isXDoor
     ? playerPos[0] > dx
-      ? 'roomA' // Central Corridor side
-      : 'roomB' // Inside Room side
+      ? 'roomA'
+      : 'roomB'
     : playerPos[2] > dz
     ? 'roomA'
     : 'roomB';
 
   const distToDoor = Math.hypot(playerPos[0] - dx, playerPos[2] - dz);
   const showHandlePrompt = distToDoor < 2.0;
-
-  const canUnlock = !door.isLocked || door.lockedSide === playerSide;
   const isLockedFromOtherSide = door.isLocked && door.lockedSide !== playerSide;
 
   return (
     <group position={[dx, 0, dz]}>
-      {/* Heavy Steel Door Frame */}
-      {/* Left Frame Post */}
+      {/* Heavy Wood Frame with Brass Trim */}
       <mesh position={isXDoor ? [0, doorHeight / 2, -doorWidth / 2 - 0.08] : [-doorWidth / 2 - 0.08, doorHeight / 2, 0]} castShadow>
         <boxGeometry args={isXDoor ? [0.45, doorHeight, 0.16] : [0.16, doorHeight, 0.45]} />
-        <meshStandardMaterial color="#18181b" roughness={0.4} metalness={0.8} />
+        <meshStandardMaterial color="#271c19" roughness={0.5} metalness={0.5} />
       </mesh>
-      {/* Right Frame Post */}
       <mesh position={isXDoor ? [0, doorHeight / 2, doorWidth / 2 + 0.08] : [doorWidth / 2 + 0.08, doorHeight / 2, 0]} castShadow>
         <boxGeometry args={isXDoor ? [0.45, doorHeight, 0.16] : [0.16, doorHeight, 0.45]} />
-        <meshStandardMaterial color="#18181b" roughness={0.4} metalness={0.8} />
+        <meshStandardMaterial color="#271c19" roughness={0.5} metalness={0.5} />
       </mesh>
-      {/* Frame Top Header */}
       <mesh position={[0, doorHeight + 0.08, 0]} castShadow>
         <boxGeometry args={isXDoor ? [0.45, 0.16, doorWidth + 0.32] : [doorWidth + 0.32, 0.16, 0.45]} />
-        <meshStandardMaterial color="#18181b" roughness={0.4} metalness={0.8} />
+        <meshStandardMaterial color="#271c19" roughness={0.5} metalness={0.5} />
       </mesh>
 
       {/* Door Leaf (Swinging on Hinge at corner) */}
@@ -152,7 +199,6 @@ function PhysicalDoorMesh({
         position={isXDoor ? [0, 0, -doorWidth / 2] : [-doorWidth / 2, 0, 0]}
         rotation={[0, door.angle, 0]}
       >
-        {/* Main Door Panel */}
         <mesh
           position={isXDoor ? [0, doorHeight / 2, doorWidth / 2] : [doorWidth / 2, doorHeight / 2, 0]}
           castShadow
@@ -160,25 +206,24 @@ function PhysicalDoorMesh({
         >
           <boxGeometry args={isXDoor ? [thickness, doorHeight, doorWidth] : [doorWidth, doorHeight, thickness]} />
           <meshStandardMaterial
-            color={door.isLocked ? '#450a0a' : '#27272a'}
+            color={door.isLocked ? '#451a03' : '#382216'}
             roughness={0.6}
-            metalness={0.3}
+            metalness={0.2}
           />
         </mesh>
 
-        {/* Steel Cross Brace Panel Detail */}
+        {/* Brass Inlay Panels */}
         <mesh position={isXDoor ? [0, doorHeight / 2, doorWidth / 2] : [doorWidth / 2, doorHeight / 2, 0]}>
           <boxGeometry args={isXDoor ? [thickness + 0.02, doorHeight * 0.88, doorWidth * 0.88] : [doorWidth * 0.88, doorHeight * 0.88, thickness + 0.02]} />
-          <meshStandardMaterial color="#18181b" roughness={0.7} metalness={0.5} />
+          <meshStandardMaterial color="#1f140e" roughness={0.7} metalness={0.4} />
         </mesh>
 
-        {/* Door Brass Handle & Lock Bolt at Z = doorWidth * 0.85 */}
+        {/* Door Brass Handle */}
         <mesh position={isXDoor ? [0.1, 1.2, doorWidth * 0.85] : [doorWidth * 0.85, 1.2, 0.1]}>
           <boxGeometry args={[0.08, 0.22, 0.18]} />
-          <meshStandardMaterial color={door.isLocked ? '#ef4444' : '#eab308'} metalness={0.9} roughness={0.2} />
+          <meshStandardMaterial color={door.isLocked ? '#ef4444' : '#d97706'} metalness={0.9} roughness={0.2} />
         </mesh>
 
-        {/* Lock Status Indicator Glow on Handle */}
         <pointLight
           position={isXDoor ? [0.15, 1.2, doorWidth * 0.85] : [doorWidth * 0.85, 1.2, 0.15]}
           color={door.isLocked ? '#ef4444' : '#22c55e'}
@@ -192,7 +237,7 @@ function PhysicalDoorMesh({
         <Html position={[0, 1.45, 0]} center distanceFactor={14}>
           <div className="pointer-events-auto transform -translate-y-4">
             {isLockedFromOtherSide ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/95 border border-red-500 rounded-xl text-red-300 text-xs font-bold shadow-2xl backdrop-blur-md animate-pulse">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-red-950/95 border border-red-500 rounded-xl text-red-300 text-xs font-bold shadow-2xl backdrop-blur-md">
                 <ShieldAlert size={14} className="text-red-400" />
                 <span>Locked from other side</span>
               </div>
@@ -200,7 +245,7 @@ function PhysicalDoorMesh({
               <button
                 type="button"
                 onClick={() => onToggleLock(door.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-600 hover:bg-yellow-500 text-black font-extrabold text-xs rounded-xl shadow-2xl transition-all cursor-pointer border border-yellow-300 active:scale-95"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs rounded-xl shadow-2xl transition-all cursor-pointer border border-amber-300 active:scale-95"
               >
                 <Unlock size={14} />
                 <span>Unlock Door</span>
@@ -223,10 +268,88 @@ function PhysicalDoorMesh({
 }
 
 // -------------------------------------------------------------
-// FURNITURE MESH RENDERER
+// FURNITURE MESH RENDERER WITH RICH MANOR PROPS
 // -------------------------------------------------------------
 function FurnitureMesh({ item }: { item: FurnitureItem }) {
   const [w, h, d] = item.size;
+
+  if (item.type === 'rug') {
+    return (
+      <group position={item.position} rotation={[0, item.rotation || 0, 0]}>
+        {/* Main Persian Rug Carpet Surface */}
+        <mesh position={[0, 0.015, 0]} receiveShadow>
+          <planeGeometry args={[w, d]} />
+          <meshStandardMaterial
+            color={item.color || '#7f1d1d'}
+            roughness={0.92}
+            metalness={0.05}
+          />
+        </mesh>
+        {/* Ornate Gold Border Line */}
+        <mesh position={[0, 0.018, 0]} receiveShadow>
+          <planeGeometry args={[w * 0.94, d * 0.94]} />
+          <meshStandardMaterial
+            color={item.accentColor || '#d97706'}
+            roughness={0.85}
+            metalness={0.3}
+          />
+        </mesh>
+        {/* Inner Pattern Center */}
+        <mesh position={[0, 0.021, 0]} receiveShadow>
+          <planeGeometry args={[w * 0.86, d * 0.86]} />
+          <meshStandardMaterial
+            color={item.color || '#7f1d1d'}
+            roughness={0.92}
+            metalness={0.05}
+          />
+        </mesh>
+      </group>
+    );
+  }
+
+  if (item.type === 'bookshelf') {
+    return (
+      <group position={item.position} rotation={[0, item.rotation || 0, 0]}>
+        {/* Cabinet Frame */}
+        <mesh position={[0, h / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[w, h, d]} />
+          <meshStandardMaterial color={item.color || '#2e1509'} roughness={0.7} />
+        </mesh>
+        {/* Book Rows */}
+        {[-1.2, -0.4, 0.4, 1.2].map((yOffset, idx) => (
+          <mesh key={idx} position={[0, h / 2 + yOffset, 0.05]} castShadow>
+            <boxGeometry args={[w * 0.88, 0.55, d * 0.85]} />
+            <meshStandardMaterial
+              color={idx % 2 === 0 ? '#991b1b' : '#1e3a8a'}
+              roughness={0.6}
+            />
+          </mesh>
+        ))}
+      </group>
+    );
+  }
+
+  if (item.type === 'clock') {
+    return (
+      <group position={item.position} rotation={[0, item.rotation || 0, 0]}>
+        {/* Grandfather Clock Column Body */}
+        <mesh position={[0, h / 2, 0]} castShadow receiveShadow>
+          <boxGeometry args={[w, h, d]} />
+          <meshStandardMaterial color={item.color || '#29170e'} roughness={0.5} metalness={0.3} />
+        </mesh>
+        {/* Clock Face with Golden Ring */}
+        <mesh position={[0, h - 0.45, d / 2 + 0.02]}>
+          <circleGeometry args={[0.22, 24]} />
+          <meshStandardMaterial color="#fef3c7" roughness={0.3} />
+        </mesh>
+        {/* Golden Pendulum Chamber */}
+        <mesh position={[0, h / 2 - 0.2, d / 2 + 0.02]}>
+          <boxGeometry args={[0.22, 0.6, 0.04]} />
+          <meshStandardMaterial color="#d97706" metalness={0.9} roughness={0.2} />
+        </mesh>
+      </group>
+    );
+  }
 
   return (
     <group position={item.position} rotation={[0, item.rotation || 0, 0]}>
@@ -252,7 +375,7 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
 }
 
 // -------------------------------------------------------------
-// HYPER-REALISTIC MULTI-ROOM ENVIRONMENT
+// HYPER-REALISTIC MULTI-ROOM ENVIRONMENT WITH CEILING BEAMS & SCONCES
 // -------------------------------------------------------------
 function RoomEnvironment({
   layout,
@@ -271,46 +394,46 @@ function RoomEnvironment({
 
   return (
     <group>
-      {/* Ambient & Directional Lighting */}
-      <ambientLight intensity={isNight ? 0.35 : 0.85} color={isNight ? '#1e3a8a' : '#ffffff'} />
+      {/* Warm Ambient & Directional Lighting */}
+      <ambientLight intensity={isNight ? 0.45 : 0.95} color={isNight ? '#312e81' : '#fffbeb'} />
       <directionalLight
-        position={[15, 24, 15]}
-        intensity={isNight ? 0.5 : 1.3}
-        color={isNight ? '#60a5fa' : '#fffbeb'}
+        position={[12, 26, 12]}
+        intensity={isNight ? 0.6 : 1.4}
+        color={isNight ? '#60a5fa' : '#fed7aa'}
         castShadow
         shadow-mapSize={[2048, 2048]}
       />
 
-      {/* Emergency Hallway Beacons */}
-      <pointLight position={[0, 4.2, -10]} color="#ef4444" intensity={1.5} distance={15} />
-      <pointLight position={[0, 4.2, 0]} color="#ef4444" intensity={1.5} distance={15} />
-      <pointLight position={[0, 4.2, 10]} color="#ef4444" intensity={1.5} distance={15} />
+      {/* Warm Wall Sconces & Light Bulbs on Walls */}
+      {layout.wallLights.map((fixture) => (
+        <WallSconceBulb key={fixture.id} fixture={fixture} isNight={isNight} />
+      ))}
 
-      {/* Main Facility Concrete Floor */}
+      {/* Antique Manor Parquet Floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[layout.dimensions.width, layout.dimensions.depth]} />
         <meshStandardMaterial
           color={layout.floorColor}
-          roughness={0.7}
+          roughness={0.65}
           metalness={0.2}
         />
       </mesh>
 
-      {/* Floor Grid Guidelines */}
+      {/* Decorative Floor Inlay Frame */}
       <gridHelper
-        args={[36, 36, '#991b1b', '#27272a']}
-        position={[0, 0.02, 0]}
+        args={[36, 36, '#78350f', '#27221f']}
+        position={[0, 0.01, 0]}
       />
 
-      {/* Red Rule Execution Boundaries along Corridor */}
-      <lineSegments position={[0, 0.04, 0]}>
-        <edgesGeometry
-          args={[new THREE.BoxGeometry(6, 0.05, 36)]}
-        />
-        <lineBasicMaterial color="#dc2626" linewidth={2} />
-      </lineSegments>
+      {/* Ceiling Timber Rafter Beams (at Y = 4.4m) for Grand Manor Architecture */}
+      {[-12, -6, 0, 6, 12].map((zPos, idx) => (
+        <mesh key={idx} position={[0, 4.4, zPos]} castShadow>
+          <boxGeometry args={[layout.dimensions.width, 0.35, 0.45]} />
+          <meshStandardMaterial color="#1c120c" roughness={0.8} />
+        </mesh>
+      ))}
 
-      {/* All 4.5m Ceiling-Height Partition Walls (Strict full occlusion) */}
+      {/* All 4.5m Ceiling-Height Partition Walls */}
       {layout.walls.map((wall) => (
         <mesh key={wall.id} position={wall.position} castShadow receiveShadow>
           <boxGeometry args={wall.size} />
@@ -322,7 +445,7 @@ function RoomEnvironment({
         </mesh>
       ))}
 
-      {/* 4 Physical Doors with Push Swing & 1-Sided Lock */}
+      {/* 4 Physical Manor Doors */}
       {doors.map((door) => (
         <PhysicalDoorMesh
           key={door.id}
@@ -332,7 +455,7 @@ function RoomEnvironment({
         />
       ))}
 
-      {/* Fixed Realistic Furniture Items */}
+      {/* Fixed Manor Furniture & Rug Items */}
       {layout.furniture.map((item) => (
         <FurnitureMesh key={item.id} item={item} />
       ))}
@@ -346,7 +469,7 @@ function RoomEnvironment({
 export default function GameBoard({
   roomId,
   phase,
-  dayNumber,
+  dayNumber: _dayNumber,
   players,
   currentUserId,
   isAdmin = false,
@@ -365,7 +488,7 @@ export default function GameBoard({
   const [isSprinting, setIsSprinting] = useState<boolean>(false);
   const [jumpTimer, setJumpTimer] = useState<number>(0);
 
-  // Virtual joystick movement vector from touch controls
+  // Virtual joystick movement vector from touch/mouse controls
   const joystickVector = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Procedural Room Layout with Fixed Multi-room architecture
@@ -373,10 +496,10 @@ export default function GameBoard({
   const halfW = roomLayout.dimensions.width / 2 - 0.8;
   const halfD = roomLayout.dimensions.depth / 2 - 0.8;
 
-  // Doors State (Physical doors with one-sided locking)
+  // Doors State
   const [doors, setDoors] = useState<DoorData[]>(roomLayout.doors);
 
-  // Only simulate NPC Bots for true AI bots
+  // NPC Bots state
   const [botStates, setBotStates] = useState<
     Record<
       string,
@@ -417,11 +540,11 @@ export default function GameBoard({
     [players, currentUserId]
   );
 
-  // Initialize spawn position for current player
+  // Initialize guaranteed open-space spawn position for current player
   useEffect(() => {
-    const spawnIdx = Math.abs(currentUserId.charCodeAt(0) || 0) % roomLayout.spawnPoints.length;
-    const [sx, sz] = roomLayout.spawnPoints[spawnIdx] || [0, 0];
+    const [sx, sz] = getSafeOpenSpawnPoint(roomLayout, currentUserId);
     setPlayerPos([sx, 0, sz]);
+    playerPosRef.current = [sx, 0, sz];
   }, [currentUserId, roomLayout]);
 
   // Realtime channel for Door state updates
@@ -464,24 +587,23 @@ export default function GameBoard({
     [roomId]
   );
 
-  // Toggle Door Lock (With 1-sided lock enforcement)
+  // Toggle Door Lock
   const handleToggleDoorLock = useCallback(
     (doorId: string) => {
       const door = doors.find((d) => d.id === doorId);
       if (!door) return;
 
-      const [dx, _, dz] = door.position;
+      const [dx, , dz] = door.position;
       const isXDoor = door.wallNormal === 'x';
       const playerSide = isXDoor
         ? playerPos[0] > dx
-          ? 'roomA' // Central Corridor side
-          : 'roomB' // Inside Room side
+          ? 'roomA'
+          : 'roomB'
         : playerPos[2] > dz
         ? 'roomA'
         : 'roomB';
 
       if (door.isLocked) {
-        // Only allow unlocking if player is on the side that locked it!
         if (door.lockedSide === playerSide) {
           audioEngine.playDoorUnlock();
           const updated = { isLocked: false, lockedSide: null };
@@ -493,7 +615,6 @@ export default function GameBoard({
           audioEngine.playHover();
         }
       } else {
-        // Lock the door from player's current side
         audioEngine.playDoorLock();
         const updated: Partial<DoorData> = { isLocked: true, lockedSide: playerSide };
         setDoors((prev) =>
@@ -505,7 +626,7 @@ export default function GameBoard({
     [broadcastDoorUpdate, doors, playerPos]
   );
 
-  // Initialize NPC Bots ONLY for true bots (player.is_bot === true)
+  // Initialize NPC Bots at safe open spawn points
   useEffect(() => {
     setBotStates((prev) => {
       const next = { ...prev };
@@ -513,13 +634,12 @@ export default function GameBoard({
         .filter((p) => Boolean(p.is_bot))
         .forEach((p, idx) => {
           if (!next[p.id]) {
-            const spawn =
-              roomLayout.spawnPoints[(idx + 4) % roomLayout.spawnPoints.length] || [0, 0];
+            const [sx, sz] = getSafeOpenSpawnPoint(roomLayout, p.id || idx + 10);
             next[p.id] = {
-              x: spawn[0],
-              z: spawn[1],
-              targetX: spawn[0],
-              targetZ: spawn[1],
+              x: sx,
+              z: sz,
+              targetX: sx,
+              targetZ: sz,
               rotation: 0,
               gesture: 'idle',
               idleTimer: Math.random() * 2 + 1,
@@ -563,9 +683,6 @@ export default function GameBoard({
       if (e.key.toLowerCase() === 'shift') {
         setIsSprinting(true);
       }
-      if (e.key.toLowerCase() === 'e') {
-        handleRoleAction();
-      }
     };
     const handleKeyUp = (e: KeyboardEvent) => {
       keysDown.current[e.key.toLowerCase()] = false;
@@ -598,6 +715,7 @@ export default function GameBoard({
       lastTime = currentTime;
 
       // 1. Gather Directional Input Vector
+      // Virtual joystick: pulling up gives stickY > 0, pulling down gives stickY < 0
       let stickX = joystickVector.current.x;
       let stickY = joystickVector.current.y;
 
@@ -606,8 +724,12 @@ export default function GameBoard({
       if (keysDown.current['a'] || keysDown.current['arrowleft']) stickX -= 1;
       if (keysDown.current['d'] || keysDown.current['arrowright']) stickX += 1;
 
+      // COORDINATE ALIGNMENT FIX:
+      // Forward along camera sightline is +Z (away from camera placed at tz - distance).
+      // Backward towards camera is -Z.
+      // Right is +X, Left is -X.
       const inputX = stickX;
-      const inputZ = -stickY;
+      const inputZ = stickY;
 
       const inputLength = Math.hypot(inputX, inputZ);
       let normInputX = 0;
@@ -637,6 +759,7 @@ export default function GameBoard({
         velocityRef.current.x += (targetVx - currentVx) * Math.min(1, acceleration * dt);
         velocityRef.current.z += (targetVz - currentVz) * Math.min(1, acceleration * dt);
 
+        // Character faces towards the movement vector
         const targetAngle = Math.atan2(normInputX, normInputZ);
         let angleDiff = targetAngle - playerRotRef.current;
         angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
@@ -684,15 +807,17 @@ export default function GameBoard({
 
       const playerRadius = 0.38;
 
-      // Wall & Furniture Collisions
+      // Obstacles to collide against (excluding rugs so players can walk freely across carpet)
       const obstacleBoxes = [
         ...roomLayout.walls.map((w) => ({ position: w.position, size: w.size })),
-        ...roomLayout.furniture.map((f) => ({ position: f.position, size: f.size })),
+        ...roomLayout.furniture
+          .filter((f) => f.type !== 'rug')
+          .map((f) => ({ position: f.position, size: f.size })),
       ];
 
       for (const box of obstacleBoxes) {
-        const [bx, _, bz] = box.position;
-        const [bw, __, bd] = box.size;
+        const [bx, , bz] = box.position;
+        const [bw, , bd] = box.size;
         const boxMinX = bx - bw / 2 - playerRadius;
         const boxMaxX = bx + bw / 2 + playerRadius;
         const boxMinZ = bz - bd / 2 - playerRadius;
@@ -710,19 +835,16 @@ export default function GameBoard({
 
       // 3. Physical Door Push Kinematics
       doors.forEach((door) => {
-        const [dx, _, dz] = door.position;
+        const [dx, , dz] = door.position;
         const dist = Math.hypot(candidateX - dx, candidateZ - dz);
 
-        // When player walks into a door
         if (dist < 1.4) {
           if (door.isLocked) {
-            // Locked door blocks movement like a solid wall
             candidateX = prevX;
             candidateZ = prevZ;
             velocityRef.current.x = 0;
             velocityRef.current.z = 0;
           } else {
-            // Unlocked door swings open in direction of player push
             const pushDir = candidateX - dx > 0 ? 1 : -1;
             const targetAngle = pushDir * 1.45;
 
@@ -746,7 +868,7 @@ export default function GameBoard({
         setPlayerPos([candidateX, playerPosRef.current[1], candidateZ]);
       }
 
-      // 4. Smooth AI Bot Movement
+      // 4. Smooth AI Bot Movement inside Manor
       setBotStates((prev) => {
         const updated = { ...prev };
         Object.keys(updated).forEach((botId) => {
@@ -758,18 +880,9 @@ export default function GameBoard({
             bot.gesture = 'idle';
 
             if (bot.idleTimer <= 0) {
-              const randomFurniture =
-                roomLayout.furniture[Math.floor(Math.random() * roomLayout.furniture.length)];
-              bot.targetX = THREE.MathUtils.clamp(
-                randomFurniture.position[0] + (Math.random() * 3 - 1.5),
-                -halfW,
-                halfW
-              );
-              bot.targetZ = THREE.MathUtils.clamp(
-                randomFurniture.position[2] + (Math.random() * 3 - 1.5),
-                -halfD,
-                halfD
-              );
+              const [safeTargetX, safeTargetZ] = getSafeOpenSpawnPoint(roomLayout, Math.random() * 100);
+              bot.targetX = safeTargetX;
+              bot.targetZ = safeTargetZ;
               bot.idleTimer = Math.random() * 4 + 2;
             }
           } else {
@@ -812,8 +925,7 @@ export default function GameBoard({
     halfW,
     isSprinting,
     onUpdatePosition,
-    roomLayout.furniture,
-    roomLayout.walls,
+    roomLayout,
   ]);
 
   // Handle Role Action
@@ -871,7 +983,7 @@ export default function GameBoard({
           onToggleLock={handleToggleDoorLock}
         />
 
-        {/* Current User Avatar (Hidden in First Person so player sees strictly from eye level) */}
+        {/* Current User Avatar */}
         <Avatar3D
           id={currentUserId}
           name={currentPlayer?.username || 'You'}
@@ -890,7 +1002,7 @@ export default function GameBoard({
           actionTrigger={actionBurstTime}
         />
 
-        {/* Render Other Players: Real Human Players + AI Bots */}
+        {/* Render Other Connected Players & Bots */}
         {players
           .filter((p) => p.id !== currentUserId)
           .map((player) => {
@@ -925,7 +1037,7 @@ export default function GameBoard({
           })}
       </Canvas>
 
-      {/* Top Left: Perspective Buttons: (eye icon) Third Person / (eye icon) First Person */}
+      {/* Top Left: Perspective Mode Buttons */}
       <div className="absolute top-3 left-3 z-20 flex gap-2">
         <button
           type="button"
@@ -935,7 +1047,7 @@ export default function GameBoard({
           }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-lg backdrop-blur-md cursor-pointer ${
             cameraMode === 'thirdPerson'
-              ? 'bg-red-700 text-white shadow-red-900/50 border border-red-500 scale-105'
+              ? 'bg-amber-600 text-white shadow-amber-900/50 border border-amber-400 scale-105'
               : 'bg-black/60 text-zinc-400 hover:text-white border border-white/10'
           }`}
         >
@@ -951,7 +1063,7 @@ export default function GameBoard({
           }}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-lg backdrop-blur-md cursor-pointer ${
             cameraMode === 'firstPerson'
-              ? 'bg-red-700 text-white shadow-red-900/50 border border-red-500 scale-105'
+              ? 'bg-amber-600 text-white shadow-amber-900/50 border border-amber-400 scale-105'
               : 'bg-black/60 text-zinc-400 hover:text-white border border-white/10'
           }`}
         >
@@ -960,23 +1072,23 @@ export default function GameBoard({
         </button>
       </div>
 
-      {/* Top Right: Current Room Location HUD */}
-      <div className="absolute top-3 right-3 z-20 px-3 py-1 bg-black/70 border border-white/15 rounded-xl text-[11px] font-mono text-zinc-300 backdrop-blur-md shadow flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+      {/* Top Right: Manor Chamber Location Indicator */}
+      <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-black/75 border border-amber-900/40 rounded-xl text-[11px] font-mono text-amber-200 backdrop-blur-md shadow flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
         <span>
           {playerPos[0] > -3 && playerPos[0] < 3
-            ? 'Central Corridor'
+            ? 'Grand Gallery'
             : playerPos[0] <= -3 && playerPos[2] < 0
-            ? 'Dormitory'
+            ? 'Master Study'
             : playerPos[0] >= 3 && playerPos[2] < 0
-            ? 'Security CCTV'
+            ? 'Surveillance Salon'
             : playerPos[0] <= -3 && playerPos[2] >= 0
-            ? 'Cafeteria'
-            : 'Infirmary'}
+            ? 'Dining Hall'
+            : 'Apothecary Infirmary'}
         </span>
       </div>
 
-      {/* Virtual Joystick for Mobile Touch Controls */}
+      {/* Virtual Joystick for Touch and Mouse Controls */}
       <VirtualJoystick
         onMove={(vec) => {
           joystickVector.current = vec;

@@ -2,6 +2,7 @@ import { supabase } from './supabaseClient';
 import { gameConfig } from '@/config/gameConfig';
 
 export type GamePhase = 
+  | 'Warmup'
   | 'Lobby'
   | 'RoleAssignment'
   | 'Night'
@@ -51,12 +52,12 @@ export const GameEngine = {
         .eq('id', player.id);
     }
 
-    // 4. Update Room Status
+    // 4. Update Room Status with 30-second Warmup phase
     await supabase
       .from('rooms')
       .update({ 
         status: 'in_game',
-        phase: 'Night',
+        phase: 'Warmup',
         day_number: 1 
       })
       .eq('id', roomId);

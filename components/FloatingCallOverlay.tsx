@@ -56,7 +56,6 @@ export default function FloatingCallOverlay({
   // Call timer
   useEffect(() => {
     if (callStatus !== 'connected') {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCallDuration(0);
       return;
     }

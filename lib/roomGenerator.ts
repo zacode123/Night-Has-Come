@@ -1,6 +1,6 @@
 export interface FurnitureItem {
   id: string;
-  type: 'bed' | 'couch' | 'table' | 'locker' | 'cabinet' | 'tv' | 'crate' | 'pillar' | 'lamp' | 'counter';
+  type: 'bed' | 'couch' | 'table' | 'locker' | 'cabinet' | 'tv' | 'crate' | 'pillar' | 'lamp' | 'counter' | 'bookshelf' | 'clock' | 'rug';
   name: string;
   position: [number, number, number];
   size: [number, number, number];
@@ -14,6 +14,14 @@ export interface WallSegment {
   position: [number, number, number];
   size: [number, number, number];
   color?: string;
+}
+
+export interface WallLightFixture {
+  id: string;
+  position: [number, number, number];
+  rotationY: number; // radians (faces into the room)
+  color?: string;
+  intensity?: number;
 }
 
 export interface DoorData {
@@ -43,19 +51,20 @@ export interface RoomLayout {
   walls: WallSegment[];
   doors: DoorData[];
   furniture: FurnitureItem[];
+  wallLights: WallLightFixture[];
   spawnPoints: [number, number][];
 }
 
 // -------------------------------------------------------------
-// HYPER-REALISTIC MULTI-ROOM FACILITY ARCHITECTURE
+// HYPER-REALISTIC MOODY MYSTERY MANOR ARCHITECTURE
 // -------------------------------------------------------------
 // Overall Dimensions: Width = 34m (X: -17 to 17), Depth = 36m (Z: -18 to 18)
-// Wall Height = 4.5m (Ceiling-height, zero peek-over in first person)
-// Central Corridor: X: -3 to 3, Z: -18 to 18
-// Room 1 (North-West, X: -17 to -3, Z: -18 to -2): Student Dormitory
-// Room 2 (North-East, X: 3 to 17, Z: -18 to -2): Security & CCTV Command
-// Room 3 (South-West, X: -17 to -3, Z: 2 to 18): Retreat Cafeteria
-// Room 4 (South-East, X: 3 to 17, Z: 2 to 18): Quarantine & Medical Infirmary
+// Wall Height = 4.5m
+// Central Grand Gallery: X: -3 to 3, Z: -18 to 18
+// Room 1 (North-West, X: -17 to -3, Z: -18 to -2): Antique Master Study
+// Room 2 (North-East, X: 3 to 17, Z: -18 to -2): Surveillance & Clockwork Room
+// Room 3 (South-West, X: -17 to -3, Z: 2 to 18): Grand Dining Hall & Fireplace
+// Room 4 (South-East, X: 3 to 17, Z: 2 to 18): Apothecary & Infirmary
 // -------------------------------------------------------------
 
 export function generateRoomLayout(roomId: string, requestedTheme?: string): RoomLayout {
@@ -64,59 +73,48 @@ export function generateRoomLayout(roomId: string, requestedTheme?: string): Roo
 
   // Exterior and Interior Partition Walls
   const walls: WallSegment[] = [
-    // --- EXTERIOR BOUNDARY WALLS (Height 4.5m) ---
+    // --- EXTERIOR BOUNDARY WALLS ---
     // North Wall (Z = -18)
-    { id: 'w-ext-n', position: [0, wallH / 2, -18], size: [34, wallH, wallThick], color: '#27272a' },
+    { id: 'w-ext-n', position: [0, wallH / 2, -18], size: [34, wallH, wallThick], color: '#27221f' },
     // South Wall (Z = 18)
-    { id: 'w-ext-s', position: [0, wallH / 2, 18], size: [34, wallH, wallThick], color: '#27272a' },
+    { id: 'w-ext-s', position: [0, wallH / 2, 18], size: [34, wallH, wallThick], color: '#27221f' },
     // West Wall (X = -17)
-    { id: 'w-ext-w', position: [-17, wallH / 2, 0], size: [wallThick, wallH, 36], color: '#27272a' },
+    { id: 'w-ext-w', position: [-17, wallH / 2, 0], size: [wallThick, wallH, 36], color: '#27221f' },
     // East Wall (X = 17)
-    { id: 'w-ext-e', position: [17, wallH / 2, 0], size: [wallThick, wallH, 36], color: '#27272a' },
+    { id: 'w-ext-e', position: [17, wallH / 2, 0], size: [wallThick, wallH, 36], color: '#27221f' },
 
     // --- HORIZONTAL ROOM DIVIDERS (Z = 0) ---
-    // West Divider (Between Dormitory and Cafeteria, X from -17 to -3, length 14)
-    { id: 'w-div-w', position: [-10, wallH / 2, 0], size: [14, wallH, wallThick], color: '#1f2937' },
-    // East Divider (Between Security and Infirmary, X from 3 to 17, length 14)
-    { id: 'w-div-e', position: [10, wallH / 2, 0], size: [14, wallH, wallThick], color: '#1f2937' },
+    // West Divider (Between Study and Dining Hall, X from -17 to -3, length 14)
+    { id: 'w-div-w', position: [-10, wallH / 2, 0], size: [14, wallH, wallThick], color: '#231e1c' },
+    // East Divider (Between Clockwork and Apothecary, X from 3 to 17, length 14)
+    { id: 'w-div-e', position: [10, wallH / 2, 0], size: [14, wallH, wallThick], color: '#231e1c' },
 
     // --- CORRIDOR WEST WALL (X = -3, spans Z from -18 to 18) ---
-    // Segment N: Z from -18 to -11 (length 7, center -14.5)
-    { id: 'w-cw-n', position: [-3, wallH / 2, -14.5], size: [wallThick, wallH, 7], color: '#292524' },
-    // Doorway 1 Opening: Z from -11 to -9 (Door at Z = -10, lintel above door)
-    { id: 'w-cw-lintel-1', position: [-3, 3.75, -10], size: [wallThick, 1.5, 2], color: '#292524' },
-    // Segment Mid: Z from -9 to 9 (length 18, center 0)
-    { id: 'w-cw-mid', position: [-3, wallH / 2, 0], size: [wallThick, wallH, 18], color: '#292524' },
-    // Doorway 3 Opening: Z from 9 to 11 (Door at Z = 10, lintel above door)
-    { id: 'w-cw-lintel-3', position: [-3, 3.75, 10], size: [wallThick, 1.5, 2], color: '#292524' },
-    // Segment S: Z from 11 to 18 (length 7, center 14.5)
-    { id: 'w-cw-s', position: [-3, wallH / 2, 14.5], size: [wallThick, wallH, 7], color: '#292524' },
+    { id: 'w-cw-n', position: [-3, wallH / 2, -14.5], size: [wallThick, wallH, 7], color: '#2a2421' },
+    { id: 'w-cw-lintel-1', position: [-3, 3.75, -10], size: [wallThick, 1.5, 2], color: '#2a2421' },
+    { id: 'w-cw-mid', position: [-3, wallH / 2, 0], size: [wallThick, wallH, 18], color: '#2a2421' },
+    { id: 'w-cw-lintel-3', position: [-3, 3.75, 10], size: [wallThick, 1.5, 2], color: '#2a2421' },
+    { id: 'w-cw-s', position: [-3, wallH / 2, 14.5], size: [wallThick, wallH, 7], color: '#2a2421' },
 
     // --- CORRIDOR EAST WALL (X = 3, spans Z from -18 to 18) ---
-    // Segment N: Z from -18 to -11 (length 7, center -14.5)
-    { id: 'w-ce-n', position: [3, wallH / 2, -14.5], size: [wallThick, wallH, 7], color: '#292524' },
-    // Doorway 2 Opening: Z from -11 to -9 (Door at Z = -10, lintel above door)
-    { id: 'w-ce-lintel-2', position: [3, 3.75, -10], size: [wallThick, 1.5, 2], color: '#292524' },
-    // Segment Mid: Z from -9 to 9 (length 18, center 0)
-    { id: 'w-ce-mid', position: [3, wallH / 2, 0], size: [wallThick, wallH, 18], color: '#292524' },
-    // Doorway 4 Opening: Z from 9 to 11 (Door at Z = 10, lintel above door)
-    { id: 'w-ce-lintel-4', position: [3, 3.75, 10], size: [wallThick, 1.5, 2], color: '#292524' },
-    // Segment S: Z from 11 to 18 (length 7, center 14.5)
-    { id: 'w-ce-s', position: [3, wallH / 2, 14.5], size: [wallThick, wallH, 7], color: '#292524' },
+    { id: 'w-ce-n', position: [3, wallH / 2, -14.5], size: [wallThick, wallH, 7], color: '#2a2421' },
+    { id: 'w-ce-lintel-2', position: [3, 3.75, -10], size: [wallThick, 1.5, 2], color: '#2a2421' },
+    { id: 'w-ce-mid', position: [3, wallH / 2, 0], size: [wallThick, wallH, 18], color: '#2a2421' },
+    { id: 'w-ce-lintel-4', position: [3, 3.75, 10], size: [wallThick, 1.5, 2], color: '#2a2421' },
+    { id: 'w-ce-s', position: [3, wallH / 2, 14.5], size: [wallThick, wallH, 7], color: '#2a2421' },
   ];
 
-  // 4 Physical Doors placed in the doorway openings
-  // Doorway dimensions: width = 2m, height = 3m
+  // 4 Physical Manor Doors
   const doors: DoorData[] = [
     {
       id: 'door-dorm',
-      name: 'Dormitory Door',
+      name: 'Master Study Door',
       position: [-3, 1.5, -10],
-      wallNormal: 'x', // door sits at X = -3, player crosses X to enter
+      wallNormal: 'x',
       width: 1.9,
       height: 3,
-      roomASideName: 'Central Corridor', // X > -3
-      roomBSideName: 'Dormitory Room',   // X < -3
+      roomASideName: 'Grand Gallery',
+      roomBSideName: 'Master Study',
       angle: 0,
       targetAngle: 0,
       isLocked: false,
@@ -124,13 +122,13 @@ export function generateRoomLayout(roomId: string, requestedTheme?: string): Roo
     },
     {
       id: 'door-security',
-      name: 'Security Command Door',
+      name: 'Surveillance Salon Door',
       position: [3, 1.5, -10],
-      wallNormal: 'x', // door sits at X = 3
+      wallNormal: 'x',
       width: 1.9,
       height: 3,
-      roomASideName: 'Central Corridor', // X < 3
-      roomBSideName: 'Security Room',    // X > 3
+      roomASideName: 'Grand Gallery',
+      roomBSideName: 'Surveillance Salon',
       angle: 0,
       targetAngle: 0,
       isLocked: false,
@@ -138,13 +136,13 @@ export function generateRoomLayout(roomId: string, requestedTheme?: string): Roo
     },
     {
       id: 'door-cafeteria',
-      name: 'Cafeteria Door',
+      name: 'Dining Hall Door',
       position: [-3, 1.5, 10],
-      wallNormal: 'x', // door sits at X = -3
+      wallNormal: 'x',
       width: 1.9,
       height: 3,
-      roomASideName: 'Central Corridor', // X > -3
-      roomBSideName: 'Cafeteria',        // X < -3
+      roomASideName: 'Grand Gallery',
+      roomBSideName: 'Dining Hall',
       angle: 0,
       targetAngle: 0,
       isLocked: false,
@@ -152,13 +150,13 @@ export function generateRoomLayout(roomId: string, requestedTheme?: string): Roo
     },
     {
       id: 'door-infirmary',
-      name: 'Infirmary Door',
+      name: 'Apothecary Door',
       position: [3, 1.5, 10],
-      wallNormal: 'x', // door sits at X = 3
+      wallNormal: 'x',
       width: 1.9,
       height: 3,
-      roomASideName: 'Central Corridor', // X < 3
-      roomBSideName: 'Infirmary',        // X > 3
+      roomASideName: 'Grand Gallery',
+      roomBSideName: 'Apothecary Infirmary',
       angle: 0,
       targetAngle: 0,
       isLocked: false,
@@ -166,89 +164,210 @@ export function generateRoomLayout(roomId: string, requestedTheme?: string): Roo
     },
   ];
 
-  // Automatic Fixed Furniture placed in each distinct room & corridor
-  const furniture: FurnitureItem[] = [
-    // --- CENTRAL CORRIDOR FURNITURE & SCONCES ---
-    { id: 'corr-bench-1', type: 'couch', name: 'Corridor Waiting Bench', position: [0, 0.45, -4], size: [2.5, 0.9, 1.1], color: '#3f3f46' },
-    { id: 'corr-bench-2', type: 'couch', name: 'Corridor Waiting Bench', position: [0, 0.45, 4], size: [2.5, 0.9, 1.1], color: '#3f3f46' },
-    { id: 'corr-board', type: 'tv', name: 'Curfew Notice Board', position: [0, 2.2, -17.5], size: [4, 2, 0.2], color: '#18181b', accentColor: '#dc2626' },
-    { id: 'corr-pillar-1', type: 'pillar', name: 'Corridor Arch', position: [-2.6, 2.2, 0], size: [0.6, 4.4, 0.6], color: '#52525b' },
-    { id: 'corr-pillar-2', type: 'pillar', name: 'Corridor Arch', position: [2.6, 2.2, 0], size: [0.6, 4.4, 0.6], color: '#52525b' },
+  // Wall-mounted Warm Sconces with Filament Bulbs
+  const wallLights: WallLightFixture[] = [
+    // Grand Gallery (Corridor) Bulbs mounted on walls at height 3.2m
+    { id: 'wl-corr-1', position: [-2.7, 3.2, -14], rotationY: Math.PI / 2, color: '#fef3c7', intensity: 2.2 },
+    { id: 'wl-corr-2', position: [2.7, 3.2, -14], rotationY: -Math.PI / 2, color: '#fef3c7', intensity: 2.2 },
+    { id: 'wl-corr-3', position: [-2.7, 3.2, -5], rotationY: Math.PI / 2, color: '#fed7aa', intensity: 2.2 },
+    { id: 'wl-corr-4', position: [2.7, 3.2, -5], rotationY: -Math.PI / 2, color: '#fed7aa', intensity: 2.2 },
+    { id: 'wl-corr-5', position: [-2.7, 3.2, 5], rotationY: Math.PI / 2, color: '#fed7aa', intensity: 2.2 },
+    { id: 'wl-corr-6', position: [2.7, 3.2, 5], rotationY: -Math.PI / 2, color: '#fed7aa', intensity: 2.2 },
+    { id: 'wl-corr-7', position: [-2.7, 3.2, 14], rotationY: Math.PI / 2, color: '#fef3c7', intensity: 2.2 },
+    { id: 'wl-corr-8', position: [2.7, 3.2, 14], rotationY: -Math.PI / 2, color: '#fef3c7', intensity: 2.2 },
+    // Gallery Ends
+    { id: 'wl-corr-north', position: [0, 3.4, -17.7], rotationY: 0, color: '#ef4444', intensity: 2.5 },
+    { id: 'wl-corr-south', position: [0, 3.4, 17.7], rotationY: Math.PI, color: '#ef4444', intensity: 2.5 },
 
-    // --- ROOM 1: DORMITORY (NW: X: -17 to -3, Z: -18 to -2) ---
-    // Bunk Beds along North & West walls
-    { id: 'dorm-bed-1', type: 'bed', name: 'Bunk Bed Alpha', position: [-14.5, 0.9, -15], size: [2.2, 1.8, 3.8], color: '#27272a', accentColor: '#dc2626' },
-    { id: 'dorm-bed-2', type: 'bed', name: 'Bunk Bed Beta', position: [-14.5, 0.9, -9], size: [2.2, 1.8, 3.8], color: '#27272a', accentColor: '#71717a' },
-    { id: 'dorm-bed-3', type: 'bed', name: 'Bunk Bed Gamma', position: [-8, 0.9, -15], size: [2.2, 1.8, 3.8], color: '#27272a', accentColor: '#dc2626' },
-    // Lockers along divider
-    { id: 'dorm-lockers', type: 'locker', name: 'Student Lockers', position: [-10, 1.6, -2.5], size: [6, 3.2, 0.8], color: '#18181b', accentColor: '#ef4444' },
-    // Study table in center of dorm
-    { id: 'dorm-table', type: 'table', name: 'Dorm Study Desk', position: [-10, 0.5, -9], size: [3.5, 0.9, 2], color: '#451a03', accentColor: '#f59e0b' },
-    { id: 'dorm-lamp', type: 'lamp', name: 'Dim Floor Lamp', position: [-6, 1.2, -15], size: [0.6, 2.4, 0.6], color: '#ef4444' },
+    // Room 1 (Study) Bulbs
+    { id: 'wl-study-1', position: [-16.7, 3.2, -10], rotationY: Math.PI / 2, color: '#ffedd5', intensity: 2.0 },
+    { id: 'wl-study-2', position: [-10, 3.2, -17.7], rotationY: 0, color: '#fef3c7', intensity: 2.0 },
+    { id: 'wl-study-3', position: [-3.3, 3.2, -5], rotationY: -Math.PI / 2, color: '#fed7aa', intensity: 2.0 },
 
-    // --- ROOM 2: SECURITY & CCTV COMMAND (NE: X: 3 to 17, Z: -18 to -2) ---
-    // Surveillance Console with Multi-Monitors
-    { id: 'sec-console', type: 'counter', name: 'Surveillance Desk', position: [10, 0.7, -15], size: [6, 1.3, 2.2], color: '#09090b', accentColor: '#38bdf8' },
-    { id: 'sec-monitors', type: 'tv', name: 'CCTV Video Wall', position: [10, 2.5, -17.5], size: [7, 2.6, 0.4], color: '#020617', accentColor: '#0284c7' },
-    // Server Rack Unit
-    { id: 'sec-servers', type: 'cabinet', name: 'Mainframe Server Rack', position: [15, 1.8, -9], size: [1.4, 3.6, 4], color: '#1e293b', accentColor: '#10b981' },
-    // Security briefing table
-    { id: 'sec-table', type: 'table', name: 'Tactical Holo-Table', position: [9, 0.5, -8], size: [3.8, 0.9, 2.4], color: '#1e293b', accentColor: '#ef4444' },
+    // Room 2 (Surveillance / Clockwork) Bulbs
+    { id: 'wl-sec-1', position: [16.7, 3.2, -10], rotationY: -Math.PI / 2, color: '#bae6fd', intensity: 2.4 },
+    { id: 'wl-sec-2', position: [10, 3.2, -17.7], rotationY: 0, color: '#fed7aa', intensity: 2.0 },
+    { id: 'wl-sec-3', position: [3.3, 3.2, -5], rotationY: Math.PI / 2, color: '#bae6fd', intensity: 2.0 },
 
-    // --- ROOM 3: CAFETERIA (SW: X: -17 to -3, Z: 2 to 18) ---
-    // Long dining tables with seats
-    { id: 'cafe-table-1', type: 'table', name: 'Cafeteria Table A', position: [-10, 0.6, 6], size: [5.5, 1, 2.2], color: '#312e81', accentColor: '#6366f1' },
-    { id: 'cafe-table-2', type: 'table', name: 'Cafeteria Table B', position: [-10, 0.6, 13], size: [5.5, 1, 2.2], color: '#312e81', accentColor: '#6366f1' },
-    // Food Dispenser Serving Counter
-    { id: 'cafe-counter', type: 'counter', name: 'Food Service Counter', position: [-15.5, 0.8, 10], size: [1.8, 1.5, 8], color: '#1e293b', accentColor: '#f97316' },
-    // Vending machine
-    { id: 'cafe-vending', type: 'cabinet', name: 'Beverage Vending Machine', position: [-6, 1.6, 16.5], size: [2, 3.2, 1.2], color: '#991b1b', accentColor: '#f87171' },
+    // Room 3 (Dining Hall) Bulbs
+    { id: 'wl-dine-1', position: [-16.7, 3.2, 10], rotationY: Math.PI / 2, color: '#ffedd5', intensity: 2.2 },
+    { id: 'wl-dine-2', position: [-10, 3.2, 17.7], rotationY: Math.PI, color: '#fef3c7', intensity: 2.2 },
+    { id: 'wl-dine-3', position: [-3.3, 3.2, 5], rotationY: -Math.PI / 2, color: '#fed7aa', intensity: 2.0 },
 
-    // --- ROOM 4: INFIRMARY & QUARANTINE (SE: X: 3 to 17, Z: 2 to 18) ---
-    // Medical Gurney Beds
-    { id: 'inf-bed-1', type: 'bed', name: 'Infirmary Bed A', position: [8, 0.6, 6], size: [2.2, 1.1, 4], color: '#f8fafc', accentColor: '#ef4444' },
-    { id: 'inf-bed-2', type: 'bed', name: 'Infirmary Bed B', position: [14, 0.6, 6], size: [2.2, 1.1, 4], color: '#f8fafc', accentColor: '#ef4444' },
-    // Autopsy / Treatment Table
-    { id: 'inf-table', type: 'table', name: 'Surgical Treatment Table', position: [11, 0.6, 13], size: [4, 1.1, 2.2], color: '#52525b', accentColor: '#dc2626' },
-    // Medicine / Biohazard Cabinet
-    { id: 'inf-cabinet', type: 'cabinet', name: 'Emergency Pharma Storage', position: [15.5, 1.8, 14], size: [1.2, 3.4, 4], color: '#1e293b', accentColor: '#ef4444' },
-    // Quarantine Crates
-    { id: 'inf-crates', type: 'crate', name: 'Hazardous Waste Crates', position: [6, 0.7, 16], size: [2.5, 1.4, 2.5], color: '#78350f', accentColor: '#eab308' },
+    // Room 4 (Apothecary) Bulbs
+    { id: 'wl-inf-1', position: [16.7, 3.2, 10], rotationY: -Math.PI / 2, color: '#a7f3d0', intensity: 2.0 },
+    { id: 'wl-inf-2', position: [10, 3.2, 17.7], rotationY: Math.PI, color: '#fef3c7', intensity: 2.0 },
+    { id: 'wl-inf-3', position: [3.3, 3.2, 5], rotationY: Math.PI / 2, color: '#a7f3d0', intensity: 2.0 },
   ];
 
-  // Spawn points distributed across the rooms and corridor
+  // Richer Mystery Manor Furniture & Props
+  const furniture: FurnitureItem[] = [
+    // --- GRAND GALLERY (CORRIDOR) ---
+    { id: 'corr-rug-1', type: 'rug', name: 'Persian Corridor Runner', position: [0, 0.015, 0], size: [2.2, 0.02, 32], color: '#7f1d1d', accentColor: '#d97706' },
+    { id: 'corr-bench-1', type: 'couch', name: 'Velvet Chesterfield Settee', position: [0, 0.45, -4], size: [2.4, 0.9, 0.9], color: '#451a03', accentColor: '#b45309' },
+    { id: 'corr-bench-2', type: 'couch', name: 'Velvet Chesterfield Settee', position: [0, 0.45, 4], size: [2.4, 0.9, 0.9], color: '#451a03', accentColor: '#b45309' },
+    { id: 'corr-clock', type: 'clock', name: 'Antique Grandfather Clock', position: [-2.6, 1.6, -16], size: [0.7, 3.2, 0.6], color: '#29170e', accentColor: '#d97706' },
+    { id: 'corr-board', type: 'tv', name: 'Curfew Notice Board', position: [0, 2.2, -17.5], size: [3.6, 2, 0.15], color: '#1c1917', accentColor: '#dc2626' },
+    { id: 'corr-pillar-1', type: 'pillar', name: 'Marble Arch Column', position: [-2.6, 2.2, 0], size: [0.6, 4.4, 0.6], color: '#3f3f46' },
+    { id: 'corr-pillar-2', type: 'pillar', name: 'Marble Arch Column', position: [2.6, 2.2, 0], size: [0.6, 4.4, 0.6], color: '#3f3f46' },
+
+    // --- ROOM 1: ANTIQUE MASTER STUDY (NW) ---
+    { id: 'study-rug', type: 'rug', name: 'Ornate Study Rug', position: [-10, 0.015, -10], size: [8, 0.02, 7], color: '#7f1d1d', accentColor: '#d97706' },
+    { id: 'study-desk', type: 'table', name: 'Mahogany Executive Desk', position: [-10, 0.5, -9], size: [3.4, 0.9, 1.8], color: '#3f1f10', accentColor: '#b45309' },
+    { id: 'study-books-1', type: 'bookshelf', name: 'Tall Library Bookshelf', position: [-16.5, 2.0, -13], size: [0.8, 4.0, 4.5], color: '#2e1509', accentColor: '#d97706' },
+    { id: 'study-books-2', type: 'bookshelf', name: 'Tall Library Bookshelf', position: [-16.5, 2.0, -7], size: [0.8, 4.0, 4.5], color: '#2e1509', accentColor: '#d97706' },
+    { id: 'study-chair-1', type: 'couch', name: 'Leather Wingback Chair', position: [-10, 0.5, -7.2], size: [1.1, 1.0, 1.1], color: '#451a03' },
+    { id: 'study-bed-1', type: 'bed', name: 'Canopy Daybed', position: [-7.5, 0.8, -15.5], size: [2.4, 1.6, 3.2], color: '#27272a', accentColor: '#991b1b' },
+    { id: 'study-lamp', type: 'lamp', name: 'Brass Bankers Floor Lamp', position: [-12.5, 1.2, -9], size: [0.5, 2.2, 0.5], color: '#d97706' },
+
+    // --- ROOM 2: SURVEILLANCE & CLOCKWORK SALON (NE) ---
+    { id: 'sec-console', type: 'counter', name: 'Surveillance Desk', position: [10, 0.7, -15], size: [5.5, 1.3, 2.0], color: '#18181b', accentColor: '#38bdf8' },
+    { id: 'sec-monitors', type: 'tv', name: 'CCTV Video Wall', position: [10, 2.5, -17.6], size: [6.5, 2.5, 0.3], color: '#09090b', accentColor: '#0ea5e9' },
+    { id: 'sec-servers', type: 'cabinet', name: 'Mainframe Cabinet', position: [15.8, 1.8, -9], size: [1.2, 3.6, 4], color: '#1e293b', accentColor: '#10b981' },
+    { id: 'sec-table', type: 'table', name: 'Tactical Holo-Table', position: [9, 0.5, -8], size: [3.5, 0.9, 2.2], color: '#1e293b', accentColor: '#ef4444' },
+    { id: 'sec-chair', type: 'couch', name: 'Operator Swivel Chair', position: [9, 0.5, -6.2], size: [1.0, 1.0, 1.0], color: '#0f172a' },
+
+    // --- ROOM 3: GRAND DINING HALL (SW) ---
+    { id: 'dine-rug', type: 'rug', name: 'Banquet Hall Carpet', position: [-10, 0.015, 10], size: [8, 0.02, 9], color: '#831843', accentColor: '#f59e0b' },
+    { id: 'dine-table', type: 'table', name: 'Long Manor Feast Table', position: [-10, 0.6, 10], size: [4.2, 1.0, 2.4], color: '#381c0e', accentColor: '#d97706' },
+    { id: 'dine-buffet', type: 'counter', name: 'Carved Buffet Credenza', position: [-16.3, 0.8, 10], size: [1.2, 1.6, 6.5], color: '#27170f', accentColor: '#b45309' },
+    { id: 'dine-fireplace', type: 'pillar', name: 'Stone Hearth Fireplace', position: [-10, 1.6, 17.6], size: [4.5, 3.2, 0.6], color: '#1c1917', accentColor: '#f97316' },
+
+    // --- ROOM 4: APOTHECARY & INFIRMARY (SE) ---
+    { id: 'inf-bed-1', type: 'bed', name: 'Vintage Treatment Bed Alpha', position: [8, 0.6, 6], size: [2.0, 1.1, 3.6], color: '#e2e8f0', accentColor: '#ef4444' },
+    { id: 'inf-bed-2', type: 'bed', name: 'Vintage Treatment Bed Beta', position: [14, 0.6, 6], size: [2.0, 1.1, 3.6], color: '#e2e8f0', accentColor: '#ef4444' },
+    { id: 'inf-table', type: 'table', name: 'Apothecary Lab Table', position: [11, 0.6, 13], size: [3.6, 1.0, 2.0], color: '#334155', accentColor: '#059669' },
+    { id: 'inf-cabinet', type: 'cabinet', name: 'Glass Medicine Apothecary', position: [16.2, 1.8, 14], size: [1.1, 3.4, 3.6], color: '#1e293b', accentColor: '#10b981' },
+    { id: 'inf-crates', type: 'crate', name: 'Herbal Supply Crates', position: [6, 0.7, 16], size: [2.2, 1.3, 2.2], color: '#78350f', accentColor: '#d97706' },
+  ];
+
+  // Guaranteed Open-Space Spawn Spots (Strictly far from any wall, furniture, or door)
   const spawnPoints: [number, number][] = [
-    // Corridor Spawns
+    // Grand Gallery (Center Corridor) - wide open strip X: [-1.2, 1.2]
     [0, -12],
-    [0, -4],
-    [0, 4],
+    [0, -8],
+    [0, -1],
+    [0, 1],
+    [0, 8],
     [0, 12],
-    // Dormitory Spawns
-    [-10, -6],
-    [-7, -11],
-    // Security Spawns
-    [9, -6],
-    [13, -12],
-    // Cafeteria Spawns
-    [-10, 9],
-    [-7, 14],
-    // Infirmary Spawns
-    [10, 9],
-    [11, 15],
+    // Master Study - Open floor spaces
+    [-7.5, -9],
+    [-13.5, -8.5],
+    [-7.0, -4.5],
+    [-13.0, -4.5],
+    // Surveillance Salon - Open floor spaces
+    [6.0, -8.5],
+    [13.5, -8.5],
+    [6.5, -4.5],
+    [13.0, -4.5],
+    // Dining Hall - Open floor spaces around the feast table
+    [-6.5, 6.0],
+    [-13.5, 6.0],
+    [-6.5, 14.5],
+    [-13.5, 14.5],
+    // Apothecary Infirmary - Open floor spaces
+    [6.5, 10.0],
+    [13.5, 10.5],
+    [7.5, 14.0],
+    [13.5, 15.0],
   ];
 
   return {
-    id: `layout-${roomId}-facility`,
-    theme: requestedTheme || 'facility',
-    title: 'Yooil Retreat Multi-Chamber Complex',
-    subtitle: 'Corridors sealed with reinforced security doors under curfew',
+    id: `layout-${roomId}-manor`,
+    theme: requestedTheme || 'manor',
+    title: 'Yooil Mystery Manor',
+    subtitle: 'Chambers locked under curfew with antique brass wall sconces',
     dimensions: { width: 34, depth: 36 },
-    ambientColor: '#090d16',
-    wallColor: '#27272a',
-    floorColor: '#18181b',
+    ambientColor: '#18120c',
+    wallColor: '#2b231d',
+    floorColor: '#1a1410',
     walls,
     doors,
     furniture,
+    wallLights,
     spawnPoints,
   };
+}
+
+/**
+ * Checks whether a 2D coordinate [x, z] collides with any wall or furniture item,
+ * with a safety clearance buffer.
+ */
+export function isCoordinateClear(
+  x: number,
+  z: number,
+  layout: RoomLayout,
+  buffer: number = 0.95
+): boolean {
+  // Check outer arena boundaries
+  const halfW = layout.dimensions.width / 2 - buffer;
+  const halfD = layout.dimensions.depth / 2 - buffer;
+  if (Math.abs(x) > halfW || Math.abs(z) > halfD) return false;
+
+  // Check walls
+  for (const wall of layout.walls) {
+    const [wx, , wz] = wall.position;
+    const [wWidth, , wDepth] = wall.size;
+    const minX = wx - wWidth / 2 - buffer;
+    const maxX = wx + wWidth / 2 + buffer;
+    const minZ = wz - wDepth / 2 - buffer;
+    const maxZ = wz + wDepth / 2 + buffer;
+
+    if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) {
+      return false;
+    }
+  }
+
+  // Check furniture
+  for (const item of layout.furniture) {
+    // Rugs are flat on floor (height 0.02) and do not block player movement
+    if (item.type === 'rug') continue;
+
+    const [fx, , fz] = item.position;
+    const [fWidth, , fDepth] = item.size;
+    const minX = fx - fWidth / 2 - buffer;
+    const maxX = fx + fWidth / 2 + buffer;
+    const minZ = fz - fDepth / 2 - buffer;
+    const maxZ = fz + fDepth / 2 + buffer;
+
+    if (x >= minX && x <= maxX && z >= minZ && z <= maxZ) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Returns a guaranteed collision-free, open-floor spawn coordinate [x, z].
+ * If a seed (like user ID or index) is provided, deterministic yet varied placement is used.
+ */
+export function getSafeOpenSpawnPoint(
+  layout: RoomLayout,
+  seed?: string | number
+): [number, number] {
+  // 1. Try curated open spawn list first
+  const validCurated = layout.spawnPoints.filter(([sx, sz]) =>
+    isCoordinateClear(sx, sz, layout, 0.8)
+  );
+
+  if (validCurated.length > 0) {
+    let index = 0;
+    if (typeof seed === 'number') {
+      index = Math.abs(seed) % validCurated.length;
+    } else if (typeof seed === 'string') {
+      let hash = 0;
+      for (let i = 0; i < seed.length; i++) {
+        hash = (hash << 5) - hash + seed.charCodeAt(i);
+        hash |= 0;
+      }
+      index = Math.abs(hash) % validCurated.length;
+    } else {
+      index = Math.floor(Math.random() * validCurated.length);
+    }
+    return validCurated[index];
+  }
+
+  // Fallback: Grand corridor center
+  return [0, 0];
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo, useEffect } from 'react';
+import { useRef, useMemo } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { Text, Billboard } from '@react-three/drei';
@@ -24,7 +24,7 @@ interface Avatar3DProps {
 }
 
 export default function Avatar3D({
-  id,
+  id: _id,
   name,
   avatarBase64,
   personality = 'Leader',
@@ -40,18 +40,23 @@ export default function Avatar3D({
   jumpProgress = 0,
   actionTrigger = 0,
 }: Avatar3DProps) {
-  if (!visible) return null;
-
   const groupRef = useRef<THREE.Group>(null);
   const bodyGroupRef = useRef<THREE.Group>(null);
-  const leftLegRef = useRef<THREE.Mesh>(null);
-  const rightLegRef = useRef<THREE.Mesh>(null);
-  const leftArmRef = useRef<THREE.Mesh>(null);
-  const rightArmRef = useRef<THREE.Mesh>(null);
-  const torsoRef = useRef<THREE.Mesh>(null);
+  const torsoRef = useRef<THREE.Group>(null);
+
+  // Limb Joint Pivot Groups
+  const leftShoulderRef = useRef<THREE.Group>(null);
+  const rightShoulderRef = useRef<THREE.Group>(null);
+  const leftElbowRef = useRef<THREE.Group>(null);
+  const rightElbowRef = useRef<THREE.Group>(null);
+  const leftHipRef = useRef<THREE.Group>(null);
+  const rightHipRef = useRef<THREE.Group>(null);
+  const leftKneeRef = useRef<THREE.Group>(null);
+  const rightKneeRef = useRef<THREE.Group>(null);
+
   const actionRingRef = useRef<THREE.Mesh>(null);
 
-  // Personality ring colors
+  // Personality styling colors
   const personalityColor = useMemo(() => {
     switch (personality) {
       case 'Leader': return '#dc2626'; // red
@@ -66,7 +71,7 @@ export default function Avatar3D({
     }
   }, [personality]);
 
-  // Texture creation for the Head
+  // Texture creation for the Head Faceplate
   const headTexture = useMemo(() => {
     if (typeof window === 'undefined') return null;
 
@@ -76,40 +81,37 @@ export default function Avatar3D({
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    // Background base
     ctx.fillStyle = isBot ? '#090d16' : '#18181b';
     ctx.fillRect(0, 0, 128, 128);
 
     if (avatarBase64) {
-      // 1. Player has profile picture: draw circular cropped photo
       const img = new Image();
       img.src = avatarBase64;
       img.onload = () => {
         ctx.clearRect(0, 0, 128, 128);
         ctx.save();
         ctx.beginPath();
-        ctx.arc(64, 64, 58, 0, Math.PI * 2);
+        ctx.arc(64, 64, 56, 0, Math.PI * 2);
         ctx.closePath();
         ctx.clip();
-        ctx.drawImage(img, 6, 6, 116, 116);
+        ctx.drawImage(img, 8, 8, 112, 112);
         ctx.restore();
 
         // Personality border ring
         ctx.lineWidth = 6;
         ctx.strokeStyle = personalityColor;
         ctx.beginPath();
-        ctx.arc(64, 64, 58, 0, Math.PI * 2);
+        ctx.arc(64, 64, 56, 0, Math.PI * 2);
         ctx.stroke();
 
         texture.needsUpdate = true;
       };
     } else if (isBot) {
-      // 2. Bot: Draw crisp vector Bot Logo Insignia (Shield with tech circuit core)
+      // Crisp vector Bot Logo Insignia
       ctx.clearRect(0, 0, 128, 128);
       ctx.fillStyle = '#090d16';
       ctx.fillRect(0, 0, 128, 128);
 
-      // Outer hexagonal/shield crest
       ctx.strokeStyle = '#06b6d4';
       ctx.lineWidth = 4;
       ctx.beginPath();
@@ -122,42 +124,23 @@ export default function Avatar3D({
       ctx.closePath();
       ctx.stroke();
 
-      // Bot Core Processor Icon / Logo
       ctx.fillStyle = '#06b6d4';
       ctx.fillRect(48, 48, 32, 28);
       ctx.fillStyle = '#090d16';
-      ctx.fillRect(54, 54, 8, 8); // left sensor
-      ctx.fillRect(66, 54, 8, 8); // right sensor
+      ctx.fillRect(54, 54, 8, 8);
+      ctx.fillRect(66, 54, 8, 8);
       ctx.fillStyle = '#22d3ee';
-      ctx.fillRect(52, 68, 24, 3); // optical scan line
-
-      // Microchip circuit traces
-      ctx.strokeStyle = '#0891b2';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(64, 20); ctx.lineTo(64, 48); // top trace
-      ctx.moveTo(24, 60); ctx.lineTo(48, 60); // left trace
-      ctx.moveTo(104, 60); ctx.lineTo(80, 60); // right trace
-      ctx.moveTo(64, 76); ctx.lineTo(64, 108); // bottom trace
-      ctx.stroke();
-
-      // Tech nodes
-      ctx.fillStyle = '#38bdf8';
-      ctx.beginPath(); ctx.arc(64, 34, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(36, 60, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(92, 60, 4, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(64, 92, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.fillRect(52, 68, 24, 3);
     } else {
-      // 3. Player with NO profile picture: Do not show any silhouette face!
-      // Keep completely clean faceplate with subtle personality border ring
+      // Clean faceplate with personality circle
       ctx.clearRect(0, 0, 128, 128);
       ctx.fillStyle = '#1c1917';
       ctx.fillRect(0, 0, 128, 128);
 
-      ctx.lineWidth = 5;
+      ctx.lineWidth = 6;
       ctx.strokeStyle = personalityColor;
       ctx.beginPath();
-      ctx.arc(64, 64, 56, 0, Math.PI * 2);
+      ctx.arc(64, 64, 54, 0, Math.PI * 2);
       ctx.stroke();
     }
 
@@ -166,65 +149,108 @@ export default function Avatar3D({
     return texture;
   }, [avatarBase64, isBot, personalityColor]);
 
-  // Animation cycle using useFrame
-  useFrame((state, delta) => {
+  // Skin and Clothing Colors
+  const skinColor = '#e2b391';
+  const shoeColor = '#18181b';
+  const soleColor = '#e4e4e7';
+  const pantsColor = isBot ? '#1e293b' : '#27272a';
+  const shirtColor = isBot ? '#0f172a' : isCurrentPlayer ? '#991b1b' : '#3f3f46';
+
+  // Kinematics and Animation Frame Loop
+  useFrame((_, delta) => {
     if (!groupRef.current) return;
 
-    // Smooth position interpolation
+    // Smooth root position interpolation
     groupRef.current.position.x = THREE.MathUtils.lerp(
       groupRef.current.position.x,
       position[0],
-      delta * 12
+      delta * 14
     );
     groupRef.current.position.z = THREE.MathUtils.lerp(
       groupRef.current.position.z,
       position[2],
-      delta * 12
+      delta * 14
     );
 
-    // Jump vertical curve: parabolic arc
+    // Jump parabolic arc
     let jumpY = 0;
     if (jumpProgress > 0) {
-      jumpY = Math.sin(jumpProgress * Math.PI) * 1.6;
+      jumpY = Math.sin(jumpProgress * Math.PI) * 1.5;
     }
     groupRef.current.position.y = position[1] + jumpY;
 
-    // Smooth rotation interpolation on character body only
+    // Smooth rotation interpolation on character body
     if (bodyGroupRef.current) {
       const currentRot = bodyGroupRef.current.rotation.y;
       bodyGroupRef.current.rotation.y = THREE.MathUtils.lerp(currentRot, rotation, delta * 15);
     }
 
-    // Limb animations for walk / run
+    // Kinematic Joint Animations
     const time = performance.now() / 1000;
     const isMoving = gesture === 'walk' || gesture === 'run';
-    const speedMultiplier = gesture === 'run' ? 14 : 7;
-    const limbAmp = gesture === 'run' ? 0.8 : 0.5;
+    const cadence = gesture === 'run' ? 14 : 8;
+    const strideAmp = gesture === 'run' ? 0.75 : 0.45;
 
     if (isMoving && isAlive) {
-      const swing = Math.sin(time * speedMultiplier) * limbAmp;
-      if (leftLegRef.current) leftLegRef.current.rotation.x = swing;
-      if (rightLegRef.current) rightLegRef.current.rotation.x = -swing;
-      if (leftArmRef.current) leftArmRef.current.rotation.x = -swing * 0.8;
-      if (rightArmRef.current) rightArmRef.current.rotation.x = swing * 0.8;
+      const swing = Math.sin(time * cadence) * strideAmp;
+
+      // Leg Hips & Knees
+      if (leftHipRef.current) leftHipRef.current.rotation.x = -swing;
+      if (rightHipRef.current) rightHipRef.current.rotation.x = swing;
+
+      // Dynamic Knee Flexion (bend knee when leg moves forward)
+      if (leftKneeRef.current) {
+        leftKneeRef.current.rotation.x = swing < 0 ? Math.abs(swing) * 0.8 : 0;
+      }
+      if (rightKneeRef.current) {
+        rightKneeRef.current.rotation.x = swing > 0 ? Math.abs(swing) * 0.8 : 0;
+      }
+
+      // Arms & Forearms (Counter-swing with natural bend)
+      if (leftShoulderRef.current) leftShoulderRef.current.rotation.x = swing * 0.85;
+      if (rightShoulderRef.current) rightShoulderRef.current.rotation.x = -swing * 0.85;
+
+      if (leftElbowRef.current) {
+        leftElbowRef.current.rotation.x = swing > 0 ? swing * 0.4 : 0.1;
+      }
+      if (rightElbowRef.current) {
+        rightElbowRef.current.rotation.x = swing < 0 ? -swing * 0.4 : 0.1;
+      }
+
+      // Torso Walk Bobbing & Leaning
       if (torsoRef.current) {
-        torsoRef.current.rotation.z = Math.sin(time * speedMultiplier) * 0.05;
-        torsoRef.current.rotation.x = gesture === 'run' ? 0.2 : 0.05; // forward lean
+        torsoRef.current.position.y = 0.75 + Math.abs(Math.sin(time * cadence * 2)) * 0.05;
+        torsoRef.current.rotation.x = gesture === 'run' ? 0.18 : 0.06; // Forward lean
+        torsoRef.current.rotation.y = Math.sin(time * cadence) * 0.05; // Pelvis sway
       }
     } else {
-      // Idle breathing
-      const breathe = Math.sin(time * 2) * 0.04;
-      if (leftLegRef.current) leftLegRef.current.rotation.x = 0;
-      if (rightLegRef.current) rightLegRef.current.rotation.x = 0;
-      if (leftArmRef.current) leftArmRef.current.rotation.x = breathe;
-      if (rightArmRef.current) rightArmRef.current.rotation.x = -breathe;
+      // Idle Breathing & Natural Posture
+      const breathe = Math.sin(time * 2.2) * 0.03;
+
+      if (leftHipRef.current) leftHipRef.current.rotation.x = 0;
+      if (rightHipRef.current) rightHipRef.current.rotation.x = 0;
+      if (leftKneeRef.current) leftKneeRef.current.rotation.x = 0;
+      if (rightKneeRef.current) rightKneeRef.current.rotation.x = 0;
+
+      if (leftShoulderRef.current) {
+        leftShoulderRef.current.rotation.x = breathe;
+        leftShoulderRef.current.rotation.z = -0.05;
+      }
+      if (rightShoulderRef.current) {
+        rightShoulderRef.current.rotation.x = breathe;
+        rightShoulderRef.current.rotation.z = 0.05;
+      }
+      if (leftElbowRef.current) leftElbowRef.current.rotation.x = 0.15;
+      if (rightElbowRef.current) rightElbowRef.current.rotation.x = 0.15;
+
       if (torsoRef.current) {
+        torsoRef.current.position.y = 0.75 + breathe * 0.3;
         torsoRef.current.rotation.x = breathe * 0.5;
-        torsoRef.current.rotation.z = 0;
+        torsoRef.current.rotation.y = 0;
       }
     }
 
-    // Action VFX Ring animation
+    // Action Burst VFX Ring Animation
     if (actionRingRef.current && actionTrigger > 0) {
       const elapsed = (Date.now() - actionTrigger) / 1000;
       if (elapsed < 0.8) {
@@ -237,20 +263,27 @@ export default function Avatar3D({
     }
   });
 
+  if (!visible) return null;
+
   return (
     <group ref={groupRef} position={position}>
-      {/* Selection / Current Player Aura Glow Ring on Floor */}
-      <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      {/* Ground Aura Glow Ring */}
+      <mesh position={[0, 0.03, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.5, 0.65, 32]} />
         <meshBasicMaterial
           color={isCurrentPlayer ? '#ef4444' : personalityColor}
           transparent
-          opacity={isCurrentPlayer ? 0.85 : 0.4}
+          opacity={isCurrentPlayer ? 0.85 : 0.35}
         />
       </mesh>
 
-      {/* Role Action VFX Blast Ring */}
-      <mesh ref={actionRingRef} position={[0, 0.08, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.001, 0.001, 0.001]}>
+      {/* Role Action Blast Ring */}
+      <mesh
+        ref={actionRingRef}
+        position={[0, 0.06, 0]}
+        rotation={[-Math.PI / 2, 0, 0]}
+        scale={[0.001, 0.001, 0.001]}
+      >
         <ringGeometry args={[0.4, 0.8, 32]} />
         <meshBasicMaterial
           color={role === 'Mafia' ? '#ef4444' : role === 'Doctor' ? '#10b981' : '#3b82f6'}
@@ -259,18 +292,18 @@ export default function Avatar3D({
         />
       </mesh>
 
-      {/* Rotating Body Group: character turns towards travel direction */}
+      {/* Rotating Body Hierarchy */}
       <group ref={bodyGroupRef}>
         {!isAlive ? (
-          // Fallen skull or red chalk outline marker
-          <group position={[0, 0.1, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          // Fallen / Eliminated Chalk Marker
+          <group position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
             <mesh>
               <circleGeometry args={[0.7, 32]} />
               <meshBasicMaterial color="#450a0a" transparent opacity={0.7} />
             </mesh>
             <Text
               position={[0, 0, 0.02]}
-              fontSize={0.3}
+              fontSize={0.28}
               color="#ef4444"
               font="bold"
               anchorX="center"
@@ -281,73 +314,212 @@ export default function Avatar3D({
           </group>
         ) : (
           <group>
-            {/* Torso */}
-            <mesh ref={torsoRef} position={[0, 1.05, 0]}>
-              <boxGeometry args={[0.55, 0.7, 0.35]} />
-              <meshStandardMaterial
-                color={isBot ? '#1e293b' : isCurrentPlayer ? '#991b1b' : '#27272a'}
-                roughness={0.5}
-              />
-            </mesh>
-
-            {/* Head with Avatar Profile Picture Texture */}
-            <group position={[0, 1.65, 0]}>
-              <mesh>
-                <boxGeometry args={[0.48, 0.48, 0.48]} />
-                <meshStandardMaterial
-                  color={isBot ? '#0f172a' : '#18181b'}
-                  roughness={0.4}
-                />
+            {/* Torso & Upper Body Group */}
+            <group ref={torsoRef} position={[0, 0.75, 0]}>
+              {/* Pelvis / Belt */}
+              <mesh position={[0, 0.05, 0]} castShadow>
+                <boxGeometry args={[0.46, 0.14, 0.28]} />
+                <meshStandardMaterial color={pantsColor} roughness={0.7} />
               </mesh>
 
-              {/* Front Face Plate with Photo Texture */}
-              <mesh position={[0, 0, 0.25]}>
-                <planeGeometry args={[0.44, 0.44]} />
-                {headTexture ? (
-                  <meshBasicMaterial map={headTexture} transparent />
-                ) : (
+              {/* Chest / Jacket Body */}
+              <mesh position={[0, 0.35, 0]} castShadow>
+                <boxGeometry args={[0.50, 0.52, 0.32]} />
+                <meshStandardMaterial color={shirtColor} roughness={0.6} />
+              </mesh>
+
+              {/* Collar Accent */}
+              <mesh position={[0, 0.62, 0.02]} castShadow>
+                <boxGeometry args={[0.26, 0.08, 0.24]} />
+                <meshStandardMaterial color={personalityColor} roughness={0.5} />
+              </mesh>
+
+              {/* Head with Profile Faceplate */}
+              <group position={[0, 0.95, 0]}>
+                {/* Cranium */}
+                <mesh castShadow>
+                  <boxGeometry args={[0.44, 0.44, 0.44]} />
+                  <meshStandardMaterial
+                    color={isBot ? '#0f172a' : '#18181b'}
+                    roughness={0.4}
+                  />
+                </mesh>
+
+                {/* Front Face Plate with Photo / Bot Logo Texture */}
+                <mesh position={[0, 0, 0.23]}>
+                  <planeGeometry args={[0.40, 0.40]} />
+                  {headTexture ? (
+                    <meshBasicMaterial map={headTexture} transparent />
+                  ) : (
+                    <meshBasicMaterial color={personalityColor} />
+                  )}
+                </mesh>
+
+                {/* Back of Head Accent Badge */}
+                <mesh position={[0, 0, -0.23]} rotation={[0, Math.PI, 0]}>
+                  <planeGeometry args={[0.34, 0.34]} />
                   <meshBasicMaterial color={personalityColor} />
-                )}
-              </mesh>
+                </mesh>
+              </group>
 
-              {/* Back Head Color Indicator */}
-              <mesh position={[0, 0, -0.25]} rotation={[0, Math.PI, 0]}>
-                <planeGeometry args={[0.4, 0.4]} />
-                <meshBasicMaterial color={personalityColor} />
-              </mesh>
+              {/* --- ARTICULATED LEFT ARM (Shoulder Pivot) --- */}
+              <group ref={leftShoulderRef} position={[-0.34, 0.54, 0]}>
+                {/* Shoulder Cap */}
+                <mesh position={[0, 0, 0]} castShadow>
+                  <sphereGeometry args={[0.09, 12, 12]} />
+                  <meshStandardMaterial color={shirtColor} />
+                </mesh>
+
+                {/* Upper Arm */}
+                <mesh position={[0, -0.16, 0]} castShadow>
+                  <boxGeometry args={[0.13, 0.26, 0.14]} />
+                  <meshStandardMaterial color={shirtColor} />
+                </mesh>
+
+                {/* Elbow & Forearm Joint */}
+                <group ref={leftElbowRef} position={[0, -0.30, 0]}>
+                  {/* Forearm */}
+                  <mesh position={[0, -0.14, 0]} castShadow>
+                    <boxGeometry args={[0.12, 0.24, 0.12]} />
+                    <meshStandardMaterial color={skinColor} roughness={0.7} />
+                  </mesh>
+
+                  {/* Modeled Hand: Palm + Thumb + Fingers */}
+                  <group position={[0, -0.28, 0]}>
+                    {/* Palm */}
+                    <mesh position={[0, -0.04, 0]} castShadow>
+                      <boxGeometry args={[0.10, 0.08, 0.08]} />
+                      <meshStandardMaterial color={skinColor} />
+                    </mesh>
+                    {/* Thumb */}
+                    <mesh position={[0.04, -0.03, 0.03]} castShadow>
+                      <boxGeometry args={[0.04, 0.05, 0.04]} />
+                      <meshStandardMaterial color={skinColor} />
+                    </mesh>
+                    {/* Fingers */}
+                    <mesh position={[0, -0.10, 0]} castShadow>
+                      <boxGeometry args={[0.09, 0.06, 0.07]} />
+                      <meshStandardMaterial color={skinColor} />
+                    </mesh>
+                  </group>
+                </group>
+              </group>
+
+              {/* --- ARTICULATED RIGHT ARM (Shoulder Pivot) --- */}
+              <group ref={rightShoulderRef} position={[0.34, 0.54, 0]}>
+                {/* Shoulder Cap */}
+                <mesh position={[0, 0, 0]} castShadow>
+                  <sphereGeometry args={[0.09, 12, 12]} />
+                  <meshStandardMaterial color={shirtColor} />
+                </mesh>
+
+                {/* Upper Arm */}
+                <mesh position={[0, -0.16, 0]} castShadow>
+                  <boxGeometry args={[0.13, 0.26, 0.14]} />
+                  <meshStandardMaterial color={shirtColor} />
+                </mesh>
+
+                {/* Elbow & Forearm Joint */}
+                <group ref={rightElbowRef} position={[0, -0.30, 0]}>
+                  {/* Forearm */}
+                  <mesh position={[0, -0.14, 0]} castShadow>
+                    <boxGeometry args={[0.12, 0.24, 0.12]} />
+                    <meshStandardMaterial color={skinColor} roughness={0.7} />
+                  </mesh>
+
+                  {/* Modeled Hand: Palm + Thumb + Fingers */}
+                  <group position={[0, -0.28, 0]}>
+                    {/* Palm */}
+                    <mesh position={[0, -0.04, 0]} castShadow>
+                      <boxGeometry args={[0.10, 0.08, 0.08]} />
+                      <meshStandardMaterial color={skinColor} />
+                    </mesh>
+                    {/* Thumb */}
+                    <mesh position={[-0.04, -0.03, 0.03]} castShadow>
+                      <boxGeometry args={[0.04, 0.05, 0.04]} />
+                      <meshStandardMaterial color={skinColor} />
+                    </mesh>
+                    {/* Fingers */}
+                    <mesh position={[0, -0.10, 0]} castShadow>
+                      <boxGeometry args={[0.09, 0.06, 0.07]} />
+                      <meshStandardMaterial color={skinColor} />
+                    </mesh>
+                  </group>
+                </group>
+              </group>
             </group>
 
-            {/* Left Arm */}
-            <mesh ref={leftArmRef} position={[-0.38, 1.05, 0]}>
-              <boxGeometry args={[0.16, 0.65, 0.18]} />
-              <meshStandardMaterial color={isBot ? '#334155' : '#3f3f46'} />
-            </mesh>
+            {/* --- ARTICULATED LEFT LEG (Hip Pivot at Y = 0.72) --- */}
+            <group ref={leftHipRef} position={[-0.14, 0.72, 0]}>
+              {/* Thigh */}
+              <mesh position={[0, -0.18, 0]} castShadow>
+                <boxGeometry args={[0.17, 0.34, 0.18]} />
+                <meshStandardMaterial color={pantsColor} roughness={0.7} />
+              </mesh>
 
-            {/* Right Arm */}
-            <mesh ref={rightArmRef} position={[0.38, 1.05, 0]}>
-              <boxGeometry args={[0.16, 0.65, 0.18]} />
-              <meshStandardMaterial color={isBot ? '#334155' : '#3f3f46'} />
-            </mesh>
+              {/* Knee & Calf Joint */}
+              <group ref={leftKneeRef} position={[0, -0.36, 0]}>
+                {/* Shin / Calf */}
+                <mesh position={[0, -0.16, 0]} castShadow>
+                  <boxGeometry args={[0.16, 0.30, 0.17]} />
+                  <meshStandardMaterial color={pantsColor} roughness={0.7} />
+                </mesh>
 
-            {/* Left Leg */}
-            <mesh ref={leftLegRef} position={[-0.16, 0.4, 0]}>
-              <boxGeometry args={[0.2, 0.75, 0.22]} />
-              <meshStandardMaterial color="#09090b" roughness={0.7} />
-            </mesh>
+                {/* Modeled Foot & Shoe */}
+                <group position={[0, -0.32, 0]}>
+                  {/* Shoe Upper / Body */}
+                  <mesh position={[0, 0, 0.04]} castShadow>
+                    <boxGeometry args={[0.16, 0.10, 0.24]} />
+                    <meshStandardMaterial color={shoeColor} roughness={0.5} />
+                  </mesh>
+                  {/* Rubber Sole */}
+                  <mesh position={[0, -0.06, 0.04]} castShadow receiveShadow>
+                    <boxGeometry args={[0.17, 0.04, 0.26]} />
+                    <meshStandardMaterial color={soleColor} roughness={0.8} />
+                  </mesh>
+                </group>
+              </group>
+            </group>
 
-            {/* Right Leg */}
-            <mesh ref={rightLegRef} position={[0.16, 0.4, 0]}>
-              <boxGeometry args={[0.2, 0.75, 0.22]} />
-              <meshStandardMaterial color="#09090b" roughness={0.7} />
-            </mesh>
+            {/* --- ARTICULATED RIGHT LEG (Hip Pivot at Y = 0.72) --- */}
+            <group ref={rightHipRef} position={[0.14, 0.72, 0]}>
+              {/* Thigh */}
+              <mesh position={[0, -0.18, 0]} castShadow>
+                <boxGeometry args={[0.17, 0.34, 0.18]} />
+                <meshStandardMaterial color={pantsColor} roughness={0.7} />
+              </mesh>
+
+              {/* Knee & Calf Joint */}
+              <group ref={rightKneeRef} position={[0, -0.36, 0]}>
+                {/* Shin / Calf */}
+                <mesh position={[0, -0.16, 0]} castShadow>
+                  <boxGeometry args={[0.16, 0.30, 0.17]} />
+                  <meshStandardMaterial color={pantsColor} roughness={0.7} />
+                </mesh>
+
+                {/* Modeled Foot & Shoe */}
+                <group position={[0, -0.32, 0]}>
+                  {/* Shoe Upper / Body */}
+                  <mesh position={[0, 0, 0.04]} castShadow>
+                    <boxGeometry args={[0.16, 0.10, 0.24]} />
+                    <meshStandardMaterial color={shoeColor} roughness={0.5} />
+                  </mesh>
+                  {/* Rubber Sole */}
+                  <mesh position={[0, -0.06, 0.04]} castShadow receiveShadow>
+                    <boxGeometry args={[0.17, 0.04, 0.26]} />
+                    <meshStandardMaterial color={soleColor} roughness={0.8} />
+                  </mesh>
+                </group>
+              </group>
+            </group>
           </group>
         )}
       </group>
 
-      {/* 3D Floating Nameplate above Head - Always face camera without mirroring */}
-      <Billboard position={[0, 2.25, 0]} follow={true}>
+      {/* Floating 3D Nameplate above Head */}
+      <Billboard position={[0, 2.35, 0]} follow={true}>
         <Text
-          fontSize={0.25}
+          fontSize={0.24}
           color={isAdmin ? '#ef4444' : isCurrentPlayer ? '#f87171' : '#f4f4f5'}
           outlineWidth={0.03}
           outlineColor="#000000"
@@ -358,8 +530,8 @@ export default function Avatar3D({
         </Text>
 
         <Text
-          position={[0, -0.22, 0]}
-          fontSize={0.16}
+          position={[0, -0.20, 0]}
+          fontSize={0.15}
           color={personalityColor}
           outlineWidth={0.02}
           outlineColor="#000000"

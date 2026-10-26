@@ -221,10 +221,12 @@ export function useChat(roomId: string, currentUserId: string) {
       })
       .subscribe();
 
+    const currentTypingTimers = typingTimers.current;
+    const currentRecordingTimers = recordingTimers.current;
     return () => {
       supabase.removeChannel(channel);
-      Object.values(typingTimers.current).forEach(clearTimeout);
-      Object.values(recordingTimers.current).forEach(clearTimeout);
+      Object.values(currentTypingTimers).forEach(clearTimeout);
+      Object.values(currentRecordingTimers).forEach(clearTimeout);
     };
   }, [roomId, currentUserId, markMessagesAsSeen]);
 

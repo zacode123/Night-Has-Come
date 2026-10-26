@@ -40,7 +40,7 @@ export default function StartedPage() {
       router.replace('/');
       return;
     }
-  }, [player, isLoading, router]);
+  }, [player, room, isLoading, router]);
   
   useEffect(() => {
     audioEngine.startMainMenuAmbient();

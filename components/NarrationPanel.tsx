@@ -10,7 +10,6 @@ export default function NarrationPanel({ text, isSpeaking }: { text: string, isS
   useEffect(() => {
     if (isSpeaking && text) {
       narrationEngine.speak(text);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDisplayedText(text);
     } else {
       narrationEngine.stop();

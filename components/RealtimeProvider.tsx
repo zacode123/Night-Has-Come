@@ -32,23 +32,23 @@ export function RealtimeProvider({ children }: { children: React.ReactNode }) {
   const [player, setPlayer] = useState<any | null>(null);
   const [room, setRoom] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return Cookies.get('playerId') || localStorage.getItem('playerId') || null;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  });
 
   // 1. Initial read on mount
   useEffect(() => {
-    let initialId: string | null = null;
-    try {
-      initialId = Cookies.get('playerId') || localStorage.getItem('playerId') || null;
-    } catch {
-      initialId = null;
-    }
-
-    if (initialId) {
-      setCurrentPlayerId(initialId);
-    } else {
+    if (!currentPlayerId) {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentPlayerId]);
 
   // 2. Manage subscription and player/room fetching whenever currentPlayerId changes
   useEffect(() => {
