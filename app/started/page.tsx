@@ -42,7 +42,7 @@ export default function StartedPage() {
         />
 
         <span className="text-xs font-mono font-bold uppercase tracking-widest px-3.5 py-1.5 rounded-full bg-red-950/80 border border-red-500/50 text-red-300 mb-4 inline-block shadow">
-          MATCH ALREADY IN PROGRESS
+          THE GAME HAS ALREADY BEGUN
         </span>
 
         <p className="text-base sm:text-lg text-zinc-200 font-semibold mb-3 tracking-wide">
@@ -50,7 +50,7 @@ export default function StartedPage() {
         </p>
 
         <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed max-w-md">
-          No new players or guests can join or spawn once night curfew has fallen. You must wait for the current simulation to conclude before entering a new match.
+          No new players or guests can join or spawn once night curfew has fallen. You must wait for the current match to conclude before entering a new match.
         </p>
       </motion.div>
     </div>
