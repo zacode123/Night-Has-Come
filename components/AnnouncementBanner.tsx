@@ -39,9 +39,9 @@ export default function AnnouncementBanner({
     });
     setRoleDirective(roleText);
 
+    // Speak phase instruction once on phase change if narration is active and no emergency alert
     if (!isMuted && !customAlert) {
       setIsSpeaking(true);
-      // Voice announces the general phase instruction without spoiling any player names or roles
       narrationEngine.speak(generalData.voice);
       const timer = setTimeout(() => setIsSpeaking(false), 5000);
       return () => clearTimeout(timer);
@@ -68,18 +68,17 @@ export default function AnnouncementBanner({
     }
   }, [customAlert, isMuted, onClearCustomAlert]);
 
-  // Subscribe to live broadcast announcements
+  // Subscribe to live broadcast announcements (UI text update only, no duplicate TTS call!)
   useEffect(() => {
     const unsubscribe = narrationEngine.subscribe(({ title, message, roleDirective: rDir }) => {
       setGeneralAnnouncement({ title, subtitle: message });
       if (rDir) setRoleDirective(rDir);
-      if (!isMuted) {
-        setIsSpeaking(true);
-        setTimeout(() => setIsSpeaking(false), 5000);
-      }
+      setIsSpeaking(true);
+      const timer = setTimeout(() => setIsSpeaking(false), 5000);
+      return () => clearTimeout(timer);
     });
     return unsubscribe;
-  }, [isMuted]);
+  }, []);
 
   const toggleMute = () => {
     if (isMuted) {

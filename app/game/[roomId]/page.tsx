@@ -182,6 +182,21 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
     }
   }, [gameState]);
 
+  // Announce Warmup start once 3+ required players have joined
+  const hasAnnouncedWarmupRef = useRef(false);
+  useEffect(() => {
+    if (gameState?.phase === 'Warmup') {
+      if (players.length >= 3 && !hasAnnouncedWarmupRef.current) {
+        hasAnnouncedWarmupRef.current = true;
+        narrationEngine.speak(
+          'All required players have joined. The game will be starting in 60 seconds, and no further players will be accepted after the match has begun.'
+        );
+      }
+    } else {
+      hasAnnouncedWarmupRef.current = false;
+    }
+  }, [gameState?.phase, players.length]);
+
   // Watch for game end trigger
   useEffect(() => {
     if (gameState?.phase === 'GameEnd' && !showGameOver) {
@@ -600,16 +615,16 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         isAutomatedIntro={isRulesIntroActive}
       />
 
-      {/* Game Over & Winner Congratulations Modal */}
+      {/* Game Over & Winner Congratulations Modal (Non-dismissable, STOP GAME button for Admin) */}
       <GameOverModal
         isOpen={showGameOver || gameState?.phase === 'GameEnd'}
         winnerTeam={winnerData?.winner || null}
         players={players}
-        onPlayAgain={() => {
-          setShowGameOver(false);
-          router.push('/lobby');
+        isAdmin={isAdmin}
+        onStopGame={async () => {
+          await supabase.from('rooms').update({ status: 'ended', phase: 'Lobby' }).eq('id', roomId);
+          router.push('/admin');
         }}
-        onExit={() => router.push('/')}
       />
     </div>
   );

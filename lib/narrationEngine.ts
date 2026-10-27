@@ -57,15 +57,29 @@ class NarrationEngine {
     this.speak(message);
   }
 
+  private lastSpokenText: string | null = null;
+  private lastSpokenTime: number = 0;
+
   public async speak(text: string, onEnd?: () => void) {
     if (typeof window === 'undefined' || !text) {
       if (onEnd) onEnd();
       return;
     }
 
+    const now = Date.now();
+    // Prevent identical text from echoing or playing twice simultaneously within 1.2 seconds
+    if (this.lastSpokenText === text && now - this.lastSpokenTime < 1200) {
+      if (onEnd) setTimeout(onEnd, 1000);
+      return;
+    }
+
+    this.lastSpokenText = text;
+    this.lastSpokenTime = now;
+
+    // Immediately stop any currently playing narration audio
     this.stop();
 
-    // 1. PRIMARY: Original TTS endpoint /api/tts with Joey voice (ttsmp3)
+    // STRICT EXCLUSIVE TTS ENDPOINT (/api/tts with Joey voice)
     try {
       const res = await fetch('/api/tts', {
         method: 'POST',
@@ -84,88 +98,43 @@ class NarrationEngine {
           const finish = () => {
             if (!finished) {
               finished = true;
+              if (this.currentAudio === audio) {
+                this.currentAudio = null;
+              }
               if (onEnd) onEnd();
             }
           };
 
           audio.onended = finish;
           audio.onerror = () => {
-            this.speakFallback(text, onEnd);
+            finish();
           };
 
           const playPromise = audio.play();
           if (playPromise !== undefined) {
             playPromise.catch((err) => {
-              console.warn('Audio playback waiting for user gesture or blocked, falling back:', err);
-              this.speakFallback(text, onEnd);
+              console.warn('Audio playback issue:', err);
+              finish();
             });
           }
           return;
         }
       }
     } catch (err) {
-      console.warn('Primary /api/tts endpoint call failed, using fallback:', err);
+      console.warn('/api/tts endpoint call error:', err);
     }
 
-    // 2. Fallback to Web Speech API or timeout
-    this.speakFallback(text, onEnd);
-  }
-
-  private speakFallback(text: string, onEnd?: () => void) {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.95;
-        utterance.pitch = 0.9;
-
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(
-          (v) =>
-            v.lang.startsWith('en') &&
-            (v.name.includes('Joey') ||
-              v.name.includes('Natural') ||
-              v.name.includes('Google') ||
-              v.name.includes('David') ||
-              v.name.includes('Daniel') ||
-              v.name.includes('Male'))
-        );
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
-        }
-
-        let finished = false;
-        const finish = () => {
-          if (!finished) {
-            finished = true;
-            if (onEnd) onEnd();
-          }
-        };
-
-        utterance.onend = finish;
-        utterance.onerror = finish;
-
-        const estimatedDurationMs = Math.max(2000, (text.split(' ').length / 2.5) * 1000 + 1200);
-        setTimeout(finish, estimatedDurationMs);
-
-        window.speechSynthesis.speak(utterance);
-        return;
-      } catch (e) {
-        console.warn('Speech synthesis error in fallback:', e);
-      }
-    }
-
-    if (onEnd) setTimeout(onEnd, 3000);
+    if (onEnd) setTimeout(onEnd, 2000);
   }
 
   public stop() {
     this.isSequencePlaying = false;
     if (this.currentAudio) {
-      this.currentAudio.pause();
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+      } catch (_) {}
       this.currentAudio = null;
-    }
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
     }
   }
 
