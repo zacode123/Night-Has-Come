@@ -134,13 +134,22 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
       return;
     }
 
+    // STRICT GAME STATUS & LATE JOIN GUARD:
+    // If room status is in_game and phase is NOT Warmup, late entry is strictly locked!
+    // Players who are not already in the game's player list must be sent to /started
+    const playerIsInGame = players.some((p) => String(p.id) === String(userId));
+    if (gameState.status === 'in_game' && gameState.phase !== 'Warmup' && !playerIsInGame && userId) {
+      router.replace('/started');
+      return;
+    }
+
     // STRICT GAME STATUS GUARD: If admin has not started the game, block access and redirect to approved waiting room
     if (gameState.status !== 'in_game') {
       setRoom(gameState);
       router.replace('/approved');
       return;
     }
-  }, [loading, gameState, router, setRoom]);
+  }, [loading, gameState, players, userId, router, setRoom]);
 
   // Handle ambient sound by game phase
   useEffect(() => {
@@ -203,7 +212,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const getPhaseDuration = (phase?: string) => {
     switch (phase) {
       case 'Warmup':
-        return 30;
+        return 60;
       case 'Night':
         return 30;
       case 'Morning':

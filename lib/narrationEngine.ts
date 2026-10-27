@@ -58,12 +58,61 @@ class NarrationEngine {
   }
 
   public async speak(text: string, onEnd?: () => void) {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !text) {
+      if (onEnd) onEnd();
+      return;
+    }
 
     this.stop();
 
-    // 1. High-quality Web Speech API for immediate vocal delivery
-    if ('speechSynthesis' in window) {
+    // 1. PRIMARY: Original TTS endpoint /api/tts with Joey voice (ttsmp3)
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'Joey' }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const src = data.audioUrl || (data.audio?.startsWith('data:') ? data.audio : data.audio ? `data:audio/mpeg;base64,${data.audio}` : null);
+        if (src) {
+          const audio = new Audio(src);
+          this.currentAudio = audio;
+          let finished = false;
+
+          const finish = () => {
+            if (!finished) {
+              finished = true;
+              if (onEnd) onEnd();
+            }
+          };
+
+          audio.onended = finish;
+          audio.onerror = () => {
+            this.speakFallback(text, onEnd);
+          };
+
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch((err) => {
+              console.warn('Audio playback waiting for user gesture or blocked, falling back:', err);
+              this.speakFallback(text, onEnd);
+            });
+          }
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Primary /api/tts endpoint call failed, using fallback:', err);
+    }
+
+    // 2. Fallback to Web Speech API or timeout
+    this.speakFallback(text, onEnd);
+  }
+
+  private speakFallback(text: string, onEnd?: () => void) {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel();
         const utterance = new SpeechSynthesisUtterance(text);
@@ -74,11 +123,11 @@ class NarrationEngine {
         const preferredVoice = voices.find(
           (v) =>
             v.lang.startsWith('en') &&
-            (v.name.includes('Natural') ||
+            (v.name.includes('Joey') ||
+              v.name.includes('Natural') ||
               v.name.includes('Google') ||
               v.name.includes('David') ||
               v.name.includes('Daniel') ||
-              v.name.includes('Alex') ||
               v.name.includes('Male'))
         );
         if (preferredVoice) {
@@ -96,48 +145,13 @@ class NarrationEngine {
         utterance.onend = finish;
         utterance.onerror = finish;
 
-        // Safety timeout in case browser speech engine hangs
         const estimatedDurationMs = Math.max(2000, (text.split(' ').length / 2.5) * 1000 + 1200);
         setTimeout(finish, estimatedDurationMs);
 
         window.speechSynthesis.speak(utterance);
         return;
       } catch (e) {
-        console.warn('Speech synthesis error, falling back:', e);
-      }
-    }
-
-    // 2. Custom TTS endpoint if available
-    if (this.customTtsEndpoint) {
-      try {
-        const res = await fetch(this.customTtsEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text }),
-        });
-
-        if (res.ok) {
-          const contentType = res.headers.get('content-type') || '';
-          if (contentType.includes('audio') || contentType.includes('octet-stream')) {
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            this.currentAudio = new Audio(url);
-            if (onEnd) this.currentAudio.onended = () => onEnd();
-            this.currentAudio.play();
-            return;
-          } else {
-            const data = await res.json();
-            if (data.audioUrl || data.audio) {
-              const src = data.audioUrl || (data.audio.startsWith('data:') ? data.audio : `data:audio/wav;base64,${data.audio}`);
-              this.currentAudio = new Audio(src);
-              if (onEnd) this.currentAudio.onended = () => onEnd();
-              this.currentAudio.play();
-              return;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Custom TTS endpoint call failed:', err);
+        console.warn('Speech synthesis error in fallback:', e);
       }
     }
 
@@ -204,8 +218,8 @@ class NarrationEngine {
       {
         id: 'start',
         title: 'GAME OFFICIALLY STARTED',
-        subtitle: 'The 30-second warmup is over. The retreat center lockdown has commenced!',
-        text: 'The 30-second warmup is finished. The game has officially started!',
+        subtitle: 'The 60-second warmup is over. The retreat center lockdown has commenced!',
+        text: 'The 60-second warmup is finished. The game has officially started!',
       },
       {
         id: 'warning',
@@ -247,9 +261,9 @@ class NarrationEngine {
     switch (phase) {
       case 'Warmup':
         return {
-          title: 'PRE-GAME WARMUP (30 SECONDS)',
-          subtitle: 'Explore Yooil Manor and inspect your surroundings before lockdown starts.',
-          voice: 'Warmup period in effect. Explore the manor and prepare for the lockdown countdown.',
+          title: 'PRE-GAME WARMUP (60 SECONDS)',
+          subtitle: 'All required players have joined! The game will start in 60 seconds. Late entry is closed.',
+          voice: 'All required players have joined. The game will be starting in 60 seconds, and no further players will be accepted after the match has begun.',
         };
       case 'Night':
         return {
@@ -383,16 +397,24 @@ class NarrationEngine {
   /**
    * Final Game End announcement:
    * Announce winner team and loser team, and EXPLICITLY CONGRATULATE WINNERS BY SAYING THEIR USERNAMES!
+   * Strictly congratulates ONLY those players who were in this game session.
    */
   public narrateGameEnd(
     winnerTeam: 'Citizens' | 'Mafia',
     winningPlayers: { username: string }[],
-    losingPlayers: { username: string }[],
+    _losingPlayers: { username: string }[],
     onEnd?: () => void
   ) {
     const winnerNames = winningPlayers.map((p) => p.username).filter(Boolean);
-    const winnerNamesText =
-      winnerNames.length > 0 ? winnerNames.join(', ') : 'the surviving champions';
+    let winnerNamesText = 'the surviving champions';
+
+    if (winnerNames.length === 1) {
+      winnerNamesText = winnerNames[0];
+    } else if (winnerNames.length === 2) {
+      winnerNamesText = `${winnerNames[0]} and ${winnerNames[1]}`;
+    } else if (winnerNames.length > 2) {
+      winnerNamesText = `${winnerNames.slice(0, -1).join(', ')}, and ${winnerNames[winnerNames.length - 1]}`;
+    }
 
     const speech =
       winnerTeam === 'Citizens'

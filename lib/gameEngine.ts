@@ -38,7 +38,7 @@ export const GameEngine = {
       .eq('room_id', roomId);
 
     if (error || !players || players.length < gameConfig.minPlayers) {
-      throw new Error(`Need at least ${gameConfig.minPlayers} players (or AI bots) to start`);
+      throw new Error(`Need at least ${gameConfig.minPlayers} players (1 Mafia and 2 Citizens) to start`);
     }
 
     // 2. Assign Roles
@@ -52,7 +52,7 @@ export const GameEngine = {
         .eq('id', player.id);
     }
 
-    // 4. Update Room Status with 30-second Warmup phase
+    // 4. Update Room Status with 60-second Warmup phase
     await supabase
       .from('rooms')
       .update({ 
@@ -68,36 +68,50 @@ export const GameEngine = {
   assignRoles(players: any[]) {
     const shuffled = [...players].sort(() => 0.5 - Math.random());
     const totalPlayers = players.length;
-    
-    // Determine number of Mafia (at least 1, max based on config)
-    const mafiaCount = Math.max(1, Math.min(
-      Math.floor(totalPlayers / 3), 
-      gameConfig.maxMafia
-    ));
 
-    // Assign Mafia
-    for (let i = 0; i < mafiaCount; i++) {
-      shuffled[i].role = 'Mafia';
+    if (totalPlayers < 3) {
+      throw new Error('At least 3 players (1 Mafia and 2 Citizens) are required to start');
     }
 
-    // Assign Special Roles
-    const specialRoles: PlayerRole[] = ['Doctor', 'Police', 'Detective', 'Hero'];
-    let currentIndex = mafiaCount;
+    // Step 1: ALWAYS guarantee at least 1 Mafia and 2 non-Mafia (Citizens/Doctor/Police)
+    shuffled[0].role = 'Mafia';
 
-    for (const role of specialRoles) {
-      if (currentIndex < totalPlayers) {
-        shuffled[currentIndex].role = role;
-        currentIndex++;
+    if (totalPlayers === 3) {
+      shuffled[1].role = 'Citizen';
+      shuffled[2].role = 'Citizen';
+      return shuffled;
+    }
+
+    if (totalPlayers === 4) {
+      shuffled[1].role = 'Doctor';
+      shuffled[2].role = 'Police';
+      shuffled[3].role = 'Citizen';
+      return shuffled;
+    }
+
+    // For 5+ players:
+    // Assign 1 Doctor & 1 Police/Detective
+    shuffled[1].role = 'Doctor';
+    shuffled[2].role = 'Police';
+
+    const targetMafiaCount = Math.max(1, Math.min(Math.floor(totalPlayers / 3), gameConfig.maxMafia));
+    let mafiaAssigned = 1;
+
+    for (let i = 3; i < totalPlayers; i++) {
+      if (mafiaAssigned < targetMafiaCount && (i === 3 || i === 6)) {
+        shuffled[i].role = 'Mafia';
+        mafiaAssigned++;
+      } else if (i === 4 && totalPlayers >= 6) {
+        shuffled[i].role = 'Detective';
+      } else {
+        shuffled[i].role = 'Citizen';
       }
-    }
-
-    // Assign Citizens
-    for (let i = currentIndex; i < totalPlayers; i++) {
-      shuffled[i].role = 'Citizen';
     }
 
     return shuffled;
   },
+
+
 
   async hireBots(roomId: string, bots: Array<{ username: string; personality: string }>) {
     const records = bots.map((bot) => ({
