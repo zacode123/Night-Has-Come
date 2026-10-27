@@ -10,13 +10,13 @@ import {
   LogOut,
   Clock,
   Shield,
-  HelpCircle
 } from 'lucide-react';
 import { useGameState } from '@/hooks/useGameState';
 import { useChat } from '@/hooks/useChat';
 import { supabase } from '@/lib/supabaseClient';
 import { audioEngine } from '@/lib/audioEngine';
 import { narrationEngine } from '@/lib/narrationEngine';
+import { GameEngine } from '@/lib/gameEngine';
 import GameBoard from '@/components/GameBoard';
 import ChatTab from '@/components/ChatTab';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
@@ -28,6 +28,7 @@ import { useLiveCall } from '@/hooks/useLiveCall';
 import FloatingCallOverlay from '@/components/FloatingCallOverlay';
 import LiveCallModal from '@/components/LiveCallModal';
 import RulesBanner from '@/components/RulesBanner';
+import GameOverModal from '@/components/GameOverModal';
 
 type ViewportMode = 'split' | 'gameOnly' | 'chatOnly';
 
@@ -43,6 +44,15 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const [roomNotFound, setRoomNotFound] = useState(false);
   const [showCallModal, setShowCallModal] = useState(false);
   const [showRulesModal, setShowRulesModal] = useState(false);
+  const [isRulesIntroActive, setIsRulesIntroActive] = useState(false);
+  const [activeRuleStep, setActiveRuleStep] = useState<number>(-1);
+  const [hasVotedThisRound, setHasVotedThisRound] = useState(false);
+  const [showGameOver, setShowGameOver] = useState(false);
+  const [winnerData, setWinnerData] = useState<{
+    winner: 'Citizens' | 'Mafia';
+    winningPlayers: any[];
+    losingPlayers: any[];
+  } | null>(null);
 
   const {
     gameState,
@@ -158,9 +168,29 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         break;
       case 'GameEnd':
         audioEngine.stopAmbient();
+        audioEngine.playVictory();
         break;
     }
   }, [gameState]);
+
+  // Watch for game end trigger
+  useEffect(() => {
+    if (gameState?.phase === 'GameEnd' && !showGameOver) {
+      GameEngine.checkWinCondition(roomId).then((win) => {
+        if (win) {
+          setWinnerData(win);
+          setShowGameOver(true);
+          narrationEngine.narrateGameEnd(win.winner, win.winningPlayers, win.losingPlayers);
+        }
+      });
+    }
+  }, [gameState?.phase, roomId, showGameOver]);
+
+  useEffect(() => {
+    if (gameState?.phase !== 'Voting') {
+      setHasVotedThisRound(false);
+    }
+  }, [gameState?.phase]);
 
   const currentPlayer = useMemo(
     () => players.find((p) => p.id === userId),
@@ -189,17 +219,96 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
     }
   };
 
+  // Dismiss rules walkthrough and advance to night
+  const handleDismissRulesAndStart = () => {
+    narrationEngine.stop();
+    setShowRulesModal(false);
+    setIsRulesIntroActive(false);
+    setActiveRuleStep(-1);
+    advancePhase('Night');
+  };
+
   // App intelligence automatically advances phase and day
-  const handleAutoAdvance = () => {
+  const handleAutoAdvance = async () => {
     if (!gameState) return;
 
-    // When 30s Warmup completes: announce game start, explain rules, and begin Night phase
+    // When 30s Warmup completes: announce game start, give warning, announce all rules, and say to be ready!
     if (gameState.phase === 'Warmup') {
       audioEngine.stopAmbient();
       audioEngine.playRoleReveal();
-      narrationEngine.narrateRulesExplanation();
+      setIsRulesIntroActive(true);
       setShowRulesModal(true);
-      advancePhase('Night');
+
+      const sequence = narrationEngine.getGameStartRulesSequence();
+      narrationEngine.speakSequence(
+        sequence,
+        (stepIndex) => {
+          setActiveRuleStep(stepIndex);
+        },
+        () => {
+          // Completed announcing all rules with warning and instruction!
+          setShowRulesModal(false);
+          setIsRulesIntroActive(false);
+          setActiveRuleStep(-1);
+          advancePhase('Night');
+        }
+      );
+      return;
+    }
+
+    // Resolving Voting -> Execution
+    if (gameState.phase === 'Voting') {
+      const voteResult = await GameEngine.resolveDayVotes(roomId, gameState.day_number);
+      if (voteResult.message) {
+        setCustomAlert(voteResult.message);
+      }
+
+      const winCheck = await GameEngine.checkWinCondition(roomId);
+      if (winCheck) {
+        setWinnerData(winCheck);
+        setShowGameOver(true);
+        audioEngine.stopAmbient();
+        audioEngine.playVictory();
+        narrationEngine.narrateGameEnd(winCheck.winner, winCheck.winningPlayers, winCheck.losingPlayers);
+        advancePhase('GameEnd');
+        return;
+      }
+
+      advancePhase('Execution');
+      return;
+    }
+
+    // Resolving Night -> Morning
+    if (gameState.phase === 'Night') {
+      const nightResult = await GameEngine.resolveNightAbilities(roomId, gameState.day_number);
+      if (nightResult.message) {
+        setCustomAlert(nightResult.message);
+      }
+
+      const winCheck = await GameEngine.checkWinCondition(roomId);
+      if (winCheck) {
+        setWinnerData(winCheck);
+        setShowGameOver(true);
+        audioEngine.stopAmbient();
+        audioEngine.playVictory();
+        narrationEngine.narrateGameEnd(winCheck.winner, winCheck.winningPlayers, winCheck.losingPlayers);
+        advancePhase('GameEnd');
+        return;
+      }
+
+      advancePhase('Morning');
+      return;
+    }
+
+    // Check win condition before any standard phase transition
+    const winCheck = await GameEngine.checkWinCondition(roomId);
+    if (winCheck) {
+      setWinnerData(winCheck);
+      setShowGameOver(true);
+      audioEngine.stopAmbient();
+      audioEngine.playVictory();
+      narrationEngine.narrateGameEnd(winCheck.winner, winCheck.winningPlayers, winCheck.losingPlayers);
+      advancePhase('GameEnd');
       return;
     }
 
@@ -222,7 +331,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         <p className="text-zinc-400 mb-8 text-sm">The retreat game room has expired or been terminated.</p>
         <button
           onClick={() => router.push('/')}
-          className="px-6 py-2.5 bg-red-700 hover:bg-red-600 rounded-xl font-bold text-sm shadow-lg shadow-red-900/50"
+          className="px-6 py-2.5 bg-red-700 hover:bg-red-600 rounded-xl font-bold text-sm shadow-lg shadow-red-900/50 cursor-pointer"
         >
           RETURN TO MAIN MENU
         </button>
@@ -258,7 +367,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           </span>
         </div>
 
-        {/* Automated Phase Progress & Exit in Header */}
+        {/* Automated Phase Progress & Exit in Header (Top rules button removed as requested) */}
         <div className="flex items-center gap-2">
           {/* Automated Phase Countdown Timer */}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-950/60 border border-red-500/30 text-xs font-mono shadow">
@@ -269,24 +378,14 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
             <Timer
               duration={getPhaseDuration(gameState.phase)}
               onExpire={handleAutoAdvance}
-              isActive={true}
+              isActive={!isRulesIntroActive && gameState.phase !== 'GameEnd'}
             />
           </div>
-
-          {/* Rules Explanation Button */}
-          <button
-            onClick={() => setShowRulesModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-950/60 border border-amber-500/40 text-amber-300 hover:bg-amber-900/60 transition-colors text-xs font-semibold cursor-pointer"
-            title="Read Rules"
-          >
-            <HelpCircle size={13} />
-            <span className="hidden sm:inline">Rules</span>
-          </button>
 
           {/* Exit Button */}
           <button
             onClick={() => router.push('/')}
-            className="p-1.5 rounded-lg bg-zinc-900 border border-white/15 hover:border-zinc-500 text-zinc-400 hover:text-white transition-colors"
+            className="p-1.5 rounded-lg bg-zinc-900 border border-white/15 hover:border-zinc-500 text-zinc-400 hover:text-white transition-colors cursor-pointer"
             title="Exit Room"
           >
             <LogOut size={15} />
@@ -294,10 +393,11 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         </div>
       </header>
 
-      {/* Cinematic Top Announcement Banner with Pluggable Audio */}
+      {/* Cinematic Top Announcement Banner with General Instruction & Private Role Directive */}
       <AnnouncementBanner
         phase={gameState.phase}
         dayNumber={gameState.day_number}
+        playerRole={currentPlayer?.role}
         customAlert={customAlert}
         onClearCustomAlert={() => setCustomAlert(null)}
       />
@@ -375,18 +475,24 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
             currentUserId={userId}
             isAdmin={isAdmin}
             onUpdatePosition={broadcastPosition}
-            onRoleAction={(action, targetId) => {
-              performRoleAction(action, targetId);
+            onRoleAction={async (action, targetId) => {
+              const res = await performRoleAction(action, targetId);
               const targetPlayer = players.find((p) => p.id === targetId);
-              setCustomAlert(
-                `Action deployed: ${action.toUpperCase()} targeted at ${targetPlayer?.username || 'player'}`
-              );
+              if (action === 'investigate' && (res as any)?.targetInfo) {
+                setCustomAlert(
+                  `CONFIDENTIAL POLICE REPORT: ${targetPlayer?.username || 'Suspect'} is secretly a ${(res as any).targetInfo.role || 'Citizen'}!`
+                );
+              } else {
+                setCustomAlert(
+                  `Action deployed: ${action.toUpperCase()} targeted at ${targetPlayer?.username || 'player'}`
+                );
+              }
             }}
           />
 
           {/* Voting Modal Overlay during Voting Phase */}
           <AnimatePresence>
-            {gameState.phase === 'Voting' && isAlive && (
+            {gameState.phase === 'Voting' && isAlive && !hasVotedThisRound && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -401,10 +507,15 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
                     players={players}
                     currentUserId={userId}
                     onVote={(targetId) => {
+                      audioEngine.playClick();
                       castVote(targetId);
-                      setCustomAlert('Your vote has been locked in.');
+                      const targetPlayer = players.find((p) => String(p.id) === String(targetId));
+                      const targetName = targetPlayer?.username || 'Player';
+                      setCustomAlert(`You casted your vote for ${targetName}.`);
+                      narrationEngine.speak(`You casted vote ${targetName}`);
+                      setHasVotedThisRound(true);
                     }}
-                    hasVoted={false}
+                    hasVoted={hasVotedThisRound}
                   />
                 </div>
               </motion.div>
@@ -416,7 +527,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         <div
           style={{
             display: viewMode === 'gameOnly' ? 'none' : 'block',
-            height: viewMode === 'chatOnly' ? '100%' : '50%',
+            height: viewMode === 'gameOnly' ? '0%' : viewMode === 'chatOnly' ? '100%' : '50%',
           }}
           className="w-full relative transition-all duration-300 overflow-hidden"
         >
@@ -468,11 +579,28 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         }}
       />
 
-      {/* Rules Explanation Modal Banner */}
+      {/* Mandatory Game Start Rules & Warning Modal (Triggered when 30s warmup ends) */}
       <RulesBanner
         isOpen={showRulesModal}
-        onClose={() => setShowRulesModal(false)}
-        onReplayAudio={() => narrationEngine.narrateRulesExplanation()}
+        onClose={handleDismissRulesAndStart}
+        onReplayAudio={() => {
+          const sequence = narrationEngine.getGameStartRulesSequence();
+          narrationEngine.speakSequence(sequence, (stepIndex) => setActiveRuleStep(stepIndex));
+        }}
+        activeStepIndex={activeRuleStep}
+        isAutomatedIntro={isRulesIntroActive}
+      />
+
+      {/* Game Over & Winner Congratulations Modal */}
+      <GameOverModal
+        isOpen={showGameOver || gameState?.phase === 'GameEnd'}
+        winnerTeam={winnerData?.winner || null}
+        players={players}
+        onPlayAgain={() => {
+          setShowGameOver(false);
+          router.push('/lobby');
+        }}
+        onExit={() => router.push('/')}
       />
     </div>
   );

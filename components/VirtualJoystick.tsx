@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Zap, ArrowUp, Camera, Crosshair, Heart, Search } from 'lucide-react';
+import { Zap, ArrowUp, Crosshair, Heart, Search, Video, Binoculars } from 'lucide-react';
 
 interface VirtualJoystickProps {
   onMove: (vector: { x: number; y: number }) => void;
@@ -10,7 +10,7 @@ interface VirtualJoystickProps {
   onRoleAction?: () => void;
   onAction?: () => void;
   onToggleCamera?: () => void;
-  cameraMode?: 'thirdPerson' | 'isometric';
+  cameraMode?: 'thirdPerson' | 'firstPerson';
   role?: string | null;
   isAlive?: boolean;
   phase?: string;
@@ -32,7 +32,7 @@ export default function VirtualJoystick({
   const [isDragging, setIsDragging] = useState(false);
   const [isSprinting, setIsSprinting] = useState(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
-  const maxRadius = 46; // max displacement radius in px
+  const maxRadius = 46;
 
   // Update position from pointer (touch or mouse)
   const processMovement = useCallback(
@@ -54,7 +54,7 @@ export default function VirtualJoystick({
 
       setJoystickPos({ x: clampedX, y: clampedY });
 
-      // Screen UP is dy < 0, so inverting Y makes pushing UP = positive forward (+1)
+      // Screen UP (dy < 0) becomes positive forward vector (+1)
       onMove({
         x: clampedX / maxRadius,
         y: -(clampedY / maxRadius),
@@ -137,26 +137,7 @@ export default function VirtualJoystick({
   const roleAction = getRoleActionButton();
 
   return (
-    <div className="absolute inset-0 pointer-events-none select-none z-20 flex flex-col justify-between p-3 sm:p-4">
-      {/* Top Floating Mini Bar: Camera Switch */}
-      <div className="flex justify-between items-center w-full pointer-events-auto">
-        {onToggleCamera ? (
-          <button
-            onClick={onToggleCamera}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-xs font-semibold text-zinc-200 hover:text-white shadow-lg active:scale-95 transition-transform"
-          >
-            <Camera size={14} className="text-red-400" />
-            <span>{cameraMode === 'thirdPerson' ? 'Third Person' : 'Isometric'}</span>
-          </button>
-        ) : (
-          <div />
-        )}
-
-        <div className="text-[11px] font-mono tracking-wider bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 text-zinc-300 hidden sm:block">
-          WASD or Joystick: Move | Shift: Sprint | Space: Jump
-        </div>
-      </div>
-
+    <div className="absolute inset-0 pointer-events-none select-none z-20 flex flex-col justify-end p-3 sm:p-4">
       {/* Bottom Area: Left Joystick + Right Action Cluster */}
       <div className="flex justify-between items-end w-full pb-1">
         {/* Left: Dual Touch & Mouse Analog Virtual Joystick Base */}
@@ -208,11 +189,29 @@ export default function VirtualJoystick({
 
         {/* Right: Action Buttons Cluster */}
         <div className="pointer-events-auto flex items-end gap-2.5 sm:gap-3">
+          {/* Single Perspective Toggle Button: Video (Third Person) vs Binoculars (First Person) */}
+          {onToggleCamera && (
+            <button
+              type="button"
+              onClick={onToggleCamera}
+              aria-label={cameraMode === 'firstPerson' ? 'Switch to Third Person' : 'Switch to First Person'}
+              title={cameraMode === 'firstPerson' ? 'Third Person View' : 'First Person View'}
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/20 hover:border-amber-400 text-amber-300 hover:text-white flex items-center justify-center shadow-lg active:scale-90 transition-all cursor-pointer"
+            >
+              {cameraMode === 'firstPerson' ? (
+                <Binoculars size={22} className="text-amber-400" />
+              ) : (
+                <Video size={22} className="text-amber-300" />
+              )}
+            </button>
+          )}
+
           {/* Sprint Toggle */}
           <button
+            type="button"
             onClick={toggleSprint}
             aria-label="Sprint"
-            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 ${
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full border flex flex-col items-center justify-center transition-all shadow-lg active:scale-95 cursor-pointer ${
               isSprinting
                 ? 'bg-amber-500 border-amber-300 text-black shadow-[0_0_15px_rgba(245,158,11,0.8)] font-black'
                 : 'bg-black/60 backdrop-blur-md border-white/20 text-zinc-300 hover:text-white'
@@ -224,9 +223,10 @@ export default function VirtualJoystick({
 
           {/* Jump Button */}
           <button
+            type="button"
             onClick={onJump}
             aria-label="Jump"
-            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-zinc-300 hover:text-white flex flex-col items-center justify-center shadow-lg active:scale-90 active:bg-blue-600 transition-all"
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-zinc-300 hover:text-white flex flex-col items-center justify-center shadow-lg active:scale-90 active:bg-blue-600 transition-all cursor-pointer"
           >
             <ArrowUp size={20} />
             <span className="text-[9px] font-bold tracking-tighter">JUMP</span>
@@ -235,9 +235,10 @@ export default function VirtualJoystick({
           {/* Role Action Button */}
           {roleAction && (
             <button
+              type="button"
               onClick={onRoleAction || onAction}
               aria-label={roleAction.label}
-              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${roleAction.color} border-2 flex flex-col items-center justify-center shadow-xl active:scale-95 transition-transform`}
+              className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br ${roleAction.color} border-2 flex flex-col items-center justify-center shadow-xl active:scale-95 transition-transform cursor-pointer`}
             >
               {roleAction.icon}
               <span className="text-[9px] font-black tracking-wider text-white mt-0.5">

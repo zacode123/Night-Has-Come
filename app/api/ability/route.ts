@@ -9,7 +9,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
   }
 
-  // Check cooldowns or restrictions based on abilityType
   const currentNight = night ?? 1;
 
   const { data, error } = await supabase
@@ -28,5 +27,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json(data);
+  // If police/detective is investigating, return private intel on target
+  let targetInfo: any = null;
+  if (abilityType === 'investigate') {
+    const { data: targetPlayer } = await supabase
+      .from('players')
+      .select('username, role')
+      .eq('id', targetId)
+      .maybeSingle();
+    targetInfo = targetPlayer;
+  }
+
+  return NextResponse.json({ ...data, targetInfo });
 }

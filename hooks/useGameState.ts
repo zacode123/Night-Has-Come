@@ -140,10 +140,10 @@ export function useGameState(roomId: string) {
   // Perform Role Action (Mafia Kill, Doctor Heal, Police Scan)
   const performRoleAction = async (action: 'attack' | 'heal' | 'investigate', targetId: string) => {
     const localId = localStorage.getItem('playerId');
-    if (!localId) return;
+    if (!localId) return null;
 
     try {
-      await fetch('/api/ability', {
+      const res = await fetch('/api/ability', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -153,9 +153,13 @@ export function useGameState(roomId: string) {
           abilityType: action,
         }),
       });
+      if (res.ok) {
+        return await res.json();
+      }
     } catch (e) {
       console.warn('Role action non-fatal error:', e);
     }
+    return null;
   };
 
   // Advance to next game phase

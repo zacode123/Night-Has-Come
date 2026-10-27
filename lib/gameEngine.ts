@@ -132,11 +132,6 @@ export const GameEngine = {
     return { success: true };
   },
 
-  async processNightPhase(roomId: string) {
-    // Transition to Morning
-    await this.transitionPhase(roomId, 'Morning');
-  },
-
   async transitionPhase(roomId: string, nextPhase: GamePhase) {
     const { data: room } = await supabase
       .from('rooms')
@@ -156,26 +151,183 @@ export const GameEngine = {
       .eq('id', roomId);
   },
 
-  async checkWinCondition(roomId: string) {
+  /**
+   * Resolve night attacks and heals:
+   * Compares Mafia attack target against Doctor heal target.
+   */
+  async resolveNightAbilities(roomId: string, nightNumber: number) {
+    try {
+      const { data: abilities } = await supabase
+        .from('abilities')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('night', nightNumber);
+
+      const attacks = abilities?.filter((a) => a.ability_type === 'attack') || [];
+      const heals = abilities?.filter((a) => a.ability_type === 'heal') || [];
+
+      if (attacks.length === 0) {
+        return { casualty: null, wasSaved: false, message: 'It was a peaceful night. No casualties were reported.' };
+      }
+
+      // Plurality target for attack
+      const targetCounts: Record<string, number> = {};
+      attacks.forEach((a) => {
+        if (a.target_id) {
+          targetCounts[a.target_id] = (targetCounts[a.target_id] || 0) + 1;
+        }
+      });
+
+      let victimId: string | null = null;
+      let maxAttack = 0;
+      Object.entries(targetCounts).forEach(([id, count]) => {
+        if (count > maxAttack) {
+          maxAttack = count;
+          victimId = id;
+        }
+      });
+
+      if (!victimId) {
+        return { casualty: null, wasSaved: false, message: 'No casualties were reported last night.' };
+      }
+
+      // Check if victim was protected by Doctor
+      const wasSaved = heals.some((h) => h.target_id === victimId);
+
+      if (wasSaved) {
+        return { casualty: null, wasSaved: true, message: 'A student was targeted last night, but the Doctor heroically protected them!' };
+      }
+
+      // Eliminate victim in DB
+      await supabase
+        .from('players')
+        .update({ alive: false })
+        .eq('id', victimId);
+
+      const { data: victimPlayer } = await supabase
+        .from('players')
+        .select('username, role')
+        .eq('id', victimId)
+        .maybeSingle();
+
+      const victimName = victimPlayer?.username || 'A student';
+
+      return {
+        casualty: { id: victimId, username: victimName, role: victimPlayer?.role },
+        wasSaved: false,
+        message: `Tragedy struck last night. ${victimName} was eliminated in the darkness!`,
+      };
+    } catch (err) {
+      console.warn('Error resolving night abilities:', err);
+      return { casualty: null, wasSaved: false, message: 'Morning has broken with no confirmed casualties.' };
+    }
+  },
+
+  /**
+   * Tally votes cast during voting phase and eliminate the highest-voted player.
+   */
+  async resolveDayVotes(roomId: string, dayNumber: number) {
+    try {
+      const { data: votes } = await supabase
+        .from('votes')
+        .select('*')
+        .eq('room_id', roomId)
+        .eq('day', dayNumber);
+
+      if (!votes || votes.length === 0) {
+        return { executed: null, message: 'No votes were cast before curfew. No one was executed today.' };
+      }
+
+      const voteCounts: Record<string, number> = {};
+      votes.forEach((v) => {
+        if (v.target_id) {
+          voteCounts[v.target_id] = (voteCounts[v.target_id] || 0) + 1;
+        }
+      });
+
+      let highestTargetId: string | null = null;
+      let maxVotes = 0;
+      let isTie = false;
+
+      Object.entries(voteCounts).forEach(([id, count]) => {
+        if (count > maxVotes) {
+          maxVotes = count;
+          highestTargetId = id;
+          isTie = false;
+        } else if (count === maxVotes) {
+          isTie = true;
+        }
+      });
+
+      if (isTie || !highestTargetId || maxVotes === 0) {
+        return { executed: null, message: 'The votes resulted in a tie! Curfew spared all suspects today.' };
+      }
+
+      // Eliminate executed player in DB
+      await supabase
+        .from('players')
+        .update({ alive: false })
+        .eq('id', highestTargetId);
+
+      const { data: targetPlayer } = await supabase
+        .from('players')
+        .select('username, role')
+        .eq('id', highestTargetId)
+        .maybeSingle();
+
+      const executedName = targetPlayer?.username || 'Suspect';
+
+      return {
+        executed: { id: highestTargetId, username: executedName, role: targetPlayer?.role, votes: maxVotes },
+        message: `The majority has spoken! ${executedName} received ${maxVotes} votes and was executed!`,
+      };
+    } catch (err) {
+      console.warn('Error resolving day votes:', err);
+      return { executed: null, message: 'Curfew ended without an execution.' };
+    }
+  },
+
+  /**
+   * Check win condition and return winner team with list of winners and losers.
+   */
+  async checkWinCondition(roomId: string): Promise<{
+    winner: 'Citizens' | 'Mafia';
+    winningPlayers: any[];
+    losingPlayers: any[];
+  } | null> {
     const { data: players } = await supabase
       .from('players')
       .select('*')
-      .eq('room_id', roomId)
-      .eq('alive', true);
+      .eq('room_id', roomId);
 
     if (!players || players.length === 0) return null;
 
-    const mafiaCount = players.filter((p) => p.role === 'Mafia').length;
-    const citizenCount = players.length - mafiaCount;
+    const alivePlayers = players.filter((p) => p.alive);
+    const aliveMafia = alivePlayers.filter((p) => p.role === 'Mafia');
+    const aliveCitizens = alivePlayers.filter((p) => p.role !== 'Mafia');
 
-    if (mafiaCount === 0) {
-      return 'Citizens';
+    // 1. All Mafia dead -> Citizens win!
+    if (aliveMafia.length === 0) {
+      const winningPlayers = players.filter((p) => p.role !== 'Mafia');
+      const losingPlayers = players.filter((p) => p.role === 'Mafia');
+      return {
+        winner: 'Citizens',
+        winningPlayers,
+        losingPlayers,
+      };
     }
 
-    if (mafiaCount >= citizenCount) {
-      return 'Mafia';
+    // 2. Mafia outnumber or equal living Citizens -> Mafia wins!
+    if (aliveMafia.length >= aliveCitizens.length) {
+      const winningPlayers = players.filter((p) => p.role === 'Mafia');
+      const losingPlayers = players.filter((p) => p.role !== 'Mafia');
+      return {
+        winner: 'Mafia',
+        winningPlayers,
+        losingPlayers,
+      };
     }
 
     return null;
-  }
+  },
 };

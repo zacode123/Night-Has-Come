@@ -21,6 +21,9 @@ interface Avatar3DProps {
   isCurrentPlayer?: boolean;
   jumpProgress?: number; // 0 to 1
   actionTrigger?: number; // timestamp to trigger burst VFX
+  positionRef?: React.RefObject<[number, number, number] | null>;
+  rotationRef?: React.RefObject<number | null>;
+  gestureRef?: React.RefObject<string | null>;
 }
 
 export default function Avatar3D({
@@ -39,6 +42,9 @@ export default function Avatar3D({
   isCurrentPlayer = false,
   jumpProgress = 0,
   actionTrigger = 0,
+  positionRef,
+  rotationRef,
+  gestureRef,
 }: Avatar3DProps) {
   const groupRef = useRef<THREE.Group>(null);
   const bodyGroupRef = useRef<THREE.Group>(null);
@@ -160,16 +166,20 @@ export default function Avatar3D({
   useFrame((_, delta) => {
     if (!groupRef.current) return;
 
+    const targetPos = positionRef?.current || position;
+    const targetRot = rotationRef?.current !== undefined && rotationRef.current !== null ? rotationRef.current : rotation;
+    const targetGesture = (gestureRef?.current || gesture) as 'idle' | 'walk' | 'run' | 'jump' | 'attack' | 'heal' | 'investigate';
+
     // Smooth root position interpolation
     groupRef.current.position.x = THREE.MathUtils.lerp(
       groupRef.current.position.x,
-      position[0],
-      delta * 14
+      targetPos[0],
+      delta * 16
     );
     groupRef.current.position.z = THREE.MathUtils.lerp(
       groupRef.current.position.z,
-      position[2],
-      delta * 14
+      targetPos[2],
+      delta * 16
     );
 
     // Jump parabolic arc
@@ -177,19 +187,21 @@ export default function Avatar3D({
     if (jumpProgress > 0) {
       jumpY = Math.sin(jumpProgress * Math.PI) * 1.5;
     }
-    groupRef.current.position.y = position[1] + jumpY;
+    groupRef.current.position.y = targetPos[1] + jumpY;
 
-    // Smooth rotation interpolation on character body
+    // Smooth rotation interpolation on character body using shortest angular arc
     if (bodyGroupRef.current) {
       const currentRot = bodyGroupRef.current.rotation.y;
-      bodyGroupRef.current.rotation.y = THREE.MathUtils.lerp(currentRot, rotation, delta * 15);
+      let diff = targetRot - currentRot;
+      diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      bodyGroupRef.current.rotation.y += diff * Math.min(1, delta * 18);
     }
 
     // Kinematic Joint Animations
     const time = performance.now() / 1000;
-    const isMoving = gesture === 'walk' || gesture === 'run';
-    const cadence = gesture === 'run' ? 14 : 8;
-    const strideAmp = gesture === 'run' ? 0.75 : 0.45;
+    const isMoving = targetGesture === 'walk' || targetGesture === 'run';
+    const cadence = targetGesture === 'run' ? 14 : 8;
+    const strideAmp = targetGesture === 'run' ? 0.75 : 0.45;
 
     if (isMoving && isAlive) {
       const swing = Math.sin(time * cadence) * strideAmp;
