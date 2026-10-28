@@ -532,8 +532,8 @@ export default function Avatar3D({
       <Billboard position={[0, 2.35, 0]} follow={true}>
         <Text
           fontSize={0.24}
-          color={isAdmin ? '#ef4444' : isCurrentPlayer ? '#f87171' : '#f4f4f5'}
-          outlineWidth={0.03}
+          color="#ffffff"
+          outlineWidth={0.04}
           outlineColor="#000000"
           anchorX="center"
           anchorY="bottom"

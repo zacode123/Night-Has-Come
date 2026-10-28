@@ -365,11 +365,7 @@ export default function AdminPage() {
     setIsStarting(false);
     if (res.success) {
       notify('Game started successfully!', 'success');
-      try {
-        sessionStorage.setItem('isAdmin', 'true');
-        localStorage.setItem('isAdmin', 'true');
-      } catch (_) {}
-      router.push(`/game/${selectedRoomId}?admin=true`);
+      router.push(`/game/${selectedRoomId}`);
     } else {
       notify(res.error || 'Failed to start game', 'error');
     }

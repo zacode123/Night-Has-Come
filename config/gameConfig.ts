@@ -6,6 +6,7 @@ export const gameConfig = {
   nightDuration: 30, // seconds
   dayDuration: 60, // seconds
   voteDuration: 30, // seconds
+  warmupDuration: 60, // seconds
   chatEnabled: true,
   voiceEnabled: true,
   soundEnabled: true,

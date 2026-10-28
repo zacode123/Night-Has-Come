@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { getServiceSupabase } from '@/lib/supabaseClient';
+import { GameEngine } from '@/lib/gameEngine';
 
 const supabaseAdmin = getServiceSupabase();
 
@@ -179,15 +180,27 @@ export async function startGame(roomId: string) {
     .eq('status', 'approved');
 
   if (!players || players.length < 3) {
-    return { success: false, error: 'Not enough players' };
+    return { success: false, error: 'Need at least 3 players (1 Mafia and 2 Citizens) to start' };
   }
 
+  // Assign roles ensuring minimum 1 Mafia and 2 Citizens
+  const assignedPlayers = GameEngine.assignRoles(players);
+
+  // Update assigned roles in database
+  for (const player of assignedPlayers) {
+    await supabaseAdmin
+      .from('players')
+      .update({ role: player.role, alive: true })
+      .eq('id', player.id);
+  }
+
+  // Set room to in_game and Warmup phase (60 seconds)
   const { error } = await supabaseAdmin
     .from('rooms')
     .update({
       status: 'in_game',
-      phase: 'DAY',
-      day_number: 1
+      phase: 'Warmup',
+      day_number: 1,
     })
     .eq('id', roomId);
 

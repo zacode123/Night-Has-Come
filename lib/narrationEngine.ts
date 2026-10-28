@@ -187,38 +187,38 @@ class NarrationEngine {
       {
         id: 'start',
         title: 'GAME OFFICIALLY STARTED',
-        subtitle: 'The 60-second warmup is over. The retreat center lockdown has commenced!',
-        text: 'The 60-second warmup is finished. The game has officially started!',
+        subtitle: 'The 60-second warmup has ended. The game has officially started!',
+        text: 'The 60-second warmup is complete. The game has officially started!',
       },
       {
         id: 'warning',
         title: '⚠️ CRITICAL WARNING',
         subtitle: 'Everyone must follow the rules, otherwise you will face instant execution!',
-        text: 'Attention all guests! Everyone must follow the rules, otherwise you will be immediately eliminated and face instant execution!',
+        text: 'Everyone must follow the rules, otherwise you will face instant execution!',
       },
       {
         id: 'objective',
         title: 'RULE 1: OBJECTIVE',
         subtitle: 'Citizens must vote out all Mafia. Mafia must eliminate Citizens to gain control.',
-        text: 'Rule 1: Citizens must work together to find and vote out every Mafia member. The Mafia wins if they eliminate the Citizens.',
+        text: 'Rule 1: Objective. Citizens must work together to find and vote out every Mafia member. The Mafia wins if they eliminate the Citizens.',
       },
       {
         id: 'roles',
         title: 'RULE 2: SPECIAL ROLES',
-        subtitle: 'Mafia strikes at night. Doctor shields from death. Police investigates true identities.',
-        text: 'Rule 2: Each night, the Mafia secretly strikes. The Doctor can shield and heal one person. The Police investigates suspects in secret.',
+        subtitle: 'Mafia strikes secretly at night. Doctor shields from death. Police investigates true identities.',
+        text: 'Rule 2: Special Roles. Each night, the Mafia secretly strikes. The Doctor can shield and protect one person. The Police investigates suspects to uncover their true identity.',
       },
       {
         id: 'cycle',
-        title: 'RULE 3: DAILY CYCLE & VOTING',
-        subtitle: 'Night Curfew, Morning Casualty Report, Discussion, and Voting before Curfew.',
-        text: 'Rule 3: During discussion, share clues and cross-examine alibis. During voting, everyone votes on who to eliminate. The player with the most votes is executed!',
+        title: 'RULE 3: DAILY ROUND CYCLE & VOTING',
+        subtitle: 'Night Curfew, Morning Casualty Report, Discussion, and Mandatory Voting before Curfew.',
+        text: 'Rule 3: Daily Round Cycle and Voting. During discussion, share clues and cross-examine alibis. During voting, everyone votes on who to eliminate. The player with the most votes is executed!',
       },
       {
         id: 'ready',
-        title: 'PREPARE YOURSELVES: GAME HAS BEGUN',
-        subtitle: 'Be ready! Enter your quarters, keep doors locked, and prepare for night curfew.',
-        text: 'Be ready! The game has officially begun! Prepare for night curfew, head to your quarters, and stay on guard.',
+        title: 'BE READY: GAME HAS BEGUN',
+        subtitle: 'Enter your quarters immediately, keep doors locked, and prepare for night curfew!',
+        text: 'Be ready! The game has begun! Head immediately to your quarters, secure and lock your doors, and prepare for night curfew!',
       },
     ];
   }
@@ -231,8 +231,8 @@ class NarrationEngine {
       case 'Warmup':
         return {
           title: 'PRE-GAME WARMUP (60 SECONDS)',
-          subtitle: 'All required players have joined! The game will start in 60 seconds. Late entry is closed.',
-          voice: 'All required players have joined. The game will be starting in 60 seconds, and no further players will be accepted after the match has begun.',
+          subtitle: 'All required players have joined! The game will be starting in 60 seconds, and no further players will be accepted after the match has begun.',
+          voice: 'All required players have joined! The game will be starting in 60 seconds, and no further players will be accepted after the match has begun.',
         };
       case 'Night':
         return {

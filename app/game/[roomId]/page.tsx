@@ -17,6 +17,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { audioEngine } from '@/lib/audioEngine';
 import { narrationEngine } from '@/lib/narrationEngine';
 import { GameEngine } from '@/lib/gameEngine';
+import { checkAdminStatus } from '@/app/admin/actions';
 import GameBoard from '@/components/GameBoard';
 import ChatTab from '@/components/ChatTab';
 import AnnouncementBanner from '@/components/AnnouncementBanner';
@@ -98,17 +99,19 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
 
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Initialize Auth & Player ID
+  // Secure Authentication & Admin Verification via signed httpOnly cookie
   useEffect(() => {
     const checkUser = async () => {
-      const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const hasAdminParam = params?.get('admin') === 'true';
-      const hasAdminSession = typeof window !== 'undefined' && (sessionStorage.getItem('isAdmin') === 'true' || localStorage.getItem('isAdmin') === 'true');
-      const userIsAdmin = Boolean(hasAdminParam || hasAdminSession);
-      if (userIsAdmin) {
-        setIsAdmin(true);
+      // 1. Strictly verify admin privileges via signed server-side session cookie (No client spoofing!)
+      let userIsAdmin = false;
+      try {
+        userIsAdmin = await checkAdminStatus();
+        setIsAdmin(Boolean(userIsAdmin));
+      } catch (_) {
+        setIsAdmin(false);
       }
 
+      // 2. Fetch authenticated Supabase session or locally assigned player ID
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         const localId = localStorage.getItem('playerId');
@@ -402,7 +405,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
             <Timer
               duration={getPhaseDuration(gameState.phase)}
               onExpire={handleAutoAdvance}
-              isActive={!isRulesIntroActive && gameState.phase !== 'GameEnd'}
+              isActive={!isRulesIntroActive && gameState.phase !== 'GameEnd' && (gameState.phase === 'Warmup' ? players.length >= 3 : true)}
             />
           </div>
 

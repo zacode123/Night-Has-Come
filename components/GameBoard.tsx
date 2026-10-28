@@ -149,6 +149,7 @@ function WorldController({
         camDiff = Math.atan2(Math.sin(camDiff), Math.cos(camDiff));
         camYawRef.current = cyaw + camDiff * Math.min(1, dt * 2.2);
       } else {
+        // First Person: Camera always matches model heading
         camYawRef.current = nextRot;
       }
     } else {
@@ -158,6 +159,19 @@ function WorldController({
 
       if (Math.abs(velocityRef.current.x) < 0.02) velocityRef.current.x = 0;
       if (Math.abs(velocityRef.current.z) < 0.02) velocityRef.current.z = 0;
+    }
+
+    // 3. Update camera yaw only if moving forward (Standard 3rd person stability)
+    // This fixes the "starting to rotate" issue when moving sideways!
+    if (cameraMode === 'thirdPerson' && hasInput && isAlive) {
+      const isMovingForward = stickY > 0.4;
+      if (isMovingForward) {
+        const currentHeading = playerRotRef.current ?? 0;
+        let camDiff = currentHeading - cyaw;
+        camDiff = Math.atan2(Math.sin(camDiff), Math.cos(camDiff));
+        // Slow camera rotation follow (only when moving forward)
+        camYawRef.current = cyaw + camDiff * Math.min(1, dt * 1.8);
+      }
     }
 
     const currentSpeed = Math.hypot(velocityRef.current.x, velocityRef.current.z);
