@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Volume2, VolumeX, Radio, Shield, Skull, Heart, Search, HelpCircle, AlertCircle } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Volume2, VolumeX, Radio, Shield, Skull, Heart, Search } from 'lucide-react';
 import { narrationEngine } from '@/lib/narrationEngine';
 
 interface AnnouncementBannerProps {
@@ -10,6 +10,7 @@ interface AnnouncementBannerProps {
   dayNumber: number;
   playerRole?: string | null;
   customAlert?: string | null;
+  playerCount?: number;
   onClearCustomAlert?: () => void;
 }
 
@@ -18,6 +19,7 @@ export default function AnnouncementBanner({
   dayNumber,
   playerRole,
   customAlert,
+  playerCount = 1,
   onClearCustomAlert,
 }: AnnouncementBannerProps) {
   const [generalAnnouncement, setGeneralAnnouncement] = useState({
@@ -30,7 +32,17 @@ export default function AnnouncementBanner({
 
   // Update general instruction and role instruction on phase or role change
   useEffect(() => {
-    const generalData = narrationEngine.getGeneralInstruction(phase, dayNumber);
+    let generalData = narrationEngine.getGeneralInstruction(phase, dayNumber);
+
+    // If in Warmup and minimum players have NOT joined yet, show waiting banner
+    if (phase === 'Warmup' && playerCount < 3) {
+      generalData = {
+        title: 'WAITING FOR PLAYERS (MINIMUM 3 REQUIRED)',
+        subtitle: `Only ${playerCount} player${playerCount === 1 ? '' : 's'} joined. Need at least 3 players (1 Mafia, 2 Citizens) to begin the 60-second warmup countdown.`,
+        voice: '',
+      };
+    }
+
     const roleText = narrationEngine.getRoleInstruction(playerRole, phase);
 
     setGeneralAnnouncement({
@@ -39,14 +51,14 @@ export default function AnnouncementBanner({
     });
     setRoleDirective(roleText);
 
-    // Speak phase instruction once on phase change if narration is active and no emergency alert
-    if (!isMuted && !customAlert) {
+    // Speak phase instruction once on phase change (EXCEPT Warmup, which is strictly managed by page.tsx when 3 players join)
+    if (!isMuted && !customAlert && phase !== 'Warmup') {
       setIsSpeaking(true);
       narrationEngine.speak(generalData.voice);
       const timer = setTimeout(() => setIsSpeaking(false), 5000);
       return () => clearTimeout(timer);
     }
-  }, [phase, dayNumber, playerRole, isMuted, customAlert]);
+  }, [phase, dayNumber, playerRole, isMuted, customAlert, playerCount]);
 
   // Handle custom alerts (e.g. casualty report, execution announcement)
   useEffect(() => {
@@ -68,7 +80,7 @@ export default function AnnouncementBanner({
     }
   }, [customAlert, isMuted, onClearCustomAlert]);
 
-  // Subscribe to live broadcast announcements (UI text update only, no duplicate TTS call!)
+  // Subscribe to live broadcast announcements (UI text update only, no duplicate TTS call)
   useEffect(() => {
     const unsubscribe = narrationEngine.subscribe(({ title, message, roleDirective: rDir }) => {
       setGeneralAnnouncement({ title, subtitle: message });
@@ -84,7 +96,9 @@ export default function AnnouncementBanner({
     if (isMuted) {
       setIsMuted(false);
       const generalData = narrationEngine.getGeneralInstruction(phase, dayNumber);
-      narrationEngine.speak(generalData.voice);
+      if (generalData.voice && (phase !== 'Warmup' || playerCount >= 3)) {
+        narrationEngine.speak(generalData.voice);
+      }
     } else {
       setIsMuted(true);
       narrationEngine.stop();
@@ -117,7 +131,9 @@ export default function AnnouncementBanner({
       case 'Morning':
         return 'from-amber-950/85 via-black to-zinc-950/85 border-amber-600/50';
       case 'Warmup':
-        return 'from-amber-950/80 via-black to-zinc-950/80 border-amber-500/40';
+        return playerCount < 3
+          ? 'from-zinc-900/90 via-black to-zinc-900/90 border-zinc-700/50'
+          : 'from-amber-950/80 via-black to-zinc-950/80 border-amber-500/40';
       default:
         return 'from-zinc-950/90 via-black to-red-950/80 border-red-500/40';
     }

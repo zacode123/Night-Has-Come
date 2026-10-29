@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
-import { Lock, Unlock, ShieldAlert } from 'lucide-react';
+import { Lock, Unlock, ShieldAlert, MapPin } from 'lucide-react';
 import Avatar3D from '@/components/Avatar3D';
 import VirtualJoystick from '@/components/VirtualJoystick';
 import {
@@ -41,6 +41,47 @@ interface GameBoardProps {
   isAdmin?: boolean;
   onUpdatePosition?: (pos: { x: number; z: number; rotation: number; gesture: string }) => void;
   onRoleAction?: (action: 'attack' | 'heal' | 'investigate', targetId: string) => void;
+}
+
+function getChamberDetails(chamber: string) {
+  switch (chamber) {
+    case 'Grand Gallery':
+      return {
+        label: 'Grand Gallery',
+        subtitle: 'Main central hall connecting all rooms',
+        tag: 'CENTRAL CORRIDOR',
+      };
+    case 'Master Study':
+      return {
+        label: 'Master Study',
+        subtitle: 'West wing private room with study desks',
+        tag: 'WEST WING',
+      };
+    case 'Surveillance Salon':
+      return {
+        label: 'Surveillance Salon',
+        subtitle: 'East security observation room',
+        tag: 'EAST WING',
+      };
+    case 'Dining Hall':
+      return {
+        label: 'Dining Hall',
+        subtitle: 'Southwest communal room & banquet tables',
+        tag: 'SOUTHWEST ROOM',
+      };
+    case 'Apothecary Infirmary':
+      return {
+        label: 'Apothecary Infirmary',
+        subtitle: 'Southeast medical recovery clinic',
+        tag: 'SOUTHEAST CLINIC',
+      };
+    default:
+      return {
+        label: chamber,
+        subtitle: 'Retreat Center Room',
+        tag: 'MANOR LOCATION',
+      };
+  }
 }
 
 // -------------------------------------------------------------
@@ -110,14 +151,29 @@ function WorldController({
     if (keysDown.current?.['a'] || keysDown.current?.['arrowleft']) stickX -= 1;
     if (keysDown.current?.['d'] || keysDown.current?.['arrowright']) stickX += 1;
 
-    // 2. Camera-Relative Joystick Steering Math:
-    // Screen input: stickY is forward (+1) into screen, stickX is right (+1)
-    // Transform with current camera yaw camYawRef.current:
-    const cyaw = camYawRef.current ?? 0;
-    const worldDirX = stickX * Math.cos(cyaw) + stickY * Math.sin(cyaw);
-    const worldDirZ = -stickX * Math.sin(cyaw) + stickY * Math.cos(cyaw);
+    // 2. Direct Joystick Directional Translation & Turning Math:
+    // Screen inputs: stickX (+1 = Right, -1 = Left), stickY (+1 = Forward/North, -1 = Backward/South)
+    let worldDirX = 0;
+    let worldDirZ = 0;
 
-    const inputLength = Math.hypot(worldDirX, worldDirZ);
+    if (cameraMode === 'firstPerson') {
+      // In first-person: left/right turns player heading, forward/backward moves along heading
+      if (Math.abs(stickX) > 0.15) {
+        const turnSpeed = 2.4;
+        playerRotRef.current = (playerRotRef.current ?? 0) - stickX * turnSpeed * dt;
+      }
+      const curRot = playerRotRef.current ?? 0;
+      worldDirX = Math.sin(curRot) * stickY;
+      worldDirZ = Math.cos(curRot) * stickY;
+      camYawRef.current = curRot;
+    } else {
+      // In third-person: screen-relative translation directly moves character without camera spinning
+      worldDirX = stickX;
+      worldDirZ = -stickY; // Screen UP (stickY > 0) translates into the screen (-Z)
+      camYawRef.current = 0;
+    }
+
+    const inputLength = Math.hypot(stickX, stickY);
     // Deadzone 0.15: completely prevents flipping or jitter when player is at rest!
     const hasInput = inputLength >= 0.15 && isAlive;
 
@@ -135,22 +191,14 @@ function WorldController({
       velocityRef.current.x += (targetVx - velocityRef.current.x) * Math.min(1, acceleration * dt);
       velocityRef.current.z += (targetVz - velocityRef.current.z) * Math.min(1, acceleration * dt);
 
-      // Character heading smoothly faces the movement vector
-      const targetAngle = Math.atan2(normX, normZ);
-      const currentRot = playerRotRef.current ?? 0;
-      let angleDiff = targetAngle - currentRot;
-      angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-      const nextRot = currentRot + angleDiff * Math.min(1, dt * 14);
-      playerRotRef.current = nextRot;
-
-      // Smooth third-person camera trailing when moving
+      // Character heading smoothly faces the movement vector in third-person
       if (cameraMode === 'thirdPerson') {
-        let camDiff = nextRot - cyaw;
-        camDiff = Math.atan2(Math.sin(camDiff), Math.cos(camDiff));
-        camYawRef.current = cyaw + camDiff * Math.min(1, dt * 2.2);
-      } else {
-        // First Person: Camera always matches model heading
-        camYawRef.current = nextRot;
+        const targetAngle = Math.atan2(normX, normZ);
+        const currentRot = playerRotRef.current ?? 0;
+        let angleDiff = targetAngle - currentRot;
+        angleDiff = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
+        const nextRot = currentRot + angleDiff * Math.min(1, dt * 14);
+        playerRotRef.current = nextRot;
       }
     } else {
       // AT REST: Heading is LOCKED. Camera yaw is LOCKED. ZERO flicker, ZERO flips!
@@ -159,19 +207,6 @@ function WorldController({
 
       if (Math.abs(velocityRef.current.x) < 0.02) velocityRef.current.x = 0;
       if (Math.abs(velocityRef.current.z) < 0.02) velocityRef.current.z = 0;
-    }
-
-    // 3. Update camera yaw only if moving forward (Standard 3rd person stability)
-    // This fixes the "starting to rotate" issue when moving sideways!
-    if (cameraMode === 'thirdPerson' && hasInput && isAlive) {
-      const isMovingForward = stickY > 0.4;
-      if (isMovingForward) {
-        const currentHeading = playerRotRef.current ?? 0;
-        let camDiff = currentHeading - cyaw;
-        camDiff = Math.atan2(Math.sin(camDiff), Math.cos(camDiff));
-        // Slow camera rotation follow (only when moving forward)
-        camYawRef.current = cyaw + camDiff * Math.min(1, dt * 1.8);
-      }
     }
 
     const currentSpeed = Math.hypot(velocityRef.current.x, velocityRef.current.z);
@@ -275,10 +310,9 @@ function WorldController({
     } else {
       const distance = 7.2;
       const height = 5.2;
-      const camAngle = camYawRef.current ?? 0;
-      const targetCamX = px - Math.sin(camAngle) * distance;
-      const targetCamZ = pz - Math.cos(camAngle) * distance;
+      const targetCamX = px;
       const targetCamY = py + height;
+      const targetCamZ = pz + distance;
 
       camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, Math.min(1, dt * 10));
       camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, Math.min(1, dt * 10));
@@ -1123,10 +1157,30 @@ export default function GameBoard({
           })}
       </Canvas>
 
-      {/* Top Right: Manor Chamber Location Indicator */}
-      <div className="absolute top-3 right-3 z-20 px-3 py-1.5 bg-black/75 border border-amber-900/40 rounded-xl text-[11px] font-mono text-amber-200 backdrop-blur-md shadow flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-        <span>{chamberName}</span>
+      {/* Top Right: Manor Chamber Location Indicator with Explicit Explanation */}
+      <div className="absolute top-3 right-3 z-20 max-w-[260px] bg-zinc-950/90 border border-amber-600/50 rounded-2xl p-2.5 backdrop-blur-md shadow-2xl flex flex-col gap-1 select-none pointer-events-none">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <MapPin size={13} className="text-amber-400 shrink-0 animate-bounce" />
+            <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-amber-400">
+              LOCATION (ROOM)
+            </span>
+          </div>
+          <span className="text-[8px] font-mono px-1.5 py-0.5 rounded bg-amber-950/80 border border-amber-500/40 text-amber-300">
+            {getChamberDetails(chamberName).tag}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <span className="text-xs sm:text-sm font-black font-mono text-white tracking-wide truncate">
+            {getChamberDetails(chamberName).label}
+          </span>
+        </div>
+
+        <p className="text-[10px] text-zinc-400 leading-tight">
+          {getChamberDetails(chamberName).subtitle}
+        </p>
       </div>
 
       {/* Virtual Joystick for Touch and Mouse Controls with Bottom Perspective Toggle */}

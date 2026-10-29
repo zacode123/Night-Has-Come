@@ -15,33 +15,10 @@ export interface AnnouncementStep {
 
 class NarrationEngine {
   private listeners: Set<NarrationListener> = new Set();
-  private customTtsEndpoint: string | null = null;
   private currentAudio: HTMLAudioElement | null = null;
   private isSequencePlaying = false;
-
-  constructor() {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('night_has_come_custom_tts');
-      if (stored) {
-        this.customTtsEndpoint = stored;
-      }
-    }
-  }
-
-  public setCustomTtsEndpoint(endpoint: string | null) {
-    this.customTtsEndpoint = endpoint;
-    if (typeof window !== 'undefined') {
-      if (endpoint) {
-        localStorage.setItem('night_has_come_custom_tts', endpoint);
-      } else {
-        localStorage.removeItem('night_has_come_custom_tts');
-      }
-    }
-  }
-
-  public getCustomTtsEndpoint(): string | null {
-    return this.customTtsEndpoint;
-  }
+  private lastSpokenText: string | null = null;
+  private lastSpokenTime: number = 0;
 
   public subscribe(listener: NarrationListener): () => void {
     this.listeners.add(listener);
@@ -57,74 +34,118 @@ class NarrationEngine {
     this.speak(message);
   }
 
-  private lastSpokenText: string | null = null;
-  private lastSpokenTime: number = 0;
-
+  /**
+   * Speak speech with zero echo, zero overlap, and bulletproof audio fallback
+   */
   public async speak(text: string, onEnd?: () => void) {
     if (typeof window === 'undefined' || !text) {
       if (onEnd) onEnd();
       return;
     }
 
-    const now = Date.now();
-    // Prevent identical text from echoing or playing twice simultaneously within 1.2 seconds
-    if (this.lastSpokenText === text && now - this.lastSpokenTime < 1200) {
-      if (onEnd) setTimeout(onEnd, 1000);
+    const trimmed = text.trim();
+    if (!trimmed) {
+      if (onEnd) onEnd();
       return;
     }
 
-    this.lastSpokenText = text;
+    const now = Date.now();
+    // Prevent identical text from echoing or playing twice simultaneously within 1.5 seconds
+    if (this.lastSpokenText === trimmed && now - this.lastSpokenTime < 1500) {
+      if (onEnd) setTimeout(onEnd, 800);
+      return;
+    }
+
+    this.lastSpokenText = trimmed;
     this.lastSpokenTime = now;
 
-    // Immediately stop any currently playing narration audio
+    // Immediately stop any currently playing narration audio and cancel browser speech
     this.stop();
 
-    // STRICT EXCLUSIVE TTS ENDPOINT (/api/tts with Joey voice)
+    let finished = false;
+    const finish = () => {
+      if (!finished) {
+        finished = true;
+        this.currentAudio = null;
+        if (onEnd) onEnd();
+      }
+    };
+
+    // Client-side Browser SpeechSynthesis Fallback Function
+    const fallbackToSpeechSynthesis = () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(trimmed);
+          utterance.rate = 1.0;
+          utterance.pitch = 1.0;
+          utterance.lang = 'en-US';
+
+          // Try to select an English voice
+          const voices = window.speechSynthesis.getVoices();
+          const enVoice = voices.find((v) => v.lang.startsWith('en') && !v.name.includes('Google') && v.name.includes('Natural')) ||
+            voices.find((v) => v.lang.startsWith('en'));
+          if (enVoice) {
+            utterance.voice = enVoice;
+          }
+
+          utterance.onend = () => finish();
+          utterance.onerror = () => finish();
+
+          window.speechSynthesis.speak(utterance);
+          return;
+        } catch (_) {
+          finish();
+        }
+      } else {
+        finish();
+      }
+    };
+
+    // 1. Attempt Primary Voice API endpoint
     try {
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice: 'Joey' }),
+        body: JSON.stringify({ text: trimmed, voice: 'Joey' }),
       });
 
       if (res.ok) {
         const data = await res.json();
-        const src = data.audioUrl || (data.audio?.startsWith('data:') ? data.audio : data.audio ? `data:audio/mpeg;base64,${data.audio}` : null);
+        const src =
+          data.audioUrl ||
+          (data.audio?.startsWith('data:')
+            ? data.audio
+            : data.audio
+            ? `data:audio/mpeg;base64,${data.audio}`
+            : null);
+
         if (src) {
           const audio = new Audio(src);
           this.currentAudio = audio;
-          let finished = false;
-
-          const finish = () => {
-            if (!finished) {
-              finished = true;
-              if (this.currentAudio === audio) {
-                this.currentAudio = null;
-              }
-              if (onEnd) onEnd();
-            }
-          };
 
           audio.onended = finish;
           audio.onerror = () => {
-            finish();
+            console.warn('Audio tag playback error, attempting browser speech synthesis');
+            fallbackToSpeechSynthesis();
           };
 
           const playPromise = audio.play();
           if (playPromise !== undefined) {
-            playPromise.catch((err) => {
-              console.warn('Audio playback issue:', err);
-              finish();
+            playPromise.catch((playErr) => {
+              console.warn('Autoplay prevented or audio blocked:', playErr);
+              fallbackToSpeechSynthesis();
             });
           }
           return;
         }
       }
     } catch (err) {
-      console.warn('/api/tts endpoint call error:', err);
+      console.warn('/api/tts fetch error:', err);
     }
 
-    if (onEnd) setTimeout(onEnd, 2000);
+    // 2. If endpoint fails, use Browser Speech Synthesis
+    fallbackToSpeechSynthesis();
   }
 
   public stop() {
@@ -135,6 +156,11 @@ class NarrationEngine {
         this.currentAudio.currentTime = 0;
       } catch (_) {}
       this.currentAudio = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
     }
   }
 
@@ -172,7 +198,7 @@ class NarrationEngine {
       this.speak(currentStep.text, () => {
         if (!this.isSequencePlaying) return;
         currentIndex++;
-        setTimeout(playNext, 600);
+        setTimeout(playNext, 500);
       });
     };
 
@@ -180,7 +206,7 @@ class NarrationEngine {
   }
 
   /**
-   * Full Game Start Rules & Warning Narration Sequence (Post 30s Warmup)
+   * Full Game Start Rules & Warning Narration Sequence (Simple English, direct and clear)
    */
   public getGameStartRulesSequence(): AnnouncementStep[] {
     return [
@@ -188,7 +214,7 @@ class NarrationEngine {
         id: 'start',
         title: 'GAME OFFICIALLY STARTED',
         subtitle: 'The 60-second warmup has ended. The game has officially started!',
-        text: 'The 60-second warmup is complete. The game has officially started!',
+        text: 'The 60-second warmup is over. The game has officially started!',
       },
       {
         id: 'warning',
@@ -200,75 +226,75 @@ class NarrationEngine {
         id: 'objective',
         title: 'RULE 1: OBJECTIVE',
         subtitle: 'Citizens must vote out all Mafia. Mafia must eliminate Citizens to gain control.',
-        text: 'Rule 1: Objective. Citizens must work together to find and vote out every Mafia member. The Mafia wins if they eliminate the Citizens.',
+        text: 'Rule 1: Objective. Citizens must work together to find and vote out every Mafia member. Mafia wins if they eliminate Citizens.',
       },
       {
         id: 'roles',
         title: 'RULE 2: SPECIAL ROLES',
         subtitle: 'Mafia strikes secretly at night. Doctor shields from death. Police investigates true identities.',
-        text: 'Rule 2: Special Roles. Each night, the Mafia secretly strikes. The Doctor can shield and protect one person. The Police investigates suspects to uncover their true identity.',
+        text: 'Rule 2: Special Roles. Each night, the Mafia secretly attacks. The Doctor can shield and protect one person. The Police investigates suspects to uncover their true identity.',
       },
       {
         id: 'cycle',
         title: 'RULE 3: DAILY ROUND CYCLE & VOTING',
-        subtitle: 'Night Curfew, Morning Casualty Report, Discussion, and Mandatory Voting before Curfew.',
-        text: 'Rule 3: Daily Round Cycle and Voting. During discussion, share clues and cross-examine alibis. During voting, everyone votes on who to eliminate. The player with the most votes is executed!',
+        subtitle: 'Night Curfew, Morning Roll Call, Open Discussion, and Curfew Voting.',
+        text: 'Rule 3: Daily Round Cycle. Talk and share clues during discussion. During voting, vote for who to eliminate. The player with the highest votes is executed!',
       },
       {
         id: 'ready',
         title: 'BE READY: GAME HAS BEGUN',
-        subtitle: 'Enter your quarters immediately, keep doors locked, and prepare for night curfew!',
-        text: 'Be ready! The game has begun! Head immediately to your quarters, secure and lock your doors, and prepare for night curfew!',
+        subtitle: 'Go to your room immediately, keep doors locked, and prepare for night curfew!',
+        text: 'Be ready! The game has begun! Go to your room, lock your door, and prepare for night!',
       },
     ];
   }
 
   /**
-   * Instructions for EVERYONE during each phase
+   * Instructions for EVERYONE during each phase (Clear, simple English)
    */
   public getGeneralInstruction(phase: string, dayNumber = 1): { title: string; subtitle: string; voice: string } {
     switch (phase) {
       case 'Warmup':
         return {
           title: 'PRE-GAME WARMUP (60 SECONDS)',
-          subtitle: 'All required players have joined! The game will be starting in 60 seconds, and no further players will be accepted after the match has begun.',
-          voice: 'All required players have joined! The game will be starting in 60 seconds, and no further players will be accepted after the match has begun.',
+          subtitle: 'All required players have joined! The game will start in 60 seconds.',
+          voice: 'All required players have joined! The game will start in 60 seconds. No new players can join once the game begins.',
         };
       case 'Night':
         return {
           title: `NIGHT ${dayNumber}: CURFEW HAS FALLEN`,
-          subtitle: 'Lights are out. Return to your rooms, keep doors locked, and await the morning light.',
-          voice: 'Night curfew is in effect. All citizens, remain indoors. Special roles, deploy your actions in secret.',
+          subtitle: 'Lights are out. Return to your rooms, keep doors locked, and await morning.',
+          voice: 'Night has fallen. Go inside your room and lock your door. Special roles, choose your target now.',
         };
       case 'Morning':
         return {
           title: `DAY ${dayNumber}: MORNING ROLL CALL`,
           subtitle: 'The siren sounds. Check the casualties and see who survived the night.',
-          voice: 'Morning has broken. The sirens sound. Review the casualties to see who survived the night.',
+          voice: 'Morning has come. The sirens are sounding. Check who survived the night.',
         };
       case 'Discussion':
         return {
           title: `DAY ${dayNumber}: OPEN INVESTIGATION & DISCUSSION`,
-          subtitle: 'Interrogate suspects, verify alibis, and share clues. Trust no one blindly.',
-          voice: 'Discussion time has begun. Share your alibis, question suspicious behavior, and find the killers.',
+          subtitle: 'Talk with everyone, question suspicious alibis, and find the killers.',
+          voice: 'Discussion time has begun. Talk with everyone and find the Mafia.',
         };
       case 'Voting':
         return {
           title: `DAY ${dayNumber}: CURFEW VOTING IN SESSION`,
-          subtitle: 'Cast your vote before the timer expires. The student with the most votes will be executed.',
-          voice: 'Voting is now open. Cast your vote on who you suspect the most. Every vote counts.',
+          subtitle: 'Cast your vote before time runs out. The player with the most votes will be executed.',
+          voice: 'Voting is now open. Cast your vote for the most suspicious player.',
         };
       case 'Execution':
         return {
           title: `DAY ${dayNumber}: EXECUTION OF THE CONDEMNED`,
           subtitle: 'The votes have been sealed. The condemned student faces instant execution.',
-          voice: 'The votes have been finalized. The condemned student is sentenced to execution.',
+          voice: 'The votes are in. The player with the most votes has been executed.',
         };
       case 'GameEnd':
         return {
-          title: 'SIMULATION TERMINATED',
+          title: 'SIMULATION CONCLUDED',
           subtitle: 'The retreat center night has reached its final conclusion.',
-          voice: 'The retreat center simulation has concluded. The survivors have been decided.',
+          voice: 'The game has ended. The survivors have been decided.',
         };
       default:
         return {
@@ -280,8 +306,7 @@ class NarrationEngine {
   }
 
   /**
-   * Role-specific instructions for the current player during each phase.
-   * STRICT ANTI-SPOIL GUARANTEE: Never includes usernames, only role guidance!
+   * Role-specific instructions for the current player during each phase (Simple English)
    */
   public getRoleInstruction(role: string | null | undefined, phase: string): string {
     const userRole = role || 'Citizen';
@@ -290,83 +315,81 @@ class NarrationEngine {
       case 'Mafia':
         switch (phase) {
           case 'Warmup':
-            return 'Mafia Directive: Memorize room layouts and locate isolated chambers for tonight.';
+            return 'Mafia: Memorize the room layouts and find quiet corners for tonight.';
           case 'Night':
-            return 'Mafia Directive: Move through the shadows and eliminate your target victim.';
+            return 'Mafia: Move secretly in the dark and choose your victim.';
           case 'Morning':
-            return 'Mafia Directive: Observe how survivors react to the casualty. Feign surprise.';
+            return 'Mafia: See how survivors react to the death. Act innocent.';
           case 'Discussion':
-            return 'Mafia Directive: Blend in with the Citizens. Fabricate alibis and misdirect suspicion.';
+            return 'Mafia: Blend in with the Citizens. Give fake alibis and misdirect suspicion.';
           case 'Voting':
-            return 'Mafia Directive: Vote together with the crowd or frame an innocent target to secure survival.';
+            return 'Mafia: Vote with the crowd or vote out an innocent player to stay safe.';
           case 'Execution':
-            return 'Mafia Directive: One less threat in Yooil Manor. Prepare for the next curfew.';
+            return 'Mafia: One less threat in the manor. Prepare for the next night.';
           default:
-            return 'Mafia Directive: Eliminate citizens until the mafia outnumbers them.';
+            return 'Mafia: Eliminate Citizens until you outnumber them.';
         }
 
       case 'Doctor':
         switch (phase) {
           case 'Warmup':
-            return 'Doctor Directive: Take note of trustworthy guests you may need to shield.';
+            return 'Doctor: Notice players who seem trustworthy so you can protect them.';
           case 'Night':
-            return 'Doctor Directive: Deploy medical aid! Choose one player to protect from the Mafia tonight.';
+            return 'Doctor: Choose one player to shield and protect from the Mafia tonight.';
           case 'Morning':
-            return 'Doctor Directive: Confirm whether your protected patient survived the night.';
+            return 'Doctor: Check if the player you protected survived the night.';
           case 'Discussion':
-            return 'Doctor Directive: Keep your medical identity discreet so the Mafia does not target you.';
+            return 'Doctor: Keep your role secret so the Mafia does not target you.';
           case 'Voting':
-            return 'Doctor Directive: Cast your vote against suspects to keep innocent survivors alive.';
+            return 'Doctor: Vote out suspects to keep innocent players alive.';
           case 'Execution':
-            return 'Doctor Directive: A student was sentenced. Analyze the remaining survivor count.';
+            return 'Doctor: A player was eliminated. Count the remaining survivors.';
           default:
-            return 'Doctor Directive: Protect key players each night to keep Citizens alive.';
+            return 'Doctor: Protect players each night to keep Citizens alive.';
         }
 
       case 'Police':
       case 'Detective':
         switch (phase) {
           case 'Warmup':
-            return 'Police Directive: Watch player movements and identify suspicious pairs.';
+            return 'Police: Watch player movements and notice suspicious behavior.';
           case 'Night':
-            return 'Police Directive: Conduct secret investigation! Inspect a suspect to reveal their true role.';
+            return 'Police: Check one suspect secretly tonight to learn their true identity.';
           case 'Morning':
-            return 'Police Directive: Review your investigation results from last night.';
+            return 'Police: Review your secret investigation result from last night.';
           case 'Discussion':
-            return 'Police Directive: Guide citizens toward suspects without prematurely exposing your badge.';
+            return 'Police: Lead Citizens toward the Mafia without revealing your role too early.';
           case 'Voting':
-            return 'Police Directive: Use verified intelligence to lead the vote against confirmed culprits.';
+            return 'Police: Vote against suspects you know are Mafia.';
           case 'Execution':
-            return 'Police Directive: Justice has been carried out. Keep searching for remaining Mafia.';
+            return 'Police: Justice was served. Keep searching for the remaining Mafia.';
           default:
-            return 'Police Directive: Investigate suspects each night to unmask the Mafia.';
+            return 'Police: Investigate suspects each night to unmask the Mafia.';
         }
 
       case 'Citizen':
       default:
         switch (phase) {
           case 'Warmup':
-            return 'Citizen Directive: Explore the manor, build rapport, and note where guests gather.';
+            return 'Citizen: Walk around the manor and get to know the other players.';
           case 'Night':
-            return 'Citizen Directive: Keep your chamber door locked and remain alert. Listen for footsteps.';
+            return 'Citizen: Keep your room door locked and listen carefully for footsteps.';
           case 'Morning':
-            return 'Citizen Directive: Check the casualty report and observe who looks guilty.';
+            return 'Citizen: Check the morning death report and see who looks guilty.';
           case 'Discussion':
-            return 'Citizen Directive: Cross-examine alibis, question strange movements, and deduce clues.';
+            return 'Citizen: Ask questions, check alibis, and find clues together.';
           case 'Voting':
-            return 'Citizen Directive: Vote for the most suspicious player. Eliminate all Mafia to win!';
+            return 'Citizen: Vote for the most suspicious player. Eliminate all Mafia to win!';
           case 'Execution':
-            return 'Citizen Directive: Observe the execution. Did the manor eliminate an innocent or a killer?';
+            return 'Citizen: Watch the execution. Did the group eliminate an innocent or a Mafia?';
           default:
-            return 'Citizen Directive: Work together with innocent survivors to find and eliminate all Mafia.';
+            return 'Citizen: Work with innocent players to find and eliminate all Mafia.';
         }
     }
   }
 
   /**
-   * Final Game End announcement:
-   * Announce winner team and loser team, and EXPLICITLY CONGRATULATE WINNERS BY SAYING THEIR USERNAMES!
-   * Strictly congratulates ONLY those players who were in this game session.
+   * Final Game End announcement in clear simple English
    */
   public narrateGameEnd(
     winnerTeam: 'Citizens' | 'Mafia',
@@ -375,7 +398,7 @@ class NarrationEngine {
     onEnd?: () => void
   ) {
     const winnerNames = winningPlayers.map((p) => p.username).filter(Boolean);
-    let winnerNamesText = 'the surviving champions';
+    let winnerNamesText = 'the surviving players';
 
     if (winnerNames.length === 1) {
       winnerNamesText = winnerNames[0];
@@ -387,8 +410,8 @@ class NarrationEngine {
 
     const speech =
       winnerTeam === 'Citizens'
-        ? `Game Over! The Citizens have won the game! All Mafia members have been successfully eliminated! Congratulations to our victorious winners: ${winnerNamesText}! You have survived Yooil Manor and outsmarted the darkness!`
-        : `Game Over! The Mafia has won the game! The Citizens were unable to survive the night! Congratulations to our victorious winners: ${winnerNamesText}! You have conquered the retreat center!`;
+        ? `Game over! The Citizens have won! All Mafia members are eliminated! Congratulations to our winners: ${winnerNamesText}! You survived Yooil Manor!`
+        : `Game over! The Mafia has won! All Citizens have been defeated! Congratulations to our winners: ${winnerNamesText}! You took control of Yooil Manor!`;
 
     this.speak(speech, onEnd);
   }

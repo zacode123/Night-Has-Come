@@ -48,6 +48,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const [isRulesIntroActive, setIsRulesIntroActive] = useState(false);
   const [activeRuleStep, setActiveRuleStep] = useState<number>(-1);
   const [hasVotedThisRound, setHasVotedThisRound] = useState(false);
+  const [rulesAutoCloseSeconds, setRulesAutoCloseSeconds] = useState<number | null>(null);
   const [showGameOver, setShowGameOver] = useState(false);
   const [winnerData, setWinnerData] = useState<{
     winner: 'Citizens' | 'Mafia';
@@ -192,7 +193,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
       if (players.length >= 3 && !hasAnnouncedWarmupRef.current) {
         hasAnnouncedWarmupRef.current = true;
         narrationEngine.speak(
-          'All required players have joined. The game will be starting in 60 seconds, and no further players will be accepted after the match has begun.'
+          'All required players have joined! The game will start in 60 seconds. No new players can join once the game begins.'
         );
       }
     } else {
@@ -249,6 +250,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   // Dismiss rules walkthrough and advance to night
   const handleDismissRulesAndStart = () => {
     narrationEngine.stop();
+    setRulesAutoCloseSeconds(null);
     setShowRulesModal(false);
     setIsRulesIntroActive(false);
     setActiveRuleStep(-1);
@@ -259,12 +261,13 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const handleAutoAdvance = async () => {
     if (!gameState) return;
 
-    // When 30s Warmup completes: announce game start, give warning, announce all rules, and say to be ready!
+    // When 60s Warmup completes: announce game start, give warning, announce all rules, and auto-close after 3s!
     if (gameState.phase === 'Warmup') {
       audioEngine.stopAmbient();
       audioEngine.playRoleReveal();
       setIsRulesIntroActive(true);
       setShowRulesModal(true);
+      setRulesAutoCloseSeconds(null);
 
       const sequence = narrationEngine.getGameStartRulesSequence();
       narrationEngine.speakSequence(
@@ -273,11 +276,22 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           setActiveRuleStep(stepIndex);
         },
         () => {
-          // Completed announcing all rules with warning and instruction!
-          setShowRulesModal(false);
-          setIsRulesIntroActive(false);
-          setActiveRuleStep(-1);
-          advancePhase('Night');
+          // Rule narration finished: start 3-second auto-close countdown
+          let remaining = 3;
+          setRulesAutoCloseSeconds(remaining);
+          const intervalId = setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+              clearInterval(intervalId);
+              setRulesAutoCloseSeconds(null);
+              setShowRulesModal(false);
+              setIsRulesIntroActive(false);
+              setActiveRuleStep(-1);
+              advancePhase('Night');
+            } else {
+              setRulesAutoCloseSeconds(remaining);
+            }
+          }, 1000);
         }
       );
       return;
@@ -425,6 +439,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         phase={gameState.phase}
         dayNumber={gameState.day_number}
         playerRole={currentPlayer?.role}
+        playerCount={players.length}
         customAlert={customAlert}
         onClearCustomAlert={() => setCustomAlert(null)}
       />
@@ -606,7 +621,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
         }}
       />
 
-      {/* Mandatory Game Start Rules & Warning Modal (Triggered when 30s warmup ends) */}
+      {/* Mandatory Game Start Rules & Warning Modal (Triggered when 60s warmup ends, auto-closes after 3s) */}
       <RulesBanner
         isOpen={showRulesModal}
         onClose={handleDismissRulesAndStart}
@@ -615,7 +630,7 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           narrationEngine.speakSequence(sequence, (stepIndex) => setActiveRuleStep(stepIndex));
         }}
         activeStepIndex={activeRuleStep}
-        isAutomatedIntro={isRulesIntroActive}
+        autoCloseSeconds={rulesAutoCloseSeconds}
       />
 
       {/* Game Over & Winner Congratulations Modal (Non-dismissable, STOP GAME button for Admin) */}

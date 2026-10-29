@@ -59,6 +59,8 @@ export default function Avatar3D({
   const rightHipRef = useRef<THREE.Group>(null);
   const leftKneeRef = useRef<THREE.Group>(null);
   const rightKneeRef = useRef<THREE.Group>(null);
+  const leftAnkleRef = useRef<THREE.Group>(null);
+  const rightAnkleRef = useRef<THREE.Group>(null);
 
   const actionRingRef = useRef<THREE.Mesh>(null);
 
@@ -197,68 +199,82 @@ export default function Avatar3D({
       bodyGroupRef.current.rotation.y += diff * Math.min(1, delta * 18);
     }
 
-    // Kinematic Joint Animations
+    // Realistic Human Kinematic Joint Animations
     const time = performance.now() / 1000;
     const isMoving = targetGesture === 'walk' || targetGesture === 'run';
-    const cadence = targetGesture === 'run' ? 14 : 8;
-    const strideAmp = targetGesture === 'run' ? 0.75 : 0.45;
+    const cadence = targetGesture === 'run' ? 13.5 : 8.5;
+    const strideAmp = targetGesture === 'run' ? 0.72 : 0.44;
 
     if (isMoving && isAlive) {
       const swing = Math.sin(time * cadence) * strideAmp;
 
-      // Leg Hips & Knees
-      if (leftHipRef.current) leftHipRef.current.rotation.x = -swing;
-      if (rightHipRef.current) rightHipRef.current.rotation.x = swing;
+      // Leg Hips: Forward stride and backward push
+      if (leftHipRef.current) leftHipRef.current.rotation.x = swing;
+      if (rightHipRef.current) rightHipRef.current.rotation.x = -swing;
 
-      // Dynamic Knee Flexion (bend knee when leg moves forward)
+      // Realistic Human Knee Flexion (Knee bends backwards during recovery and trail)
+      // When leg swings forward (swing > 0), knee flexes slightly to clear ground, then extends at plant
+      // When leg trails backward (swing < 0), knee flexes back to push off
       if (leftKneeRef.current) {
-        leftKneeRef.current.rotation.x = swing < 0 ? Math.abs(swing) * 0.8 : 0;
+        leftKneeRef.current.rotation.x = swing < 0 ? Math.abs(swing) * 0.9 : Math.max(0, swing * 0.3);
       }
       if (rightKneeRef.current) {
-        rightKneeRef.current.rotation.x = swing > 0 ? Math.abs(swing) * 0.8 : 0;
+        rightKneeRef.current.rotation.x = swing > 0 ? Math.abs(swing) * 0.9 : Math.max(0, -swing * 0.3);
       }
 
-      // Arms & Forearms (Counter-swing with natural bend)
-      if (leftShoulderRef.current) leftShoulderRef.current.rotation.x = swing * 0.85;
-      if (rightShoulderRef.current) rightShoulderRef.current.rotation.x = -swing * 0.85;
+      // Human Ankle Roll (Heel-strike at front, toe push-off at back)
+      if (leftAnkleRef.current) {
+        leftAnkleRef.current.rotation.x = swing > 0 ? -0.22 : 0.28;
+      }
+      if (rightAnkleRef.current) {
+        rightAnkleRef.current.rotation.x = swing < 0 ? -0.22 : 0.28;
+      }
+
+      // Arms & Forearms (Counter-swing with natural elbow flex)
+      if (leftShoulderRef.current) leftShoulderRef.current.rotation.x = -swing * 0.75;
+      if (rightShoulderRef.current) rightShoulderRef.current.rotation.x = swing * 0.75;
 
       if (leftElbowRef.current) {
-        leftElbowRef.current.rotation.x = swing > 0 ? swing * 0.4 : 0.1;
+        leftElbowRef.current.rotation.x = 0.25 + Math.max(0, -swing * 0.45);
       }
       if (rightElbowRef.current) {
-        rightElbowRef.current.rotation.x = swing < 0 ? -swing * 0.4 : 0.1;
+        rightElbowRef.current.rotation.x = 0.25 + Math.max(0, swing * 0.45);
       }
 
-      // Torso Walk Bobbing & Leaning
+      // Torso Walk Dynamics: Pelvic bobbing, natural forward lean, and lateral balance
       if (torsoRef.current) {
         torsoRef.current.position.y = 0.75 + Math.abs(Math.sin(time * cadence * 2)) * 0.05;
-        torsoRef.current.rotation.x = gesture === 'run' ? 0.18 : 0.06; // Forward lean
-        torsoRef.current.rotation.y = Math.sin(time * cadence) * 0.05; // Pelvis sway
+        torsoRef.current.rotation.x = targetGesture === 'run' ? 0.22 : 0.09; // Realistic forward lean
+        torsoRef.current.rotation.y = -Math.sin(time * cadence) * 0.06; // Pelvic rotation
+        torsoRef.current.rotation.z = Math.sin(time * cadence) * 0.03; // Lateral weight shift
       }
     } else {
-      // Idle Breathing & Natural Posture
-      const breathe = Math.sin(time * 2.2) * 0.03;
+      // Idle Breathing & Natural Human Posture
+      const breathe = Math.sin(time * 2.2) * 0.025;
 
       if (leftHipRef.current) leftHipRef.current.rotation.x = 0;
       if (rightHipRef.current) rightHipRef.current.rotation.x = 0;
       if (leftKneeRef.current) leftKneeRef.current.rotation.x = 0;
       if (rightKneeRef.current) rightKneeRef.current.rotation.x = 0;
+      if (leftAnkleRef.current) leftAnkleRef.current.rotation.x = 0;
+      if (rightAnkleRef.current) rightAnkleRef.current.rotation.x = 0;
 
       if (leftShoulderRef.current) {
         leftShoulderRef.current.rotation.x = breathe;
-        leftShoulderRef.current.rotation.z = -0.05;
+        leftShoulderRef.current.rotation.z = -0.06;
       }
       if (rightShoulderRef.current) {
         rightShoulderRef.current.rotation.x = breathe;
-        rightShoulderRef.current.rotation.z = 0.05;
+        rightShoulderRef.current.rotation.z = 0.06;
       }
-      if (leftElbowRef.current) leftElbowRef.current.rotation.x = 0.15;
-      if (rightElbowRef.current) rightElbowRef.current.rotation.x = 0.15;
+      if (leftElbowRef.current) leftElbowRef.current.rotation.x = 0.20;
+      if (rightElbowRef.current) rightElbowRef.current.rotation.x = 0.20;
 
       if (torsoRef.current) {
-        torsoRef.current.position.y = 0.75 + breathe * 0.3;
-        torsoRef.current.rotation.x = breathe * 0.5;
+        torsoRef.current.position.y = 0.75 + breathe * 0.2;
+        torsoRef.current.rotation.x = 0.03 + breathe * 0.4;
         torsoRef.current.rotation.y = 0;
+        torsoRef.current.rotation.z = 0;
       }
     }
 
@@ -334,10 +350,16 @@ export default function Avatar3D({
                 <meshStandardMaterial color={pantsColor} roughness={0.7} />
               </mesh>
 
-              {/* Chest / Jacket Body */}
+              {/* Chest / Jacket Body with Seams */}
               <mesh position={[0, 0.35, 0]} castShadow>
                 <boxGeometry args={[0.50, 0.52, 0.32]} />
                 <meshStandardMaterial color={shirtColor} roughness={0.6} />
+              </mesh>
+
+              {/* Front Tie / School Uniform Placket (Prominent Front Indicator) */}
+              <mesh position={[0, 0.36, 0.17]} castShadow>
+                <boxGeometry args={[0.10, 0.24, 0.03]} />
+                <meshStandardMaterial color={personalityColor} roughness={0.4} />
               </mesh>
 
               {/* Collar Accent */}
@@ -346,15 +368,31 @@ export default function Avatar3D({
                 <meshStandardMaterial color={personalityColor} roughness={0.5} />
               </mesh>
 
-              {/* Head with Profile Faceplate */}
+              {/* Head with Profile Faceplate & Distinctive Front vs Back Geometry */}
               <group position={[0, 0.95, 0]}>
-                {/* Cranium */}
+                {/* Cranium Core */}
                 <mesh castShadow>
                   <boxGeometry args={[0.44, 0.44, 0.44]} />
                   <meshStandardMaterial
                     color={isBot ? '#0f172a' : '#18181b'}
                     roughness={0.4}
                   />
+                </mesh>
+
+                {/* Back of Head: 3D Hair / Hood Volume (Prominent Back Indicator) */}
+                <mesh position={[0, 0.04, -0.12]} castShadow>
+                  <boxGeometry args={[0.46, 0.44, 0.24]} />
+                  <meshStandardMaterial color={isBot ? '#0284c7' : '#18181b'} roughness={0.9} />
+                </mesh>
+                <mesh position={[0, -0.18, -0.08]} castShadow>
+                  <boxGeometry args={[0.34, 0.18, 0.16]} />
+                  <meshStandardMaterial color={isBot ? '#0284c7' : '#18181b'} roughness={0.9} />
+                </mesh>
+
+                {/* Front Brow / Visor Ridge */}
+                <mesh position={[0, 0.20, 0.23]} castShadow>
+                  <boxGeometry args={[0.42, 0.06, 0.06]} />
+                  <meshStandardMaterial color={isBot ? '#06b6d4' : '#27272a'} roughness={0.5} />
                 </mesh>
 
                 {/* Front Face Plate with Photo / Bot Logo Texture */}
@@ -368,7 +406,7 @@ export default function Avatar3D({
                 </mesh>
 
                 {/* Back of Head Accent Badge */}
-                <mesh position={[0, 0, -0.23]} rotation={[0, Math.PI, 0]}>
+                <mesh position={[0, 0, -0.25]} rotation={[0, Math.PI, 0]}>
                   <planeGeometry args={[0.34, 0.34]} />
                   <meshBasicMaterial color={personalityColor} />
                 </mesh>
@@ -477,16 +515,29 @@ export default function Avatar3D({
                   <meshStandardMaterial color={pantsColor} roughness={0.7} />
                 </mesh>
 
-                {/* Modeled Foot & Shoe */}
-                <group position={[0, -0.32, 0]}>
-                  {/* Shoe Upper / Body */}
-                  <mesh position={[0, 0, 0.04]} castShadow>
-                    <boxGeometry args={[0.16, 0.10, 0.24]} />
+                {/* Articulated Foot & Ankle Joint (Heel, Forward-Pointing Toe Box, Sole) */}
+                <group ref={leftAnkleRef} position={[0, -0.32, 0]}>
+                  {/* Heel (Back) */}
+                  <mesh position={[0, 0, -0.05]} castShadow>
+                    <boxGeometry args={[0.15, 0.11, 0.14]} />
                     <meshStandardMaterial color={shoeColor} roughness={0.5} />
                   </mesh>
+
+                  {/* Toe Box (Extending Forward - Unmistakably points forward!) */}
+                  <mesh position={[0, -0.015, 0.11]} castShadow>
+                    <boxGeometry args={[0.14, 0.08, 0.18]} />
+                    <meshStandardMaterial color={shoeColor} roughness={0.5} />
+                  </mesh>
+
+                  {/* Shoe Laces / Tongue */}
+                  <mesh position={[0, 0.04, 0.04]} castShadow>
+                    <boxGeometry args={[0.08, 0.03, 0.10]} />
+                    <meshStandardMaterial color="#ffffff" roughness={0.3} />
+                  </mesh>
+
                   {/* Rubber Sole */}
-                  <mesh position={[0, -0.06, 0.04]} castShadow receiveShadow>
-                    <boxGeometry args={[0.17, 0.04, 0.26]} />
+                  <mesh position={[0, -0.065, 0.05]} castShadow receiveShadow>
+                    <boxGeometry args={[0.16, 0.035, 0.30]} />
                     <meshStandardMaterial color={soleColor} roughness={0.8} />
                   </mesh>
                 </group>
@@ -509,16 +560,29 @@ export default function Avatar3D({
                   <meshStandardMaterial color={pantsColor} roughness={0.7} />
                 </mesh>
 
-                {/* Modeled Foot & Shoe */}
-                <group position={[0, -0.32, 0]}>
-                  {/* Shoe Upper / Body */}
-                  <mesh position={[0, 0, 0.04]} castShadow>
-                    <boxGeometry args={[0.16, 0.10, 0.24]} />
+                {/* Articulated Foot & Ankle Joint (Heel, Forward-Pointing Toe Box, Sole) */}
+                <group ref={rightAnkleRef} position={[0, -0.32, 0]}>
+                  {/* Heel (Back) */}
+                  <mesh position={[0, 0, -0.05]} castShadow>
+                    <boxGeometry args={[0.15, 0.11, 0.14]} />
                     <meshStandardMaterial color={shoeColor} roughness={0.5} />
                   </mesh>
+
+                  {/* Toe Box (Extending Forward - Unmistakably points forward!) */}
+                  <mesh position={[0, -0.015, 0.11]} castShadow>
+                    <boxGeometry args={[0.14, 0.08, 0.18]} />
+                    <meshStandardMaterial color={shoeColor} roughness={0.5} />
+                  </mesh>
+
+                  {/* Shoe Laces / Tongue */}
+                  <mesh position={[0, 0.04, 0.04]} castShadow>
+                    <boxGeometry args={[0.08, 0.03, 0.10]} />
+                    <meshStandardMaterial color="#ffffff" roughness={0.3} />
+                  </mesh>
+
                   {/* Rubber Sole */}
-                  <mesh position={[0, -0.06, 0.04]} castShadow receiveShadow>
-                    <boxGeometry args={[0.17, 0.04, 0.26]} />
+                  <mesh position={[0, -0.065, 0.05]} castShadow receiveShadow>
+                    <boxGeometry args={[0.16, 0.035, 0.30]} />
                     <meshStandardMaterial color={soleColor} roughness={0.8} />
                   </mesh>
                 </group>
