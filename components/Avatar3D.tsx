@@ -212,22 +212,20 @@ export default function Avatar3D({
       if (leftHipRef.current) leftHipRef.current.rotation.x = swing;
       if (rightHipRef.current) rightHipRef.current.rotation.x = -swing;
 
-      // Realistic Human Knee Flexion (Knee bends backwards during recovery and trail)
-      // When leg swings forward (swing > 0), knee flexes slightly to clear ground, then extends at plant
-      // When leg trails backward (swing < 0), knee flexes back to push off
+      // Realistic Human Knee Flexion (Knee bends backwards towards -Z during motion)
       if (leftKneeRef.current) {
-        leftKneeRef.current.rotation.x = swing < 0 ? Math.abs(swing) * 0.9 : Math.max(0, swing * 0.3);
+        leftKneeRef.current.rotation.x = swing < 0 ? -Math.abs(swing) * 0.85 : -Math.max(0, swing * 0.25);
       }
       if (rightKneeRef.current) {
-        rightKneeRef.current.rotation.x = swing > 0 ? Math.abs(swing) * 0.9 : Math.max(0, -swing * 0.3);
+        rightKneeRef.current.rotation.x = swing > 0 ? -Math.abs(swing) * 0.85 : -Math.max(0, -swing * 0.25);
       }
 
       // Human Ankle Roll (Heel-strike at front, toe push-off at back)
       if (leftAnkleRef.current) {
-        leftAnkleRef.current.rotation.x = swing > 0 ? -0.22 : 0.28;
+        leftAnkleRef.current.rotation.x = swing > 0 ? 0.22 : -0.28;
       }
       if (rightAnkleRef.current) {
-        rightAnkleRef.current.rotation.x = swing < 0 ? -0.22 : 0.28;
+        rightAnkleRef.current.rotation.x = swing < 0 ? 0.22 : -0.28;
       }
 
       // Arms & Forearms (Counter-swing with natural elbow flex)
@@ -241,10 +239,10 @@ export default function Avatar3D({
         rightElbowRef.current.rotation.x = 0.25 + Math.max(0, swing * 0.45);
       }
 
-      // Torso Walk Dynamics: Pelvic bobbing, natural forward lean, and lateral balance
+      // Torso Walk Dynamics: Pelvic bobbing, natural forward lean into motion, and lateral balance
       if (torsoRef.current) {
         torsoRef.current.position.y = 0.75 + Math.abs(Math.sin(time * cadence * 2)) * 0.05;
-        torsoRef.current.rotation.x = targetGesture === 'run' ? 0.22 : 0.09; // Realistic forward lean
+        torsoRef.current.rotation.x = targetGesture === 'run' ? -0.18 : -0.07; // Natural forward lean into movement direction
         torsoRef.current.rotation.y = -Math.sin(time * cadence) * 0.06; // Pelvic rotation
         torsoRef.current.rotation.z = Math.sin(time * cadence) * 0.03; // Lateral weight shift
       }
@@ -405,10 +403,10 @@ export default function Avatar3D({
                   )}
                 </mesh>
 
-                {/* Back of Head Accent Badge */}
-                <mesh position={[0, 0, -0.25]} rotation={[0, Math.PI, 0]}>
-                  <planeGeometry args={[0.34, 0.34]} />
-                  <meshBasicMaterial color={personalityColor} />
+                {/* Back of Head Hair Cap (Matte Dark Volume - Unmistakably Back of Head) */}
+                <mesh position={[0, 0, -0.23]} rotation={[0, Math.PI, 0]}>
+                  <planeGeometry args={[0.38, 0.38]} />
+                  <meshStandardMaterial color={isBot ? '#0f172a' : '#18181b'} roughness={0.95} />
                 </mesh>
               </group>
 

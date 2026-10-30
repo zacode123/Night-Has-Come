@@ -303,18 +303,37 @@ export const GameEngine = {
 
   /**
    * Check win condition and return winner team with list of winners and losers.
+   * Strictly verifies room status, phase, player count, and assigned roles first.
    */
   async checkWinCondition(roomId: string): Promise<{
     winner: 'Citizens' | 'Mafia';
     winningPlayers: any[];
     losingPlayers: any[];
   } | null> {
+    const { data: room } = await supabase
+      .from('rooms')
+      .select('status, phase')
+      .eq('id', roomId)
+      .maybeSingle();
+
+    // Guard: Win condition can ONLY trigger during active gameplay, after Warmup phase
+    if (!room || room.status !== 'in_game' || room.phase === 'Warmup' || room.phase === 'Lobby') {
+      return null;
+    }
+
     const { data: players } = await supabase
       .from('players')
       .select('*')
       .eq('room_id', roomId);
 
-    if (!players || players.length === 0) return null;
+    if (!players || players.length < 3) return null;
+
+    // Guard: Ensure roles have been assigned to players in the database
+    const hasRolesAssigned = players.some((p) => Boolean(p.role));
+    const hasMafiaAssigned = players.some((p) => p.role === 'Mafia');
+    if (!hasRolesAssigned || !hasMafiaAssigned) {
+      return null;
+    }
 
     const alivePlayers = players.filter((p) => p.alive);
     const aliveMafia = alivePlayers.filter((p) => p.role === 'Mafia');

@@ -1070,9 +1070,9 @@ export default function GameBoard({
 
   // Physics & Kinematics Refs
   const playerPosRef = useRef<[number, number, number]>([0, 0, 0]);
-  const playerRotRef = useRef<number>(0);
+  const playerRotRef = useRef<number>(Math.PI);
   const playerGestureRef = useRef<string>('idle');
-  const camYawRef = useRef<number>(0);
+  const camYawRef = useRef<number>(Math.PI);
   const botStatesRef = useRef<Record<string, any>>({});
   const [chamberName, setChamberName] = useState<string>('Grand Gallery');
 

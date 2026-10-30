@@ -388,8 +388,8 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
     );
   }
 
-  // Strict guard: Do NOT render anything in the room until the game is officially in_game
-  if (!gameState || !userId || gameState.status !== 'in_game') {
+  // Strict guard: Do NOT render anything in the room until initial loading finishes and game is in_game
+  if (loading || !gameState || !userId || gameState.status !== 'in_game') {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-3">
         <div className="w-12 h-12 border-4 border-red-600 border-t-transparent rounded-full animate-spin" />
