@@ -233,17 +233,17 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
       case 'Warmup':
         return 60;
       case 'Night':
-        return 30;
+        return 120; // 2 MINUTES (120 seconds) for Mafia, Doctor, and Police to choose targets
       case 'Morning':
-        return 8;
+        return 30; // 30 seconds for morning casualty report & announcements
       case 'Discussion':
-        return 60;
+        return 300; // 5 MINUTES (300 seconds) for discussion
       case 'Voting':
-        return 30;
+        return 60; // 60 seconds for voting
       case 'Execution':
-        return 8;
+        return 30; // 30 seconds for execution reveal & narration
       default:
-        return 30;
+        return 60;
     }
   };
 
@@ -260,6 +260,9 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   // App intelligence automatically advances phase and day
   const handleAutoAdvance = async () => {
     if (!gameState) return;
+
+    // Ensure any active voiceover speech or rule sequence finishes reading before advancing phase
+    await narrationEngine.waitUntilSpeechEnds(60000);
 
     // When 60s Warmup completes: announce game start, give warning, announce all rules, and auto-close!
     if (gameState.phase === 'Warmup') {

@@ -54,9 +54,7 @@ export default function AnnouncementBanner({
     // Speak phase instruction once on phase change (EXCEPT Warmup, which is strictly managed by page.tsx when 3 players join)
     if (!isMuted && !customAlert && phase !== 'Warmup') {
       setIsSpeaking(true);
-      narrationEngine.speak(generalData.voice);
-      const timer = setTimeout(() => setIsSpeaking(false), 5000);
-      return () => clearTimeout(timer);
+      narrationEngine.speak(generalData.voice, () => setIsSpeaking(false));
     }
   }, [phase, dayNumber, playerRole, isMuted, customAlert, playerCount]);
 
@@ -70,12 +68,10 @@ export default function AnnouncementBanner({
 
       if (!isMuted) {
         setIsSpeaking(true);
-        narrationEngine.speak(customAlert);
-        const timer = setTimeout(() => {
+        narrationEngine.speak(customAlert, () => {
           setIsSpeaking(false);
           if (onClearCustomAlert) onClearCustomAlert();
-        }, 6000);
-        return () => clearTimeout(timer);
+        });
       }
     }
   }, [customAlert, isMuted, onClearCustomAlert]);

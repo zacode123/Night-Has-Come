@@ -17,6 +17,7 @@ class NarrationEngine {
   private listeners: Set<NarrationListener> = new Set();
   private currentAudio: HTMLAudioElement | null = null;
   private isSequencePlaying = false;
+  private isSpeakingActive = false;
   private lastSpokenText: string | null = null;
   private lastSpokenTime: number = 0;
   private abortController: AbortController | null = null;
@@ -26,6 +27,23 @@ class NarrationEngine {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  public isSpeakingNow(): boolean {
+    return this.isSpeakingActive || this.isSequencePlaying;
+  }
+
+  public async waitUntilSpeechEnds(timeoutMs = 60000): Promise<void> {
+    if (!this.isSpeakingNow()) return;
+    return new Promise((resolve) => {
+      const startTime = Date.now();
+      const interval = setInterval(() => {
+        if (!this.isSpeakingNow() || Date.now() - startTime >= timeoutMs) {
+          clearInterval(interval);
+          resolve();
+        }
+      }, 200);
+    });
   }
 
   public broadcastAnnouncement(title: string, message: string, phase?: string, roleDirective?: string) {
@@ -40,6 +58,7 @@ class NarrationEngine {
    * and browser speech synthesis immediately without altering sequence state.
    */
   private stopAudioOnly() {
+    this.isSpeakingActive = false;
     if (this.abortController) {
       this.abortController.abort();
       this.abortController = null;
@@ -91,6 +110,7 @@ class NarrationEngine {
 
     this.lastSpokenText = trimmed;
     this.lastSpokenTime = now;
+    this.isSpeakingActive = true;
 
     // If this call is standalone (not part of an active sequence), cancel any ongoing sequence
     if (!isPartOfSequence) {
@@ -99,6 +119,7 @@ class NarrationEngine {
 
     // Immediately stop any currently playing narration audio and cancel browser speech (Strict Override!)
     this.stopAudioOnly();
+    this.isSpeakingActive = true;
 
     this.abortController = new AbortController();
     const currentSignal = this.abortController.signal;
@@ -109,6 +130,7 @@ class NarrationEngine {
     const finish = () => {
       if (!finished) {
         finished = true;
+        this.isSpeakingActive = false;
         if (stepSafetyTimer) clearTimeout(stepSafetyTimer);
         this.currentAudio = null;
         if (onEnd) onEnd();
