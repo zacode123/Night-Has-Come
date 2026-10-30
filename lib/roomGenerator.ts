@@ -16,6 +16,15 @@ export interface WallSegment {
   color?: string;
 }
 
+export interface WindowData {
+  id: string;
+  name: string;
+  position: [number, number, number]; // center [x, y, z]
+  size: [number, number]; // [width, height]
+  wallNormal: 'x' | 'z';
+  roomName: string;
+}
+
 export interface WallLightFixture {
   id: string;
   position: [number, number, number];
@@ -50,6 +59,7 @@ export interface RoomLayout {
   floorColor: string;
   walls: WallSegment[];
   doors: DoorData[];
+  windows: WindowData[];
   furniture: FurnitureItem[];
   wallLights: WallLightFixture[];
   spawnPoints: [number, number][];
@@ -60,28 +70,106 @@ export interface RoomLayout {
 // -------------------------------------------------------------
 // Overall Dimensions: Width = 34m (X: -17 to 17), Depth = 36m (Z: -18 to 18)
 // Wall Height = 4.5m
-// Central Grand Gallery: X: -3 to 3, Z: -18 to 18
-// Room 1 (North-West, X: -17 to -3, Z: -18 to -2): Antique Master Study
-// Room 2 (North-East, X: 3 to 17, Z: -18 to -2): Surveillance & Clockwork Room
-// Room 3 (South-West, X: -17 to -3, Z: 2 to 18): Grand Dining Hall & Fireplace
-// Room 4 (South-East, X: 3 to 17, Z: 2 to 18): Apothecary & Infirmary
+// Real Windows in exterior walls on all 4 wings:
+// - North: Master Study, Grand Gallery, Surveillance Salon
+// - South: Dining Hall, Grand Gallery, Apothecary
+// - West: Master Study West, Dining Hall West
+// - East: Surveillance Salon East, Apothecary East
 // -------------------------------------------------------------
 
 export function generateRoomLayout(roomId: string, requestedTheme?: string): RoomLayout {
   const wallH = 4.5;
   const wallThick = 0.5;
 
-  // Exterior and Interior Partition Walls
+  // Real Manor Windows
+  const windows: WindowData[] = [
+    // North Windows (Z = -18)
+    { id: 'win-n-study', name: 'Study North Bay Window', position: [-10, 2.3, -18], size: [4.4, 2.4], wallNormal: 'z', roomName: 'Master Study' },
+    { id: 'win-n-gallery', name: 'Grand Gallery North Cathedral Window', position: [0, 2.4, -18], size: [3.2, 2.6], wallNormal: 'z', roomName: 'Grand Gallery' },
+    { id: 'win-n-sec', name: 'Surveillance North Window', position: [10, 2.3, -18], size: [4.4, 2.4], wallNormal: 'z', roomName: 'Surveillance Salon' },
+
+    // South Windows (Z = 18)
+    { id: 'win-s-dine', name: 'Dining Hall South Bay Window', position: [-10, 2.3, 18], size: [4.4, 2.4], wallNormal: 'z', roomName: 'Dining Hall' },
+    { id: 'win-s-gallery', name: 'Grand Gallery South Cathedral Window', position: [0, 2.4, 18], size: [3.2, 2.6], wallNormal: 'z', roomName: 'Grand Gallery' },
+    { id: 'win-s-inf', name: 'Apothecary South Window', position: [10, 2.3, 18], size: [4.4, 2.4], wallNormal: 'z', roomName: 'Apothecary Infirmary' },
+
+    // West Windows (X = -17)
+    { id: 'win-w-study', name: 'Study West Tall Window', position: [-17, 2.3, -9], size: [4.0, 2.4], wallNormal: 'x', roomName: 'Master Study' },
+    { id: 'win-w-dine', name: 'Dining West Tall Window', position: [-17, 2.3, 9], size: [4.0, 2.4], wallNormal: 'x', roomName: 'Dining Hall' },
+
+    // East Windows (X = 17)
+    { id: 'win-e-sec', name: 'Security East Tall Window', position: [17, 2.3, -9], size: [4.0, 2.4], wallNormal: 'x', roomName: 'Surveillance Salon' },
+    { id: 'win-e-inf', name: 'Apothecary East Tall Window', position: [17, 2.3, 9], size: [4.0, 2.4], wallNormal: 'x', roomName: 'Apothecary Infirmary' },
+  ];
+
+  // Exterior and Interior Partition Walls crafted around real architectural window openings
   const walls: WallSegment[] = [
-    // --- EXTERIOR BOUNDARY WALLS ---
-    // North Wall (Z = -18)
-    { id: 'w-ext-n', position: [0, wallH / 2, -18], size: [34, wallH, wallThick], color: '#27221f' },
-    // South Wall (Z = 18)
-    { id: 'w-ext-s', position: [0, wallH / 2, 18], size: [34, wallH, wallThick], color: '#27221f' },
-    // West Wall (X = -17)
-    { id: 'w-ext-w', position: [-17, wallH / 2, 0], size: [wallThick, wallH, 36], color: '#27221f' },
-    // East Wall (X = 17)
-    { id: 'w-ext-e', position: [17, wallH / 2, 0], size: [wallThick, wallH, 36], color: '#27221f' },
+    // --- NORTH EXTERIOR WALL WITH WINDOW OPENINGS (Z = -18) ---
+    // Outer West North Pillar
+    { id: 'w-ext-n-w', position: [-15.5, wallH / 2, -18], size: [3.0, wallH, wallThick], color: '#27221f' },
+    // Study Window Sill (below window Y 0 to 1.1)
+    { id: 'w-ext-n-study-sill', position: [-10, 0.55, -18], size: [4.4, 1.1, wallThick], color: '#27221f' },
+    // Study Window Lintel (above window Y 3.5 to 4.5)
+    { id: 'w-ext-n-study-lintel', position: [-10, 4.0, -18], size: [4.4, 1.0, wallThick], color: '#27221f' },
+    // Mid West North Wall (between Study and Gallery)
+    { id: 'w-ext-n-mid-w', position: [-4.75, wallH / 2, -18], size: [6.1, wallH, wallThick], color: '#27221f' },
+    // Gallery North Window Sill & Lintel
+    { id: 'w-ext-n-gal-sill', position: [0, 0.55, -18], size: [3.2, 1.1, wallThick], color: '#27221f' },
+    { id: 'w-ext-n-gal-lintel', position: [0, 4.1, -18], size: [3.2, 0.8, wallThick], color: '#27221f' },
+    // Mid East North Wall (between Gallery and Surveillance)
+    { id: 'w-ext-n-mid-e', position: [4.75, wallH / 2, -18], size: [6.1, wallH, wallThick], color: '#27221f' },
+    // Surveillance Window Sill & Lintel
+    { id: 'w-ext-n-sec-sill', position: [10, 0.55, -18], size: [4.4, 1.1, wallThick], color: '#27221f' },
+    { id: 'w-ext-n-sec-lintel', position: [10, 4.0, -18], size: [4.4, 1.0, wallThick], color: '#27221f' },
+    // Outer East North Pillar
+    { id: 'w-ext-n-e', position: [15.5, wallH / 2, -18], size: [3.0, wallH, wallThick], color: '#27221f' },
+
+    // --- SOUTH EXTERIOR WALL WITH WINDOW OPENINGS (Z = 18) ---
+    // Outer West South Pillar
+    { id: 'w-ext-s-w', position: [-15.5, wallH / 2, 18], size: [3.0, wallH, wallThick], color: '#27221f' },
+    // Dining Window Sill & Lintel
+    { id: 'w-ext-s-dine-sill', position: [-10, 0.55, 18], size: [4.4, 1.1, wallThick], color: '#27221f' },
+    { id: 'w-ext-s-dine-lintel', position: [-10, 4.0, 18], size: [4.4, 1.0, wallThick], color: '#27221f' },
+    // Mid West South Wall
+    { id: 'w-ext-s-mid-w', position: [-4.75, wallH / 2, 18], size: [6.1, wallH, wallThick], color: '#27221f' },
+    // Gallery South Window Sill & Lintel
+    { id: 'w-ext-s-gal-sill', position: [0, 0.55, 18], size: [3.2, 1.1, wallThick], color: '#27221f' },
+    { id: 'w-ext-s-gal-lintel', position: [0, 4.1, 18], size: [3.2, 0.8, wallThick], color: '#27221f' },
+    // Mid East South Wall
+    { id: 'w-ext-s-mid-e', position: [4.75, wallH / 2, 18], size: [6.1, wallH, wallThick], color: '#27221f' },
+    // Apothecary Window Sill & Lintel
+    { id: 'w-ext-s-inf-sill', position: [10, 0.55, 18], size: [4.4, 1.1, wallThick], color: '#27221f' },
+    { id: 'w-ext-s-inf-lintel', position: [10, 4.0, 18], size: [4.4, 1.0, wallThick], color: '#27221f' },
+    // Outer East South Pillar
+    { id: 'w-ext-s-e', position: [15.5, wallH / 2, 18], size: [3.0, wallH, wallThick], color: '#27221f' },
+
+    // --- WEST EXTERIOR WALL WITH WINDOW OPENINGS (X = -17) ---
+    // North West Corner Column
+    { id: 'w-ext-w-n', position: [-17, wallH / 2, -15.5], size: [wallThick, wallH, 5], color: '#27221f' },
+    // Study West Window Sill & Lintel
+    { id: 'w-ext-w-study-sill', position: [-17, 0.55, -9], size: [wallThick, 1.1, 4.0], color: '#27221f' },
+    { id: 'w-ext-w-study-lintel', position: [-17, 4.0, -9], size: [wallThick, 1.0, 4.0], color: '#27221f' },
+    // West Divider Mid Wall
+    { id: 'w-ext-w-mid', position: [-17, wallH / 2, 0], size: [wallThick, wallH, 10], color: '#27221f' },
+    // Dining West Window Sill & Lintel
+    { id: 'w-ext-w-dine-sill', position: [-17, 0.55, 9], size: [wallThick, 1.1, 4.0], color: '#27221f' },
+    { id: 'w-ext-w-dine-lintel', position: [-17, 4.0, 9], size: [wallThick, 1.0, 4.0], color: '#27221f' },
+    // South West Corner Column
+    { id: 'w-ext-w-s', position: [-17, wallH / 2, 15.5], size: [wallThick, wallH, 5], color: '#27221f' },
+
+    // --- EAST EXTERIOR WALL WITH WINDOW OPENINGS (X = 17) ---
+    // North East Corner Column
+    { id: 'w-ext-e-n', position: [17, wallH / 2, -15.5], size: [wallThick, wallH, 5], color: '#27221f' },
+    // Security East Window Sill & Lintel
+    { id: 'w-ext-e-sec-sill', position: [17, 0.55, -9], size: [wallThick, 1.1, 4.0], color: '#27221f' },
+    { id: 'w-ext-e-sec-lintel', position: [17, 4.0, -9], size: [wallThick, 1.0, 4.0], color: '#27221f' },
+    // East Divider Mid Wall
+    { id: 'w-ext-e-mid', position: [17, wallH / 2, 0], size: [wallThick, wallH, 10], color: '#27221f' },
+    // Apothecary East Window Sill & Lintel
+    { id: 'w-ext-e-inf-sill', position: [17, 0.55, 9], size: [wallThick, 1.1, 4.0], color: '#27221f' },
+    { id: 'w-ext-e-inf-lintel', position: [17, 4.0, 9], size: [wallThick, 1.0, 4.0], color: '#27221f' },
+    // South East Corner Column
+    { id: 'w-ext-e-s', position: [17, wallH / 2, 15.5], size: [wallThick, wallH, 5], color: '#27221f' },
 
     // --- HORIZONTAL ROOM DIVIDERS (Z = 0) ---
     // West Divider (Between Study and Dining Hall, X from -17 to -3, length 14)
@@ -180,23 +268,23 @@ export function generateRoomLayout(roomId: string, requestedTheme?: string): Roo
     { id: 'wl-corr-south', position: [0, 3.4, 17.7], rotationY: Math.PI, color: '#ef4444', intensity: 2.5 },
 
     // Room 1 (Study) Bulbs
-    { id: 'wl-study-1', position: [-16.7, 3.2, -10], rotationY: Math.PI / 2, color: '#ffedd5', intensity: 2.0 },
-    { id: 'wl-study-2', position: [-10, 3.2, -17.7], rotationY: 0, color: '#fef3c7', intensity: 2.0 },
+    { id: 'wl-study-1', position: [-16.7, 3.2, -14], rotationY: Math.PI / 2, color: '#ffedd5', intensity: 2.0 },
+    { id: 'wl-study-2', position: [-14, 3.2, -17.7], rotationY: 0, color: '#fef3c7', intensity: 2.0 },
     { id: 'wl-study-3', position: [-3.3, 3.2, -5], rotationY: -Math.PI / 2, color: '#fed7aa', intensity: 2.0 },
 
     // Room 2 (Surveillance / Clockwork) Bulbs
-    { id: 'wl-sec-1', position: [16.7, 3.2, -10], rotationY: -Math.PI / 2, color: '#bae6fd', intensity: 2.4 },
-    { id: 'wl-sec-2', position: [10, 3.2, -17.7], rotationY: 0, color: '#fed7aa', intensity: 2.0 },
+    { id: 'wl-sec-1', position: [16.7, 3.2, -14], rotationY: -Math.PI / 2, color: '#bae6fd', intensity: 2.4 },
+    { id: 'wl-sec-2', position: [14, 3.2, -17.7], rotationY: 0, color: '#fed7aa', intensity: 2.0 },
     { id: 'wl-sec-3', position: [3.3, 3.2, -5], rotationY: Math.PI / 2, color: '#bae6fd', intensity: 2.0 },
 
     // Room 3 (Dining Hall) Bulbs
-    { id: 'wl-dine-1', position: [-16.7, 3.2, 10], rotationY: Math.PI / 2, color: '#ffedd5', intensity: 2.2 },
-    { id: 'wl-dine-2', position: [-10, 3.2, 17.7], rotationY: Math.PI, color: '#fef3c7', intensity: 2.2 },
+    { id: 'wl-dine-1', position: [-16.7, 3.2, 14], rotationY: Math.PI / 2, color: '#ffedd5', intensity: 2.2 },
+    { id: 'wl-dine-2', position: [-14, 3.2, 17.7], rotationY: Math.PI, color: '#fef3c7', intensity: 2.2 },
     { id: 'wl-dine-3', position: [-3.3, 3.2, 5], rotationY: -Math.PI / 2, color: '#fed7aa', intensity: 2.0 },
 
     // Room 4 (Apothecary) Bulbs
-    { id: 'wl-inf-1', position: [16.7, 3.2, 10], rotationY: -Math.PI / 2, color: '#a7f3d0', intensity: 2.0 },
-    { id: 'wl-inf-2', position: [10, 3.2, 17.7], rotationY: Math.PI, color: '#fef3c7', intensity: 2.0 },
+    { id: 'wl-inf-1', position: [16.7, 3.2, 14], rotationY: -Math.PI / 2, color: '#a7f3d0', intensity: 2.0 },
+    { id: 'wl-inf-2', position: [14, 3.2, 17.7], rotationY: Math.PI, color: '#fef3c7', intensity: 2.0 },
     { id: 'wl-inf-3', position: [3.3, 3.2, 5], rotationY: Math.PI / 2, color: '#a7f3d0', intensity: 2.0 },
   ];
 
@@ -214,24 +302,24 @@ export function generateRoomLayout(roomId: string, requestedTheme?: string): Roo
     // --- ROOM 1: ANTIQUE MASTER STUDY (NW) ---
     { id: 'study-rug', type: 'rug', name: 'Ornate Study Rug', position: [-10, 0.015, -10], size: [8, 0.02, 7], color: '#7f1d1d', accentColor: '#d97706' },
     { id: 'study-desk', type: 'table', name: 'Mahogany Executive Desk', position: [-10, 0.5, -9], size: [3.4, 0.9, 1.8], color: '#3f1f10', accentColor: '#b45309' },
-    { id: 'study-books-1', type: 'bookshelf', name: 'Tall Library Bookshelf', position: [-16.5, 2.0, -13], size: [0.8, 4.0, 4.5], color: '#2e1509', accentColor: '#d97706' },
-    { id: 'study-books-2', type: 'bookshelf', name: 'Tall Library Bookshelf', position: [-16.5, 2.0, -7], size: [0.8, 4.0, 4.5], color: '#2e1509', accentColor: '#d97706' },
+    { id: 'study-books-1', type: 'bookshelf', name: 'Tall Library Bookshelf', position: [-16.5, 2.0, -14], size: [0.8, 4.0, 3.5], color: '#2e1509', accentColor: '#d97706' },
+    { id: 'study-books-2', type: 'bookshelf', name: 'Tall Library Bookshelf', position: [-16.5, 2.0, -4], size: [0.8, 4.0, 3.5], color: '#2e1509', accentColor: '#d97706' },
     { id: 'study-chair-1', type: 'couch', name: 'Leather Wingback Chair', position: [-10, 0.5, -7.2], size: [1.1, 1.0, 1.1], color: '#451a03' },
     { id: 'study-bed-1', type: 'bed', name: 'Canopy Daybed', position: [-7.5, 0.8, -15.5], size: [2.4, 1.6, 3.2], color: '#27272a', accentColor: '#991b1b' },
     { id: 'study-lamp', type: 'lamp', name: 'Brass Bankers Floor Lamp', position: [-12.5, 1.2, -9], size: [0.5, 2.2, 0.5], color: '#d97706' },
 
     // --- ROOM 2: SURVEILLANCE & CLOCKWORK SALON (NE) ---
     { id: 'sec-console', type: 'counter', name: 'Surveillance Desk', position: [10, 0.7, -15], size: [5.5, 1.3, 2.0], color: '#18181b', accentColor: '#38bdf8' },
-    { id: 'sec-monitors', type: 'tv', name: 'CCTV Video Wall', position: [10, 2.5, -17.6], size: [6.5, 2.5, 0.3], color: '#09090b', accentColor: '#0ea5e9' },
-    { id: 'sec-servers', type: 'cabinet', name: 'Mainframe Cabinet', position: [15.8, 1.8, -9], size: [1.2, 3.6, 4], color: '#1e293b', accentColor: '#10b981' },
+    { id: 'sec-monitors', type: 'tv', name: 'CCTV Video Wall', position: [10, 2.5, -17.6], size: [4.2, 2.0, 0.3], color: '#09090b', accentColor: '#0ea5e9' },
+    { id: 'sec-servers', type: 'cabinet', name: 'Mainframe Cabinet', position: [15.8, 1.8, -14], size: [1.2, 3.6, 3.2], color: '#1e293b', accentColor: '#10b981' },
     { id: 'sec-table', type: 'table', name: 'Tactical Holo-Table', position: [9, 0.5, -8], size: [3.5, 0.9, 2.2], color: '#1e293b', accentColor: '#ef4444' },
     { id: 'sec-chair', type: 'couch', name: 'Operator Swivel Chair', position: [9, 0.5, -6.2], size: [1.0, 1.0, 1.0], color: '#0f172a' },
 
     // --- ROOM 3: GRAND DINING HALL (SW) ---
     { id: 'dine-rug', type: 'rug', name: 'Banquet Hall Carpet', position: [-10, 0.015, 10], size: [8, 0.02, 9], color: '#831843', accentColor: '#f59e0b' },
     { id: 'dine-table', type: 'table', name: 'Long Manor Feast Table', position: [-10, 0.6, 10], size: [4.2, 1.0, 2.4], color: '#381c0e', accentColor: '#d97706' },
-    { id: 'dine-buffet', type: 'counter', name: 'Carved Buffet Credenza', position: [-16.3, 0.8, 10], size: [1.2, 1.6, 6.5], color: '#27170f', accentColor: '#b45309' },
-    { id: 'dine-fireplace', type: 'pillar', name: 'Stone Hearth Fireplace', position: [-10, 1.6, 17.6], size: [4.5, 3.2, 0.6], color: '#1c1917', accentColor: '#f97316' },
+    { id: 'dine-buffet', type: 'counter', name: 'Carved Buffet Credenza', position: [-16.3, 0.8, 14], size: [1.2, 1.6, 4.5], color: '#27170f', accentColor: '#b45309' },
+    { id: 'dine-fireplace', type: 'pillar', name: 'Stone Hearth Fireplace', position: [-10, 1.6, 17.6], size: [4.2, 3.0, 0.6], color: '#1c1917', accentColor: '#f97316' },
 
     // --- ROOM 4: APOTHECARY & INFIRMARY (SE) ---
     { id: 'inf-bed-1', type: 'bed', name: 'Vintage Treatment Bed Alpha', position: [8, 0.6, 6], size: [2.0, 1.1, 3.6], color: '#e2e8f0', accentColor: '#ef4444' },
@@ -276,13 +364,14 @@ export function generateRoomLayout(roomId: string, requestedTheme?: string): Roo
     id: `layout-${roomId}-manor`,
     theme: requestedTheme || 'manor',
     title: 'Yooil Mystery Manor',
-    subtitle: 'Chambers locked under curfew with antique brass wall sconces',
+    subtitle: 'Chambers locked under curfew with antique brass wall sconces and grand window vistas',
     dimensions: { width: 34, depth: 36 },
     ambientColor: '#18120c',
     wallColor: '#2b231d',
     floorColor: '#1a1410',
     walls,
     doors,
+    windows,
     furniture,
     wallLights,
     spawnPoints,

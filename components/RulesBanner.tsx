@@ -1,7 +1,7 @@
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Skull, Heart, Search, Volume2, AlertTriangle, Sparkles, Clock, Radio } from 'lucide-react';
+import { Shield, Skull, Heart, Search, Volume2, AlertTriangle, Sparkles, Radio, CheckCircle2 } from 'lucide-react';
 
 interface RulesBannerProps {
   isOpen: boolean;
@@ -15,7 +15,6 @@ export default function RulesBanner({
   isOpen,
   onReplayAudio,
   activeStepIndex = -1,
-  autoCloseSeconds = null,
 }: RulesBannerProps) {
   return (
     <AnimatePresence>
@@ -28,7 +27,7 @@ export default function RulesBanner({
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="relative w-full max-w-2xl bg-zinc-950 border border-amber-600/70 rounded-3xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh]"
           >
-            {/* Dramatic Header with Warning Pulsing Banner */}
+            {/* Dramatic Header with Warning Banner */}
             <div className="p-4 sm:p-5 border-b border-amber-900/40 bg-gradient-to-r from-red-950/70 via-amber-950/50 to-zinc-950">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
@@ -60,7 +59,13 @@ export default function RulesBanner({
               </div>
 
               {/* CRITICAL WARNING STIPULATION */}
-              <div className="mt-3.5 p-3 rounded-2xl bg-red-950/90 border-2 border-red-600 shadow-lg shadow-red-950/60 flex items-start gap-2.5">
+              <div
+                className={`mt-3.5 p-3 rounded-2xl border-2 transition-all flex items-start gap-2.5 ${
+                  activeStepIndex === 1
+                    ? 'bg-red-950 border-red-500 ring-2 ring-red-500/50'
+                    : 'bg-red-950/90 border-red-600 shadow-lg shadow-red-950/60'
+                }`}
+              >
                 <AlertTriangle size={20} className="text-red-400 shrink-0 mt-0.5 animate-bounce" />
                 <div>
                   <span className="text-xs font-black uppercase tracking-wider text-red-300 font-mono block">
@@ -79,7 +84,7 @@ export default function RulesBanner({
               <div
                 className={`p-3.5 rounded-2xl border transition-all ${
                   activeStepIndex === 2
-                    ? 'bg-amber-950/60 border-amber-400 ring-2 ring-amber-400/40'
+                    ? 'bg-amber-950/70 border-amber-400 ring-2 ring-amber-400/40 shadow-lg shadow-amber-900/40'
                     : 'bg-zinc-900/60 border-amber-500/20'
                 }`}
               >
@@ -98,7 +103,7 @@ export default function RulesBanner({
               <div
                 className={`p-3.5 rounded-2xl border transition-all ${
                   activeStepIndex === 3
-                    ? 'bg-amber-950/60 border-amber-400 ring-2 ring-amber-400/40'
+                    ? 'bg-amber-950/70 border-amber-400 ring-2 ring-amber-400/40 shadow-lg shadow-amber-900/40'
                     : 'bg-zinc-900/60 border-zinc-800'
                 }`}
               >
@@ -144,7 +149,7 @@ export default function RulesBanner({
               <div
                 className={`p-3.5 rounded-2xl border transition-all ${
                   activeStepIndex === 4
-                    ? 'bg-amber-950/60 border-amber-400 ring-2 ring-amber-400/40'
+                    ? 'bg-amber-950/70 border-amber-400 ring-2 ring-amber-400/40 shadow-lg shadow-amber-900/40'
                     : 'bg-zinc-900/60 border-zinc-800'
                 }`}
               >
@@ -189,9 +194,9 @@ export default function RulesBanner({
 
               {/* BE READY & WHAT TO DO NEXT INSTRUCTION */}
               <div
-                className={`p-3.5 rounded-2xl border ${
+                className={`p-3.5 rounded-2xl border transition-all ${
                   activeStepIndex === 5
-                    ? 'bg-emerald-950/80 border-emerald-400 ring-2 ring-emerald-400/50'
+                    ? 'bg-emerald-950/80 border-emerald-400 ring-2 ring-emerald-400/50 shadow-lg shadow-emerald-950'
                     : 'bg-emerald-950/40 border-emerald-500/30'
                 }`}
               >
@@ -207,24 +212,24 @@ export default function RulesBanner({
               </div>
             </div>
 
-            {/* Footer with Automatic Countdown (Manual button removed as requested) */}
-            <div className="p-4 border-t border-amber-900/30 bg-black/80 flex items-center justify-between">
+            {/* Footer: Clean Audio Status Indicator (Removed 'Briefing complete. Entering Night Curfew in {s}s..' text) */}
+            <div className="p-3.5 sm:p-4 border-t border-amber-900/30 bg-black/85 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-mono">
-                {autoCloseSeconds !== null && autoCloseSeconds >= 0 ? (
-                  <span className="flex items-center gap-2 text-amber-400 font-bold animate-pulse">
-                    <Clock size={16} className="text-amber-400" />
-                    <span>Briefing complete. Entering Night Curfew in {autoCloseSeconds}s...</span>
+                {activeStepIndex >= 0 && activeStepIndex < 6 ? (
+                  <span className="flex items-center gap-2 text-amber-300 font-medium">
+                    <Radio size={14} className="text-red-400 animate-pulse" />
+                    <span>Official voice briefing in progress...</span>
                   </span>
                 ) : (
-                  <span className="flex items-center gap-2 text-zinc-300">
-                    <Radio size={14} className="text-red-400 animate-pulse" />
-                    <span>Voice briefing in progress... Modal will close automatically in 3 seconds after audio.</span>
+                  <span className="flex items-center gap-2 text-emerald-400 font-medium">
+                    <CheckCircle2 size={14} className="text-emerald-400" />
+                    <span>Briefing concluded. Transitioning to Night Curfew...</span>
                   </span>
                 )}
               </div>
 
               <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500">
-                <span>AUTOMATIC TRANSITION</span>
+                <span>MANDATORY BRIEFING</span>
               </div>
             </div>
           </motion.div>

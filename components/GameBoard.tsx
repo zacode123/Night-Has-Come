@@ -7,11 +7,13 @@ import * as THREE from 'three';
 import { Lock, Unlock, ShieldAlert, MapPin } from 'lucide-react';
 import Avatar3D from '@/components/Avatar3D';
 import VirtualJoystick from '@/components/VirtualJoystick';
+import MafiaTargetModal from '@/components/MafiaTargetModal';
 import {
   generateRoomLayout,
   RoomLayout,
   FurnitureItem,
   DoorData,
+  WindowData,
   WallLightFixture,
   getSafeOpenSpawnPoint,
 } from '@/lib/roomGenerator';
@@ -54,25 +56,25 @@ function getChamberDetails(chamber: string) {
     case 'Master Study':
       return {
         label: 'Master Study',
-        subtitle: 'West wing private room with study desks',
+        subtitle: 'West wing private room with study desks & sunlit windows',
         tag: 'WEST WING',
       };
     case 'Surveillance Salon':
       return {
         label: 'Surveillance Salon',
-        subtitle: 'East security observation room',
+        subtitle: 'East security observation room with perimeter windows',
         tag: 'EAST WING',
       };
     case 'Dining Hall':
       return {
         label: 'Dining Hall',
-        subtitle: 'Southwest communal room & banquet tables',
+        subtitle: 'Southwest communal room, banquet tables & bay windows',
         tag: 'SOUTHWEST ROOM',
       };
     case 'Apothecary Infirmary':
       return {
         label: 'Apothecary Infirmary',
-        subtitle: 'Southeast medical recovery clinic',
+        subtitle: 'Southeast medical recovery clinic & natural light windows',
         tag: 'SOUTHEAST CLINIC',
       };
     default:
@@ -85,7 +87,7 @@ function getChamberDetails(chamber: string) {
 }
 
 // -------------------------------------------------------------
-// WORLD CONTROLLER: SMOOTH FOLLOW CAMERA & CAMERA-RELATIVE STEERING
+// WORLD CONTROLLER: SMOOTH CAMERA & JITTER-FREE MOVEMENT
 // -------------------------------------------------------------
 function WorldController({
   roomLayout,
@@ -128,8 +130,8 @@ function WorldController({
   const lastBroadcastTime = useRef<number>(0);
   const lastHudUpdateTime = useRef<number>(0);
 
-  const halfW = roomLayout.dimensions.width / 2 - 0.8;
-  const halfD = roomLayout.dimensions.depth / 2 - 0.8;
+  const halfW = roomLayout.dimensions.width / 2 - 0.9;
+  const halfD = roomLayout.dimensions.depth / 2 - 0.9;
   const obstacleBoxes = useMemo(
     () => [
       ...roomLayout.walls.map((w) => ({ position: w.position, size: w.size })),
@@ -137,6 +139,15 @@ function WorldController({
     ],
     [roomLayout]
   );
+
+  // Dynamic Camera FOV adjustment: 76 in First Person for wide comfortable view, 58 in Third Person
+  useEffect(() => {
+    const targetFov = cameraMode === 'firstPerson' ? 76 : 58;
+    if ((camera as THREE.PerspectiveCamera).fov !== targetFov) {
+      (camera as THREE.PerspectiveCamera).fov = targetFov;
+      camera.updateProjectionMatrix();
+    }
+  }, [cameraMode, camera]);
 
   useFrame((_, rawDelta) => {
     if (!playerPosRef.current) return;
@@ -151,34 +162,29 @@ function WorldController({
     if (keysDown.current?.['a'] || keysDown.current?.['arrowleft']) stickX -= 1;
     if (keysDown.current?.['d'] || keysDown.current?.['arrowright']) stickX += 1;
 
-    // 2. Direct Joystick Directional Translation & Turning Math:
-    // Screen inputs: stickX (+1 = Right, -1 = Left), stickY (+1 = Forward/North, -1 = Backward/South)
     let worldDirX = 0;
     let worldDirZ = 0;
 
     if (cameraMode === 'firstPerson') {
-      // In first-person: left/right turns player heading, forward/backward moves along heading
-      if (Math.abs(stickX) > 0.15) {
-        const turnSpeed = 2.4;
+      // In first-person: smooth turning with stickX, forward/backward along view angle
+      if (Math.abs(stickX) > 0.12) {
+        const turnSpeed = 2.2;
         playerRotRef.current = (playerRotRef.current ?? 0) - stickX * turnSpeed * dt;
       }
       const curRot = playerRotRef.current ?? 0;
       worldDirX = Math.sin(curRot) * stickY;
       worldDirZ = Math.cos(curRot) * stickY;
-      camYawRef.current = curRot;
     } else {
-      // In third-person: screen-relative translation directly moves character without camera spinning
+      // In third-person: screen-relative translation directly moves character smoothly
       worldDirX = stickX;
-      worldDirZ = -stickY; // Screen UP (stickY > 0) translates into the screen (-Z)
-      camYawRef.current = 0;
+      worldDirZ = -stickY;
     }
 
     const inputLength = Math.hypot(stickX, stickY);
-    // Deadzone 0.15: completely prevents flipping or jitter when player is at rest!
-    const hasInput = inputLength >= 0.15 && isAlive;
+    const hasInput = inputLength >= 0.12 && isAlive;
 
-    const maxSpeed = isSprinting ? 6.2 : 3.5;
-    const acceleration = isSprinting ? 24.0 : 18.0;
+    const maxSpeed = isSprinting ? 6.0 : 3.4;
+    const acceleration = isSprinting ? 22.0 : 16.0;
     const friction = hasInput ? 0.94 : 0.82;
 
     if (hasInput) {
@@ -191,7 +197,7 @@ function WorldController({
       velocityRef.current.x += (targetVx - velocityRef.current.x) * Math.min(1, acceleration * dt);
       velocityRef.current.z += (targetVz - velocityRef.current.z) * Math.min(1, acceleration * dt);
 
-      // Character heading smoothly faces the movement vector in third-person
+      // Character heading smoothly faces movement vector in third-person
       if (cameraMode === 'thirdPerson') {
         const targetAngle = Math.atan2(normX, normZ);
         const currentRot = playerRotRef.current ?? 0;
@@ -201,7 +207,6 @@ function WorldController({
         playerRotRef.current = nextRot;
       }
     } else {
-      // AT REST: Heading is LOCKED. Camera yaw is LOCKED. ZERO flicker, ZERO flips!
       velocityRef.current.x *= Math.pow(friction, dt * 60);
       velocityRef.current.z *= Math.pow(friction, dt * 60);
 
@@ -213,7 +218,7 @@ function WorldController({
 
     // Update player gesture
     let currentGesture = 'idle';
-    if (currentSpeed > 3.8) {
+    if (currentSpeed > 3.6) {
       currentGesture = 'run';
     } else if (currentSpeed > 0.18) {
       currentGesture = 'walk';
@@ -234,28 +239,43 @@ function WorldController({
       stepCadenceTimer.current = 0;
     }
 
-    // Candidate Position & Wall Collision
+    // Candidate Position & Smooth Wall Sliding Collision (Zero Shaking or Jitter!)
     const prevX = playerPosRef.current[0];
     const prevZ = playerPosRef.current[2];
     let candidateX = THREE.MathUtils.clamp(prevX + velocityRef.current.x * dt, -halfW, halfW);
     let candidateZ = THREE.MathUtils.clamp(prevZ + velocityRef.current.z * dt, -halfD, halfD);
 
-    const playerRadius = 0.38;
+    const playerRadius = 0.36;
+
+    // Test X-axis movement independently for smooth wall sliding
     for (const box of obstacleBoxes) {
       const [bx, , bz] = box.position;
       const [bw, , bd] = box.size;
-      const boxMinX = bx - bw / 2 - playerRadius;
-      const boxMaxX = bx + bw / 2 + playerRadius;
-      const boxMinZ = bz - bd / 2 - playerRadius;
-      const boxMaxZ = bz + bd / 2 + playerRadius;
+      const minX = bx - bw / 2 - playerRadius;
+      const maxX = bx + bw / 2 + playerRadius;
+      const minZ = bz - bd / 2 - playerRadius;
+      const maxZ = bz + bd / 2 + playerRadius;
 
-      if (candidateX >= boxMinX && candidateX <= boxMaxX && prevZ >= boxMinZ && prevZ <= boxMaxZ) {
+      if (candidateX >= minX && candidateX <= maxX && prevZ >= minZ && prevZ <= maxZ) {
         candidateX = prevX;
         velocityRef.current.x = 0;
+        break;
       }
-      if (candidateX >= boxMinX && candidateX <= boxMaxX && candidateZ >= boxMinZ && candidateZ <= boxMaxZ) {
+    }
+
+    // Test Z-axis movement independently
+    for (const box of obstacleBoxes) {
+      const [bx, , bz] = box.position;
+      const [bw, , bd] = box.size;
+      const minX = bx - bw / 2 - playerRadius;
+      const maxX = bx + bw / 2 + playerRadius;
+      const minZ = bz - bd / 2 - playerRadius;
+      const maxZ = bz + bd / 2 + playerRadius;
+
+      if (candidateX >= minX && candidateX <= maxX && candidateZ >= minZ && candidateZ <= maxZ) {
         candidateZ = prevZ;
         velocityRef.current.z = 0;
+        break;
       }
     }
 
@@ -290,37 +310,48 @@ function WorldController({
     playerPosRef.current[0] = candidateX;
     playerPosRef.current[2] = candidateZ;
 
-    // Smooth Camera Follow
     const px = candidateX;
     const py = playerPosRef.current[1];
     const pz = candidateZ;
 
+    // -----------------------------------------------------------------
+    // CAMERA POSITIONING & DAMPING
+    // -----------------------------------------------------------------
     if (cameraMode === 'firstPerson') {
-      const eyeHeight = 1.65;
-      camera.position.x = px;
-      camera.position.y = py + eyeHeight;
-      camera.position.z = pz;
-      const lookDist = 15;
+      // First Person: Human Eye Height = 1.55m, silky exponential damping (ZERO violent shake)
+      const eyeHeight = 1.55;
+      camera.position.x = THREE.MathUtils.damp(camera.position.x, px, 18, dt);
+      camera.position.y = THREE.MathUtils.damp(camera.position.y, py + eyeHeight, 18, dt);
+      camera.position.z = THREE.MathUtils.damp(camera.position.z, pz, 18, dt);
+
+      // Smooth heading yaw
       const pRot = playerRotRef.current ?? 0;
+      camYawRef.current = THREE.MathUtils.damp(camYawRef.current, pRot, 16, dt);
+      const lookDist = 12;
       camera.lookAt(
-        px + Math.sin(pRot) * lookDist,
-        py + eyeHeight,
-        pz + Math.cos(pRot) * lookDist
+        camera.position.x + Math.sin(camYawRef.current) * lookDist,
+        camera.position.y,
+        camera.position.z + Math.cos(camYawRef.current) * lookDist
       );
     } else {
-      const distance = 7.2;
-      const height = 5.2;
-      const targetCamX = px;
-      const targetCamY = py + height;
-      const targetCamZ = pz + distance;
+      // Third Person: Low Eye Level Camera well BELOW the 4.4m rafters & ceiling (Ceiling is never visible!)
+      const distance = 4.2;
+      const height = 2.1;
 
-      camera.position.x = THREE.MathUtils.lerp(camera.position.x, targetCamX, Math.min(1, dt * 10));
-      camera.position.y = THREE.MathUtils.lerp(camera.position.y, targetCamY, Math.min(1, dt * 10));
-      camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetCamZ, Math.min(1, dt * 10));
-      camera.lookAt(px, py + 1.2, pz);
+      // Clamp camera within room boundaries so it never clips into walls
+      const targetCamX = THREE.MathUtils.clamp(px, -halfW + 0.8, halfW - 0.8);
+      const targetCamY = py + height;
+      const targetCamZ = THREE.MathUtils.clamp(pz + distance, -halfD + 0.8, halfD - 0.8);
+
+      camera.position.x = THREE.MathUtils.damp(camera.position.x, targetCamX, 12, dt);
+      camera.position.y = THREE.MathUtils.damp(camera.position.y, targetCamY, 12, dt);
+      camera.position.z = THREE.MathUtils.damp(camera.position.z, targetCamZ, 12, dt);
+
+      // Look at character torso/shoulder level (slightly above ground)
+      camera.lookAt(px, py + 1.35, pz);
     }
 
-    // Bot kinematics simulation in useFrame (Zero React re-render overhead!)
+    // Bot kinematics simulation
     const botMap = botStatesRef.current;
     if (botMap) {
       Object.keys(botMap).forEach((botId) => {
@@ -348,7 +379,7 @@ function WorldController({
       });
     }
 
-    // Throttled Network Broadcast (10Hz / 100ms) only when moving
+    // Throttled Network Broadcast
     const now = performance.now();
     if (now - lastBroadcastTime.current > 100 && onUpdatePosition) {
       if (hasInput || currentSpeed > 0.05) {
@@ -379,9 +410,113 @@ function WorldController({
 }
 
 // -------------------------------------------------------------
-// WALL SCONCE & BULB LIGHT FIXTURE (High-Fidelity Emissive Mesh)
+// REAL ARCHITECTURAL WINDOW WITH REAL GLASS & OUTDOOR SUNLIGHT
 // -------------------------------------------------------------
-function WallSconceBulb({ fixture }: { fixture: WallLightFixture; isNight: boolean }) {
+function ArchitecturalWindowMesh({
+  windowData,
+  isNight,
+}: {
+  windowData: WindowData;
+  isNight: boolean;
+}) {
+  const [wx, wy, wz] = windowData.position;
+  const [wWidth, wHeight] = windowData.size;
+  const isX = windowData.wallNormal === 'x';
+  const frameThick = 0.38;
+  const barThick = 0.06;
+
+  // Exterior vista position slightly outside the window
+  const vistaDistance = 0.6;
+  const vistaX = isX ? wx + (wx > 0 ? vistaDistance : -vistaDistance) : wx;
+  const vistaZ = !isX ? wz + (wz > 0 ? vistaDistance : -vistaDistance) : wz;
+
+  return (
+    <group position={[wx, wy, wz]}>
+      {/* Heavy Timber / Metal Outer Window Frame */}
+      {/* Top Frame Bar */}
+      <mesh position={[0, wHeight / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={isX ? [frameThick, 0.14, wWidth] : [wWidth, 0.14, frameThick]} />
+        <meshStandardMaterial color="#1a110a" roughness={0.7} metalness={0.4} />
+      </mesh>
+      {/* Bottom Frame Sill */}
+      <mesh position={[0, -wHeight / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={isX ? [frameThick + 0.12, 0.18, wWidth + 0.2] : [wWidth + 0.2, 0.18, frameThick + 0.12]} />
+        <meshStandardMaterial color="#2b1a10" roughness={0.6} metalness={0.5} />
+      </mesh>
+      {/* Left Frame Post */}
+      <mesh position={isX ? [0, 0, -wWidth / 2] : [-wWidth / 2, 0, 0]} castShadow receiveShadow>
+        <boxGeometry args={isX ? [frameThick, wHeight, 0.14] : [0.14, wHeight, frameThick]} />
+        <meshStandardMaterial color="#1a110a" roughness={0.7} metalness={0.4} />
+      </mesh>
+      {/* Right Frame Post */}
+      <mesh position={isX ? [0, 0, wWidth / 2] : [wWidth / 2, 0, 0]} castShadow receiveShadow>
+        <boxGeometry args={isX ? [frameThick, wHeight, 0.14] : [0.14, wHeight, frameThick]} />
+        <meshStandardMaterial color="#1a110a" roughness={0.7} metalness={0.4} />
+      </mesh>
+
+      {/* Center Dividing Mullions (Cross Bars) */}
+      <mesh position={[0, 0, 0]} castShadow>
+        <boxGeometry args={isX ? [frameThick * 0.8, wHeight, barThick] : [barThick, wHeight, frameThick * 0.8]} />
+        <meshStandardMaterial color="#1a110a" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0, 0]} castShadow>
+        <boxGeometry args={isX ? [frameThick * 0.8, barThick, wWidth] : [wWidth, barThick, frameThick * 0.8]} />
+        <meshStandardMaterial color="#1a110a" roughness={0.7} />
+      </mesh>
+
+      {/* Real Translucent Glass Pane with Reflections */}
+      <mesh position={[0, 0, 0]}>
+        <boxGeometry args={isX ? [0.03, wHeight - 0.08, wWidth - 0.08] : [wWidth - 0.08, wHeight - 0.08, 0.03]} />
+        <meshStandardMaterial
+          color={isNight ? '#0f172a' : '#e0f2fe'}
+          emissive={isNight ? '#020617' : '#bae6fd'}
+          emissiveIntensity={isNight ? 0.15 : 0.6}
+          roughness={0.1}
+          metalness={0.7}
+          transparent
+          opacity={isNight ? 0.45 : 0.65}
+        />
+      </mesh>
+
+      {/* Outside Scenery Backdrop visible through the window */}
+      <mesh
+        position={isX ? [(wx > 0 ? vistaDistance : -vistaDistance), 0, 0] : [0, 0, (wz > 0 ? vistaDistance : -vistaDistance)]}
+        rotation={isX ? [0, wx > 0 ? -Math.PI / 2 : Math.PI / 2, 0] : [0, wz > 0 ? Math.PI : 0, 0]}
+      >
+        <planeGeometry args={[wWidth * 1.5, wHeight * 1.5]} />
+        <meshBasicMaterial
+          color={isNight ? '#020617' : '#38bdf8'}
+        />
+      </mesh>
+
+      {/* Daytime Streaming Sunlight Beam (Volumetric Soft Sunlight shaft) */}
+      {!isNight && (
+        <mesh
+          position={isX ? [wx > 0 ? -1.8 : 1.8, -0.6, 0] : [0, -0.6, wz > 0 ? -1.8 : 1.8]}
+          rotation={
+            isX
+              ? [0, 0, wx > 0 ? Math.PI / 6 : -Math.PI / 6]
+              : [wz > 0 ? Math.PI / 6 : -Math.PI / 6, 0, 0]
+          }
+        >
+          <planeGeometry args={[wWidth * 0.9, 3.6]} />
+          <meshBasicMaterial
+            color="#fef08a"
+            transparent
+            opacity={0.16}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      )}
+    </group>
+  );
+}
+
+// -------------------------------------------------------------
+// WALL SCONCE & BULB LIGHT FIXTURE
+// -------------------------------------------------------------
+function WallSconceBulb({ fixture, isNight }: { fixture: WallLightFixture; isNight: boolean }) {
   const [fx, fy, fz] = fixture.position;
   const bulbColor = fixture.color || '#fef3c7';
 
@@ -411,15 +546,9 @@ function WallSconceBulb({ fixture }: { fixture: WallLightFixture; isNight: boole
         <meshStandardMaterial
           color={bulbColor}
           emissive={bulbColor}
-          emissiveIntensity={3.5}
+          emissiveIntensity={isNight ? 2.8 : 1.8}
           roughness={0.1}
         />
-      </mesh>
-
-      {/* Internal Filament Core */}
-      <mesh position={[0, 0.17, 0.22]}>
-        <sphereGeometry args={[0.04, 8, 8]} />
-        <meshBasicMaterial color="#ffffff" />
       </mesh>
     </group>
   );
@@ -457,7 +586,7 @@ function PhysicalDoorMesh({
 
   return (
     <group position={[dx, 0, dz]}>
-      {/* Heavy Wood Frame with Brass Trim */}
+      {/* Door Frame */}
       <mesh position={isXDoor ? [0, doorHeight / 2, -doorWidth / 2 - 0.08] : [-doorWidth / 2 - 0.08, doorHeight / 2, 0]} castShadow>
         <boxGeometry args={isXDoor ? [0.45, doorHeight, 0.16] : [0.16, doorHeight, 0.45]} />
         <meshStandardMaterial color="#271c19" roughness={0.5} metalness={0.5} />
@@ -471,7 +600,7 @@ function PhysicalDoorMesh({
         <meshStandardMaterial color="#271c19" roughness={0.5} metalness={0.5} />
       </mesh>
 
-      {/* Door Leaf (Swinging on Hinge at corner) */}
+      {/* Door Leaf (Swinging on Hinge) */}
       <group
         position={isXDoor ? [0, 0, -doorWidth / 2] : [-doorWidth / 2, 0, 0]}
         rotation={[0, door.angle, 0]}
@@ -489,14 +618,8 @@ function PhysicalDoorMesh({
           />
         </mesh>
 
-        {/* Brass Inlay Panels */}
-        <mesh position={isXDoor ? [0, doorHeight / 2, doorWidth / 2] : [doorWidth / 2, doorHeight / 2, 0]}>
-          <boxGeometry args={isXDoor ? [thickness + 0.02, doorHeight * 0.88, doorWidth * 0.88] : [doorWidth * 0.88, doorHeight * 0.88, thickness + 0.02]} />
-          <meshStandardMaterial color="#1f140e" roughness={0.7} metalness={0.4} />
-        </mesh>
-
-        {/* Glowing Emissive Door Handle Indicator */}
-        <mesh position={isXDoor ? [0.1, 1.2, doorWidth * 0.85] : [doorWidth * 0.85, 1.2, 0.1]}>
+        {/* Lock State Indicator Badge */}
+        <mesh position={isXDoor ? [thickness / 2 + 0.02, 1.45, doorWidth - 0.3] : [doorWidth - 0.3, 1.45, thickness / 2 + 0.02]}>
           <boxGeometry args={[0.08, 0.22, 0.18]} />
           <meshStandardMaterial
             color={door.isLocked ? '#ef4444' : '#22c55e'}
@@ -552,7 +675,6 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
   if (item.type === 'rug') {
     return (
       <group position={item.position} rotation={[0, item.rotation || 0, 0]}>
-        {/* Main Persian Rug Carpet Surface */}
         <mesh position={[0, 0.015, 0]} receiveShadow>
           <planeGeometry args={[w, d]} />
           <meshStandardMaterial
@@ -561,22 +683,12 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
             metalness={0.05}
           />
         </mesh>
-        {/* Ornate Gold Border Line */}
         <mesh position={[0, 0.018, 0]} receiveShadow>
           <planeGeometry args={[w * 0.94, d * 0.94]} />
           <meshStandardMaterial
             color={item.accentColor || '#d97706'}
             roughness={0.85}
             metalness={0.3}
-          />
-        </mesh>
-        {/* Inner Pattern Center */}
-        <mesh position={[0, 0.021, 0]} receiveShadow>
-          <planeGeometry args={[w * 0.86, d * 0.86]} />
-          <meshStandardMaterial
-            color={item.color || '#7f1d1d'}
-            roughness={0.92}
-            metalness={0.05}
           />
         </mesh>
       </group>
@@ -586,12 +698,10 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
   if (item.type === 'bookshelf') {
     return (
       <group position={item.position} rotation={[0, item.rotation || 0, 0]}>
-        {/* Cabinet Frame */}
         <mesh position={[0, h / 2, 0]} castShadow receiveShadow>
           <boxGeometry args={[w, h, d]} />
           <meshStandardMaterial color={item.color || '#2e1509'} roughness={0.7} />
         </mesh>
-        {/* Book Rows */}
         {[-1.2, -0.4, 0.4, 1.2].map((yOffset, idx) => (
           <mesh key={idx} position={[0, h / 2 + yOffset, 0.05]} castShadow>
             <boxGeometry args={[w * 0.88, 0.55, d * 0.85]} />
@@ -608,20 +718,13 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
   if (item.type === 'clock') {
     return (
       <group position={item.position} rotation={[0, item.rotation || 0, 0]}>
-        {/* Grandfather Clock Column Body */}
         <mesh position={[0, h / 2, 0]} castShadow receiveShadow>
           <boxGeometry args={[w, h, d]} />
           <meshStandardMaterial color={item.color || '#29170e'} roughness={0.5} metalness={0.3} />
         </mesh>
-        {/* Clock Face with Golden Ring */}
         <mesh position={[0, h - 0.45, d / 2 + 0.02]}>
           <circleGeometry args={[0.22, 24]} />
           <meshStandardMaterial color="#fef3c7" roughness={0.3} />
-        </mesh>
-        {/* Golden Pendulum Chamber */}
-        <mesh position={[0, h / 2 - 0.2, d / 2 + 0.02]}>
-          <boxGeometry args={[0.22, 0.6, 0.04]} />
-          <meshStandardMaterial color="#d97706" metalness={0.9} roughness={0.2} />
         </mesh>
       </group>
     );
@@ -629,7 +732,6 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
 
   return (
     <group position={item.position} rotation={[0, item.rotation || 0, 0]}>
-      {/* Main Furniture Box */}
       <mesh position={[0, h / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[w, h, d]} />
         <meshStandardMaterial
@@ -638,8 +740,6 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
           metalness={0.25}
         />
       </mesh>
-
-      {/* Accent Detail */}
       {item.accentColor && (
         <mesh position={[0, h + 0.02, 0]}>
           <boxGeometry args={[w * 0.9, 0.04, d * 0.9]} />
@@ -651,7 +751,7 @@ function FurnitureMesh({ item }: { item: FurnitureItem }) {
 }
 
 // -------------------------------------------------------------
-// HYPER-REALISTIC MULTI-ROOM ENVIRONMENT WITH CEILING BEAMS & SCONCES
+// ENVIRONMENT WITH WINDOWS, REAL SUNLIGHT & NIGHT CURFEW LIGHTING
 // -------------------------------------------------------------
 function RoomEnvironment({
   layout,
@@ -670,48 +770,68 @@ function RoomEnvironment({
 
   return (
     <group>
-      {/* Warm Ambient & Directional Lighting */}
-      <ambientLight intensity={isNight ? 0.45 : 0.95} color={isNight ? '#312e81' : '#fffbeb'} />
-      <directionalLight
-        position={[12, 26, 12]}
-        intensity={isNight ? 0.6 : 1.4}
-        color={isNight ? '#60a5fa' : '#fed7aa'}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
+      {/* Ambient & Directional Lighting */}
+      {/* DAY TIME: Bright warm sunlight coming in from outside windows */}
+      {/* NIGHT TIME: Dark, moody, low curfew lighting */}
+      <ambientLight
+        intensity={isNight ? 0.22 : 1.1}
+        color={isNight ? '#09090b' : '#fffbeb'}
       />
 
-      {/* Strategic Manor Chamber Zone Lights (High performance & realistic ambient glow) */}
+      {/* Main Directional Sun / Moon beam streaming through windows */}
+      <directionalLight
+        position={isNight ? [-15, 22, -15] : [22, 28, 20]}
+        intensity={isNight ? 0.35 : 2.4}
+        color={isNight ? '#38bdf8' : '#fef3c7'}
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+        shadow-bias={-0.0004}
+      />
+
+      {/* Soft Secondary Outdoor Fill Light */}
+      <directionalLight
+        position={isNight ? [12, 14, 16] : [-16, 20, -18]}
+        intensity={isNight ? 0.15 : 1.2}
+        color={isNight ? '#1e293b' : '#fed7aa'}
+      />
+
+      {/* Strategic Manor Chamber Zone Lights */}
       {/* 1. Grand Gallery Center */}
       <pointLight
-        position={[0, 3.4, 0]}
-        intensity={isNight ? 1.5 : 2.4}
-        distance={22}
+        position={[0, 3.2, 0]}
+        intensity={isNight ? 1.0 : 2.2}
+        distance={20}
         decay={2}
         color="#fef3c7"
       />
       {/* 2. West Wing (Study & Dining) */}
       <pointLight
-        position={[-7, 3.2, 0]}
-        intensity={isNight ? 1.2 : 2.0}
+        position={[-8, 3.0, 0]}
+        intensity={isNight ? 0.8 : 1.8}
         distance={18}
         decay={2}
         color="#fed7aa"
       />
       {/* 3. East Wing (Surveillance & Infirmary) */}
       <pointLight
-        position={[7, 3.2, 0]}
-        intensity={isNight ? 1.2 : 2.0}
+        position={[8, 3.0, 0]}
+        intensity={isNight ? 0.8 : 1.8}
         distance={18}
         decay={2}
         color="#fed7aa"
       />
 
-      {/* Warm Wall Sconces & Light Bulbs on Walls */}
+      {/* Real Architectural Windows with Exterior Views & Sunlight */}
+      {layout.windows.map((win) => (
+        <ArchitecturalWindowMesh key={win.id} windowData={win} isNight={isNight} />
+      ))}
+
+      {/* Wall Sconces & Bulbs */}
       {layout.wallLights.map((fixture) => (
         <WallSconceBulb key={fixture.id} fixture={fixture} isNight={isNight} />
       ))}
 
-      {/* Antique Manor Parquet Floor */}
+      {/* Parquet Floor */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[layout.dimensions.width, layout.dimensions.depth]} />
         <meshStandardMaterial
@@ -721,21 +841,13 @@ function RoomEnvironment({
         />
       </mesh>
 
-      {/* Decorative Floor Inlay Frame */}
+      {/* Floor Inlay */}
       <gridHelper
         args={[36, 36, '#78350f', '#27221f']}
         position={[0, 0.01, 0]}
       />
 
-      {/* Ceiling Timber Rafter Beams (at Y = 4.4m) for Grand Manor Architecture */}
-      {[-12, -6, 0, 6, 12].map((zPos, idx) => (
-        <mesh key={idx} position={[0, 4.4, zPos]} castShadow>
-          <boxGeometry args={[layout.dimensions.width, 0.35, 0.45]} />
-          <meshStandardMaterial color="#1c120c" roughness={0.8} />
-        </mesh>
-      ))}
-
-      {/* All 4.5m Ceiling-Height Partition Walls */}
+      {/* Partition Walls */}
       {layout.walls.map((wall) => (
         <mesh key={wall.id} position={wall.position} castShadow receiveShadow>
           <boxGeometry args={wall.size} />
@@ -747,7 +859,7 @@ function RoomEnvironment({
         </mesh>
       ))}
 
-      {/* 4 Physical Manor Doors */}
+      {/* Physical Doors */}
       {doors.map((door) => (
         <PhysicalDoorMesh
           key={door.id}
@@ -757,7 +869,7 @@ function RoomEnvironment({
         />
       ))}
 
-      {/* Fixed Manor Furniture & Rug Items */}
+      {/* Furniture */}
       {layout.furniture.map((item) => (
         <FurnitureMesh key={item.id} item={item} />
       ))}
@@ -780,42 +892,21 @@ export default function GameBoard({
 }: GameBoardProps) {
   const [cameraMode, setCameraMode] = useState<'thirdPerson' | 'firstPerson'>('thirdPerson');
   const [actionBurstTime, setActionBurstTime] = useState<number>(0);
+  const [showRoleModal, setShowRoleModal] = useState<boolean>(false);
 
   // Local state for Current Player Physics & Movement
   const [playerPos, setPlayerPos] = useState<[number, number, number]>([0, 0, 0]);
-  const [playerRot, setPlayerRot] = useState<number>(0);
-  const [playerGesture, setPlayerGesture] = useState<
-    'idle' | 'walk' | 'run' | 'jump' | 'attack' | 'heal' | 'investigate'
-  >('idle');
   const [isSprinting, setIsSprinting] = useState<boolean>(false);
   const [jumpTimer, setJumpTimer] = useState<number>(0);
 
-  // Virtual joystick movement vector from touch/mouse controls
+  // Virtual joystick movement vector
   const joystickVector = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Procedural Room Layout with Fixed Multi-room architecture
+  // Procedural Room Layout with Windows
   const roomLayout = useMemo(() => generateRoomLayout(roomId), [roomId]);
-  const halfW = roomLayout.dimensions.width / 2 - 0.8;
-  const halfD = roomLayout.dimensions.depth / 2 - 0.8;
 
   // Doors State
   const [doors, setDoors] = useState<DoorData[]>(roomLayout.doors);
-
-  // NPC Bots state
-  const [botStates, setBotStates] = useState<
-    Record<
-      string,
-      {
-        x: number;
-        z: number;
-        targetX: number;
-        targetZ: number;
-        rotation: number;
-        gesture: 'idle' | 'walk' | 'run';
-        idleTimer: number;
-      }
-    >
-  >({});
 
   // Real human players interpolation targets
   const remotePlayerPositions = useRef<
@@ -842,7 +933,7 @@ export default function GameBoard({
     [players, currentUserId]
   );
 
-  // Initialize guaranteed open-space spawn position for current player
+  // Initialize safe spawn position for current player
   useEffect(() => {
     const [sx, sz] = getSafeOpenSpawnPoint(roomLayout, currentUserId);
     setPlayerPos([sx, 0, sz]);
@@ -928,30 +1019,6 @@ export default function GameBoard({
     [broadcastDoorUpdate, doors, playerPos]
   );
 
-  // Initialize NPC Bots at safe open spawn points
-  useEffect(() => {
-    setBotStates((prev) => {
-      const next = { ...prev };
-      players
-        .filter((p) => Boolean(p.is_bot))
-        .forEach((p, idx) => {
-          if (!next[p.id]) {
-            const [sx, sz] = getSafeOpenSpawnPoint(roomLayout, p.id || idx + 10);
-            next[p.id] = {
-              x: sx,
-              z: sz,
-              targetX: sx,
-              targetZ: sz,
-              rotation: 0,
-              gesture: 'idle',
-              idleTimer: Math.random() * 2 + 1,
-            };
-          }
-        });
-      return next;
-    });
-  }, [players, roomLayout]);
-
   // Jump animation ticker
   useEffect(() => {
     if (jumpTimer <= 0) return;
@@ -1001,13 +1068,13 @@ export default function GameBoard({
     };
   }, [triggerJump]);
 
-  // Physics & Kinematics Refs (Zero React re-render overhead during 60fps movement)
+  // Physics & Kinematics Refs
   const playerPosRef = useRef<[number, number, number]>([0, 0, 0]);
   const playerRotRef = useRef<number>(0);
-  const playerGestureRef = useRef<string>("idle");
+  const playerGestureRef = useRef<string>('idle');
   const camYawRef = useRef<number>(0);
   const botStatesRef = useRef<Record<string, any>>({});
-  const [chamberName, setChamberName] = useState<string>("Grand Gallery");
+  const [chamberName, setChamberName] = useState<string>('Grand Gallery');
 
   // Sync bot states into ref
   useEffect(() => {
@@ -1022,43 +1089,32 @@ export default function GameBoard({
             targetX: sx,
             targetZ: sz,
             rotation: 0,
-            gesture: "idle",
+            gesture: 'idle',
             idleTimer: Math.random() * 2 + 1,
           };
         }
       });
   }, [players, roomLayout]);
 
-  // Handle Role Action  // Handle Role Action
-  const handleRoleAction = () => {
+  // Role Action Button Click: Opens targeted selection modal for Mafia, Doctor, Police
+  const handleOpenRoleActionModal = () => {
     if (!currentPlayer?.alive) return;
+    audioEngine.playClick();
+    setShowRoleModal(true);
+  };
+
+  // Target Confirmed by Mafia / Doctor / Police from the Selection Modal
+  const handleConfirmRoleTarget = (targetId: string) => {
     setActionBurstTime(Date.now());
     audioEngine.playRoleReveal();
 
-    const targets = players.filter((p) => p.id !== currentUserId && (p.alive ?? true));
-    let closestTarget = targets[0];
-    let minDistance = Infinity;
-
-    targets.forEach((t) => {
-      const bState = botStates[t.id];
-      const rState = remotePlayerPositions.current[t.id];
-      const tx = bState ? bState.x : rState ? rState.x : (t.x || 0);
-      const tz = bState ? bState.z : rState ? rState.z : (t.z || 0);
-      const curP = playerPosRef.current || [0, 0, 0];
-      const dist = Math.hypot(tx - curP[0], tz - curP[2]);
-      if (dist < minDistance) {
-        minDistance = dist;
-        closestTarget = t;
-      }
-    });
-
-    if (closestTarget && onRoleAction) {
+    if (onRoleAction && currentPlayer?.role) {
       if (currentPlayer.role === 'Mafia') {
-        onRoleAction('attack', closestTarget.id);
+        onRoleAction('attack', targetId);
       } else if (currentPlayer.role === 'Doctor') {
-        onRoleAction('heal', closestTarget.id);
+        onRoleAction('heal', targetId);
       } else if (currentPlayer.role === 'Police' || currentPlayer.role === 'Detective') {
-        onRoleAction('investigate', closestTarget.id);
+        onRoleAction('investigate', targetId);
       }
     }
   };
@@ -1069,8 +1125,12 @@ export default function GameBoard({
       <Canvas
         shadows
         dpr={[1, 1.5]}
-        gl={{ powerPreference: 'high-performance', antialias: false, depth: true, stencil: false, precision: 'mediump' }}
-        camera={{ position: [0, 8, 10], fov: 50, near: 0.08 }}
+        gl={{
+          powerPreference: 'high-performance',
+          antialias: true,
+          depth: true,
+        }}
+        camera={{ position: [0, 2.1, 4.2], fov: 58, near: 0.05 }}
         className="w-full h-full"
       >
         <WorldController
@@ -1100,7 +1160,7 @@ export default function GameBoard({
           onToggleLock={handleToggleDoorLock}
         />
 
-        {/* Current User Avatar */}
+        {/* Current User Avatar - Hidden in First Person so player's mesh never clips into camera */}
         <Avatar3D
           id={currentUserId}
           name={currentPlayer?.username || 'You'}
@@ -1157,11 +1217,11 @@ export default function GameBoard({
           })}
       </Canvas>
 
-      {/* Top Right: Manor Chamber Location Indicator with Explicit Explanation */}
+      {/* Top Right: Manor Chamber Location Indicator */}
       <div className="absolute top-3 right-3 z-20 max-w-[260px] bg-zinc-950/90 border border-amber-600/50 rounded-2xl p-2.5 backdrop-blur-md shadow-2xl flex flex-col gap-1 select-none pointer-events-none">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
-            <MapPin size={13} className="text-amber-400 shrink-0 animate-bounce" />
+            <MapPin size={13} className="text-amber-400 shrink-0" />
             <span className="text-[10px] font-mono font-bold tracking-wider uppercase text-amber-400">
               LOCATION (ROOM)
             </span>
@@ -1183,7 +1243,7 @@ export default function GameBoard({
         </p>
       </div>
 
-      {/* Virtual Joystick for Touch and Mouse Controls with Bottom Perspective Toggle */}
+      {/* Virtual Joystick for Touch and Mouse Controls */}
       <VirtualJoystick
         onMove={(vec) => {
           joystickVector.current = vec;
@@ -1192,7 +1252,7 @@ export default function GameBoard({
           setIsSprinting(sprinting);
         }}
         onJump={triggerJump}
-        onAction={handleRoleAction}
+        onAction={handleOpenRoleActionModal}
         onToggleCamera={() => {
           audioEngine.playClick();
           setCameraMode((prev) => (prev === 'thirdPerson' ? 'firstPerson' : 'thirdPerson'));
@@ -1200,6 +1260,16 @@ export default function GameBoard({
         cameraMode={cameraMode}
         role={currentPlayer?.role}
         isAlive={currentPlayer?.alive ?? true}
+      />
+
+      {/* Mafia / Special Role Target Selection Modal */}
+      <MafiaTargetModal
+        isOpen={showRoleModal}
+        onClose={() => setShowRoleModal(false)}
+        players={players}
+        currentUserId={currentUserId}
+        role={currentPlayer?.role}
+        onConfirmTarget={handleConfirmRoleTarget}
       />
     </div>
   );

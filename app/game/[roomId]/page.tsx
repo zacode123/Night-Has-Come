@@ -261,8 +261,12 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
   const handleAutoAdvance = async () => {
     if (!gameState) return;
 
-    // When 60s Warmup completes: announce game start, give warning, announce all rules, and auto-close after 3s!
+    // When 60s Warmup completes: announce game start, give warning, announce all rules, and auto-close!
     if (gameState.phase === 'Warmup') {
+      if (players.length < 3) {
+        // Strict guard: Do not advance without at least 3 players
+        return;
+      }
       audioEngine.stopAmbient();
       audioEngine.playRoleReveal();
       setIsRulesIntroActive(true);
@@ -276,24 +280,28 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           setActiveRuleStep(stepIndex);
         },
         () => {
-          // Rule narration finished: start 3-second auto-close countdown
-          let remaining = 3;
-          setRulesAutoCloseSeconds(remaining);
-          const intervalId = setInterval(() => {
-            remaining -= 1;
-            if (remaining <= 0) {
-              clearInterval(intervalId);
-              setRulesAutoCloseSeconds(null);
-              setShowRulesModal(false);
-              setIsRulesIntroActive(false);
-              setActiveRuleStep(-1);
-              advancePhase('Night');
-            } else {
-              setRulesAutoCloseSeconds(remaining);
-            }
-          }, 1000);
+          // Rule narration finished: close modal automatically and advance to Night!
+          setTimeout(() => {
+            setShowRulesModal(false);
+            setIsRulesIntroActive(false);
+            setActiveRuleStep(-1);
+            advancePhase('Night');
+          }, 800);
         }
       );
+
+      // Failsafe timer: in case audio is blocked or ends early, auto-advance after 30 seconds
+      setTimeout(() => {
+        setShowRulesModal((prev) => {
+          if (prev) {
+            setIsRulesIntroActive(false);
+            setActiveRuleStep(-1);
+            advancePhase('Night');
+            return false;
+          }
+          return false;
+        });
+      }, 30000);
       return;
     }
 
@@ -414,13 +422,27 @@ export default function GameRoom({ params }: { params: Promise<{ roomId: string 
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-red-950/60 border border-red-500/30 text-xs font-mono shadow">
             <Clock size={13} className="text-red-400 animate-pulse" />
             <span className="text-[10px] uppercase font-bold text-zinc-300">
-              {gameState.phase === 'Warmup' ? 'WARMUP' : gameState.phase}:
+              {gameState.phase === 'Warmup'
+                ? players.length < 3
+                  ? `WAITING (${players.length}/3)`
+                  : 'WARMUP'
+                : gameState.phase}:
             </span>
-            <Timer
-              duration={getPhaseDuration(gameState.phase)}
-              onExpire={handleAutoAdvance}
-              isActive={!isRulesIntroActive && gameState.phase !== 'GameEnd' && (gameState.phase === 'Warmup' ? players.length >= 3 : true)}
-            />
+            {gameState.phase === 'Warmup' && players.length < 3 ? (
+              <span className="text-amber-400 text-xs font-mono font-bold animate-pulse">
+                NEED 3 PLAYERS
+              </span>
+            ) : (
+              <Timer
+                duration={getPhaseDuration(gameState.phase)}
+                onExpire={handleAutoAdvance}
+                isActive={
+                  !isRulesIntroActive &&
+                  gameState.phase !== 'GameEnd' &&
+                  (gameState.phase === 'Warmup' ? players.length >= 3 : true)
+                }
+              />
+            )}
           </div>
 
           {/* Exit Button */}

@@ -19,6 +19,7 @@ class NarrationEngine {
   private isSequencePlaying = false;
   private lastSpokenText: string | null = null;
   private lastSpokenTime: number = 0;
+  private abortController: AbortController | null = null;
 
   public subscribe(listener: NarrationListener): () => void {
     this.listeners.add(listener);
@@ -35,9 +36,41 @@ class NarrationEngine {
   }
 
   /**
-   * Speak speech with zero echo, zero overlap, and bulletproof audio fallback
+   * Internal audio-only stop: Cancels active audio playback, fetch requests,
+   * and browser speech synthesis immediately without altering sequence state.
    */
-  public async speak(text: string, onEnd?: () => void) {
+  private stopAudioOnly() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+    if (this.currentAudio) {
+      try {
+        this.currentAudio.pause();
+        this.currentAudio.currentTime = 0;
+      } catch (_) {}
+      this.currentAudio = null;
+    }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+    }
+  }
+
+  /**
+   * Complete stop: Cancels active audio, speech synthesis, and any ongoing sequence.
+   */
+  public stop() {
+    this.isSequencePlaying = false;
+    this.stopAudioOnly();
+  }
+
+  /**
+   * Speak speech with zero echo, zero overlap, and bulletproof audio fallback.
+   * New TTS immediately cancels and overrides any existing TTS playback.
+   */
+  public async speak(text: string, onEnd?: () => void, isPartOfSequence = false) {
     if (typeof window === 'undefined' || !text) {
       if (onEnd) onEnd();
       return;
@@ -50,8 +83,8 @@ class NarrationEngine {
     }
 
     const now = Date.now();
-    // Prevent identical text from echoing or playing twice simultaneously within 1.5 seconds
-    if (this.lastSpokenText === trimmed && now - this.lastSpokenTime < 1500) {
+    // Prevent identical text from echoing or playing twice simultaneously within 1.2 seconds
+    if (this.lastSpokenText === trimmed && now - this.lastSpokenTime < 1200) {
       if (onEnd) setTimeout(onEnd, 800);
       return;
     }
@@ -59,13 +92,24 @@ class NarrationEngine {
     this.lastSpokenText = trimmed;
     this.lastSpokenTime = now;
 
-    // Immediately stop any currently playing narration audio and cancel browser speech
-    this.stop();
+    // If this call is standalone (not part of an active sequence), cancel any ongoing sequence
+    if (!isPartOfSequence) {
+      this.isSequencePlaying = false;
+    }
+
+    // Immediately stop any currently playing narration audio and cancel browser speech (Strict Override!)
+    this.stopAudioOnly();
+
+    this.abortController = new AbortController();
+    const currentSignal = this.abortController.signal;
 
     let finished = false;
+    let stepSafetyTimer: any = null;
+
     const finish = () => {
       if (!finished) {
         finished = true;
+        if (stepSafetyTimer) clearTimeout(stepSafetyTimer);
         this.currentAudio = null;
         if (onEnd) onEnd();
       }
@@ -81,9 +125,10 @@ class NarrationEngine {
           utterance.pitch = 1.0;
           utterance.lang = 'en-US';
 
-          // Try to select an English voice
+          // Try to select a natural English voice
           const voices = window.speechSynthesis.getVoices();
-          const enVoice = voices.find((v) => v.lang.startsWith('en') && !v.name.includes('Google') && v.name.includes('Natural')) ||
+          const enVoice =
+            voices.find((v) => v.lang.startsWith('en') && !v.name.includes('Google') && v.name.includes('Natural')) ||
             voices.find((v) => v.lang.startsWith('en'));
           if (enVoice) {
             utterance.voice = enVoice;
@@ -102,12 +147,21 @@ class NarrationEngine {
       }
     };
 
+    // Safety timeout: ensure callback is always called even if audio playback hangs
+    stepSafetyTimer = setTimeout(() => {
+      if (!finished) {
+        console.warn('Narration safety timeout reached, progressing step');
+        finish();
+      }
+    }, Math.max(7000, trimmed.length * 120));
+
     // 1. Attempt Primary Voice API endpoint
     try {
       const res = await fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: trimmed, voice: 'Joey' }),
+        signal: currentSignal,
       });
 
       if (res.ok) {
@@ -140,7 +194,8 @@ class NarrationEngine {
           return;
         }
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
       console.warn('/api/tts fetch error:', err);
     }
 
@@ -148,24 +203,9 @@ class NarrationEngine {
     fallbackToSpeechSynthesis();
   }
 
-  public stop() {
-    this.isSequencePlaying = false;
-    if (this.currentAudio) {
-      try {
-        this.currentAudio.pause();
-        this.currentAudio.currentTime = 0;
-      } catch (_) {}
-      this.currentAudio = null;
-    }
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch (_) {}
-    }
-  }
-
   /**
    * Speak a sequential series of announcement steps.
+   * Plays every step in order, highlighting each step, and calls onComplete at the end.
    */
   public speakSequence(
     steps: AnnouncementStep[],
@@ -195,11 +235,12 @@ class NarrationEngine {
         })
       );
 
+      // Pass true for isPartOfSequence so step speech does not cancel the sequence!
       this.speak(currentStep.text, () => {
         if (!this.isSequencePlaying) return;
         currentIndex++;
-        setTimeout(playNext, 500);
-      });
+        setTimeout(playNext, 450);
+      }, true);
     };
 
     playNext();
@@ -213,8 +254,8 @@ class NarrationEngine {
       {
         id: 'start',
         title: 'GAME OFFICIALLY STARTED',
-        subtitle: 'The 60-second warmup has ended. The game has officially started!',
-        text: 'The 60-second warmup is over. The game has officially started!',
+        subtitle: 'The warmup has ended. The survival retreat has officially begun!',
+        text: 'The warmup is over. The game has officially started!',
       },
       {
         id: 'warning',
@@ -244,7 +285,7 @@ class NarrationEngine {
         id: 'ready',
         title: 'BE READY: GAME HAS BEGUN',
         subtitle: 'Go to your room immediately, keep doors locked, and prepare for night curfew!',
-        text: 'Be ready! The game has begun! Go to your room, lock your door, and prepare for night!',
+        text: 'Be ready! The game has begun! Go to your room, lock your door, and prepare for night curfew!',
       },
     ];
   }
@@ -252,9 +293,16 @@ class NarrationEngine {
   /**
    * Instructions for EVERYONE during each phase (Clear, simple English)
    */
-  public getGeneralInstruction(phase: string, dayNumber = 1): { title: string; subtitle: string; voice: string } {
+  public getGeneralInstruction(phase: string, dayNumber = 1, playerCount = 3): { title: string; subtitle: string; voice: string } {
     switch (phase) {
       case 'Warmup':
+        if (playerCount < 3) {
+          return {
+            title: 'WAITING FOR PLAYERS (MINIMUM 3 REQUIRED)',
+            subtitle: `Only ${playerCount} player${playerCount === 1 ? '' : 's'} joined. Need at least 3 players (1 Mafia, 2 Citizens) to start.`,
+            voice: 'Waiting for players to join. At least 3 players are required to start the game.',
+          };
+        }
         return {
           title: 'PRE-GAME WARMUP (60 SECONDS)',
           subtitle: 'All required players have joined! The game will start in 60 seconds.',
@@ -421,8 +469,8 @@ class NarrationEngine {
     this.speakSequence(sequence);
   }
 
-  public getPhaseNarration(phase: string, dayNumber = 1): { title: string; subtitle: string } {
-    const info = this.getGeneralInstruction(phase, dayNumber);
+  public getPhaseNarration(phase: string, dayNumber = 1, playerCount = 3): { title: string; subtitle: string } {
+    const info = this.getGeneralInstruction(phase, dayNumber, playerCount);
     return { title: info.title, subtitle: info.subtitle };
   }
 }

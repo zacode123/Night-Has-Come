@@ -590,6 +590,14 @@ class AudioEngine {
   startDiscussionMusic() {
     this.playAmbient('discussionAmbient');
   }
+
+  stopAllVoice() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch (_) {}
+    }
+  }
 }
 
 export const audioEngine = new AudioEngine();

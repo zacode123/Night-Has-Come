@@ -32,7 +32,7 @@ export default function AnnouncementBanner({
 
   // Update general instruction and role instruction on phase or role change
   useEffect(() => {
-    let generalData = narrationEngine.getGeneralInstruction(phase, dayNumber);
+    let generalData = narrationEngine.getGeneralInstruction(phase, dayNumber, playerCount);
 
     // If in Warmup and minimum players have NOT joined yet, show waiting banner
     if (phase === 'Warmup' && playerCount < 3) {
@@ -95,7 +95,7 @@ export default function AnnouncementBanner({
   const toggleMute = () => {
     if (isMuted) {
       setIsMuted(false);
-      const generalData = narrationEngine.getGeneralInstruction(phase, dayNumber);
+      const generalData = narrationEngine.getGeneralInstruction(phase, dayNumber, playerCount);
       if (generalData.voice && (phase !== 'Warmup' || playerCount >= 3)) {
         narrationEngine.speak(generalData.voice);
       }
