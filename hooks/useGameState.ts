@@ -50,7 +50,8 @@ export function useGameState(roomId: string) {
       const { data: p } = await supabase
         .from('players')
         .select('*')
-        .eq('room_id', roomId);
+        .eq('room_id', roomId)
+        .eq('status', 'approved');
 
       if (p) setPlayers(p as Player[]);
     } catch (err) {
@@ -83,6 +84,7 @@ export function useGameState(roomId: string) {
             .from('players')
             .select('*')
             .eq('room_id', roomId)
+            .eq('status', 'approved')
             .then(({ data }) => {
               if (data) setPlayers(data as Player[]);
             });

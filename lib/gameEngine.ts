@@ -31,11 +31,12 @@ export interface GameState {
 
 export const GameEngine = {
   async startGame(roomId: string) {
-    // 1. Fetch players
+    // 1. Fetch approved players
     const { data: players, error } = await supabase
       .from('players')
       .select('*')
-      .eq('room_id', roomId);
+      .eq('room_id', roomId)
+      .eq('status', 'approved');
 
     if (error || !players || players.length < gameConfig.minPlayers) {
       throw new Error(`Need at least ${gameConfig.minPlayers} players (1 Mafia and 2 Citizens) to start`);
@@ -324,7 +325,8 @@ export const GameEngine = {
     const { data: players } = await supabase
       .from('players')
       .select('*')
-      .eq('room_id', roomId);
+      .eq('room_id', roomId)
+      .eq('status', 'approved');
 
     if (!players || players.length < 3) return null;
 

@@ -239,6 +239,27 @@ export async function stopGame(roomId: string) {
       })
       .eq('id', roomId);
 
+    // 4. Clean up players in this room: unassign room_id and reset role/alive status
+    await supabaseAdmin
+      .from('players')
+      .update({
+        status: 'pending',
+        room_id: null,
+        role: null,
+        alive: true,
+        x: null,
+        z: null
+      })
+      .eq('room_id', roomId)
+      .eq('is_bot', false);
+
+    // Delete bots from stopped game so the room starts completely clean
+    await supabaseAdmin
+      .from('players')
+      .delete()
+      .eq('room_id', roomId)
+      .eq('is_bot', true);
+
     return { success: true };
 
   } catch (err: any) {

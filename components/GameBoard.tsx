@@ -1189,9 +1189,10 @@ export default function GameBoard({
             const isBot = Boolean(player.is_bot);
             const bState = botStatesRef.current[player.id];
             const rState = remotePlayerPositions.current[player.id];
+            const [defaultSpawnX, defaultSpawnZ] = getSafeOpenSpawnPoint(roomLayout, player.id);
 
-            const posX = isBot ? bState?.x || 0 : rState ? rState.x : (player.x || 0);
-            const posZ = isBot ? bState?.z || 0 : rState ? rState.z : (player.z || 0);
+            const posX = isBot ? (bState?.x ?? defaultSpawnX) : rState ? rState.x : (player.x ?? defaultSpawnX);
+            const posZ = isBot ? (bState?.z ?? defaultSpawnZ) : rState ? rState.z : (player.z ?? defaultSpawnZ);
             const rot = isBot ? bState?.rotation || 0 : rState ? rState.rotation : (player.rotation || 0);
             const gest = isBot
               ? bState?.gesture || 'idle'
